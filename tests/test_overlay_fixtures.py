@@ -82,7 +82,7 @@ def _param(fx):
     if fx.get("validator_gap"):
         marks.append(pytest.mark.xfail(
             reason=f"validator gap: {fx['description']}", strict=True))
-    return pytest.param(fx, id=fx["file"], marks=marks)
+    return pytest.param(fx, id=fx["file"].rsplit(".", 1)[0], marks=marks)
 
 
 @pytest.mark.parametrize("fx", [_param(fx) for fx in FIXTURES])
@@ -106,3 +106,9 @@ def test_fixture_emits_expected_diagnostic(fx):
     matches = [d for d in result.diagnostics if d.code == fx["expected_code"]]
     assert matches, f"expected code not emitted.{detail}"
     assert matches[0].severity == fx["severity"], f"severity mismatch.{detail}"
+
+    # An error-severity defect must make the overall result not-OK
+    # (Result.ok is False iff any error-severity diagnostic exists). Warnings
+    # carry no such requirement -- they may leave the overlay loadable.
+    if fx["severity"] == "error":
+        assert not result.ok, f"error fixture should make result not-ok.{detail}"
