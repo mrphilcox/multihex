@@ -19,6 +19,25 @@ _(nothing in flight — pick the next item from Near-term)_
       overlay display/query paths. Keep inputs deterministic and generated at
       runtime, avoid committed baselines or machine-specific thresholds, and keep
       correctness/stress probes in `scripts/stress/`.
+- [ ] **Add meaningful performance smoke tests.**
+      The initial performance layer exists, but it only proves the harness works.
+      Future tests should catch catastrophic regressions while remaining stable
+      across developer machines. 
+  - Candidate tests:
+      - core hex row rendering over a deterministic 256 KiB-1 MiB buffer
+      - search over deterministic data with known sparse matches
+      - overlay lookup/navigation over many small ranges
+      - side-by-side diff rendering over moderately sized inputs
+      
+  - Guidelines:
+    - no strict microbenchmark thresholds
+    - use loose “atrocious regression” thresholds only
+    - avoid GUI/TUI timing where possible
+    - keep each test under a few seconds
+    - print timing and input size
+    - prefer deterministic generated data
+    - performance tests remain opt-in via scripts/performance/run_all.sh
+
 - [ ] **Persist the TUI text-search case-insensitive preference (optional).** The
       `multihex-tui` text-search panel has a "Case-insensitive (ASCII)" checkbox
       whose state is remembered for the running session only. If desired, promote
@@ -102,6 +121,33 @@ _(nothing in flight — pick the next item from Near-term)_
       that `MainWindow.load_paths` re-applies the startup `--ref` on every File ▸
       Open rather than the last Compare-menu choice; remember window size/position
       and recent files; a toolbar; configurable fonts; dark/light themes.
+
+- [ ] **Performance Testing**
+  - Current coverage is intentionally minimal and serves primarily as a harness smoke test.
+  - The performance test framework and runner exist:
+      - `scripts/performance/run_all.sh`
+      - `tests_perf/`
+  - Future work:
+    - Add meaningful performance regression tests that catch catastrophic
+     slowdowns without becoming machine-sensitive benchmarks.
+
+Candidate areas:
+
+- Core hex row rendering over deterministic 256 KiB-1 MiB inputs.
+- Search performance on deterministic data with known match density.
+- Overlay lookup/navigation with many overlay ranges.
+- Side-by-side diff rendering on moderately sized inputs.
+- Memory consumption sanity checks for large files.
+
+Guidelines:
+
+- Performance tests remain opt-in.
+- Prefer loose "catastrophic regression" thresholds over microbenchmarks.
+- Avoid GUI/TUI event-loop timing where possible.
+- Use deterministic generated data.
+- Keep individual tests reasonably fast.
+- Print timing and input size information.
+- Avoid thresholds that vary significantly across developer machines.
 
 ## Someday
 
