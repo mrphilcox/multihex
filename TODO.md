@@ -24,6 +24,17 @@ _(nothing in flight — pick the next item from Near-term)_
       `https://github.com/mrphilcox/multihex` exists, push the release branch and
       tags there, and verify the package metadata links resolve before publishing
       to PyPI.
+- [ ] **Wire the visual-regression suite into CI.** CI now installs the `[gui]`
+      extra and runs the GUI/TUI *behavior* tests (`tests/`) headlessly under
+      `QT_QPA_PLATFORM=offscreen` (so they run, not skip). The heavier
+      *visual-regression* lane — `scripts/ui-tests/run_ui_tests.sh` over `tests_ui/`
+      (Textual SVG snapshots + offscreen GUI PNG smoke, the `[ui-test]` extra) — is
+      still **not** in `.github/workflows/ci.yml`; it remains an opt-in local lane.
+      It was deferred because committed SVG/PNG baselines are sensitive to the
+      installed Rich/Textual/PySide6 versions and would need maintenance across the
+      five-version CI matrix. Revisit: run it on a single pinned Python version (not
+      the full matrix), or gate baseline checks so version drift warns rather than
+      fails.
 
 ## Medium-term
 
