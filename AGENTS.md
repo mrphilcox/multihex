@@ -85,6 +85,25 @@ not reimplement marker rules. The core (`src/multihex/core.py`) and batch CLI
 must stay stdlib-only; only the TUI may depend on `textual`/`rich`, and only the
 GUI may depend on `PySide6`.
 
+### Keyboard shortcuts — single source of truth
+
+`src/multihex/shortcuts.py` is the **only** place frontend keyboard shortcuts and
+their help text are defined; it is **stdlib-only** (no core/Textual/PySide6
+imports). The TUI help popup (`_HELP = tui_help_text()`) and the GUI help dialog
+(`gui_help_text()`) are generated from it, and the GUI's single-key dispatch is
+built from `gui_text_map()`/`gui_key_names()`. **Never hand-edit either frontend's
+help list or add a key in only one place.** To change a shortcut, the workflow is:
+
+1. Edit `SHORTCUTS` in `src/multihex/shortcuts.py` (and the TUI `BINDINGS` /
+   GUI `_action_slots` if you are adding/removing an action, not just rewording).
+2. Run lane 1 (`python3 -m pytest`) — `tests/test_shortcuts.py` enforces that the
+   TUI `BINDINGS` key-set equals the registry and that every GUI-applicable action
+   is wired; the headless help-content assertions update here.
+3. If you changed anything the help popup renders, regenerate the `tests_ui/`
+   help-popup SVG with `scripts/ui-tests/update_snapshots.sh` and review the diff
+   like a golden file before committing. That diff is the deliberate-review gate,
+   **not** a regression to suppress.
+
 ## Testing Guidelines
 
 Tests use pytest. Add characterization or golden coverage for user-visible CLI

@@ -64,6 +64,20 @@ def _overlay_app() -> "tui.MultiHexApp":
     )
 
 
+def _tall_app() -> "tui.MultiHexApp":
+    """A view taller than the terminal so End actually scrolls to the last page."""
+    base = bytes((i * 7 + 3) & 0xFF for i in range(512))  # 32 rows at width 16
+    other = bytearray(base)
+    other[400] ^= 0xFF  # a late differing byte, visible on the bottom-anchored page
+    return tui.MultiHexApp(
+        fx.model(bytes(base), bytes(other), width=16),
+        ascii_on=True,
+        only_diff=False,
+        color_on=True,
+        name_mode="basename",
+    )
+
+
 def _side_by_side_app() -> "tui.MultiHexApp":
     files = [
         fx.hexfile("left.bin", bytes(range(16))),
@@ -146,3 +160,16 @@ def test_snapshot_settings_panel(snap_compare):
 @requires_snapshot
 def test_snapshot_overlay_details_panel(snap_compare):
     assert snap_compare(_overlay_app(), press=["L"], terminal_size=TERM)
+
+
+@requires_snapshot
+def test_snapshot_end_scrolled(snap_compare):
+    # Locks the bottom-anchored End view (the final row is the last visible row).
+    assert snap_compare(_tall_app(), press=["end"], terminal_size=TERM)
+
+
+@requires_snapshot
+def test_snapshot_help_popup(snap_compare):
+    # The help popup is generated from the shared registry; this snapshot makes
+    # registry drift visible. Regenerate with scripts/ui-tests/update_snapshots.sh.
+    assert snap_compare(_diff_app(), press=["question_mark"], terminal_size=TERM)

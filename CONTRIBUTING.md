@@ -141,17 +141,36 @@ committing it.
 3. Add a named case in `tests/golden_cases.py` and regenerate goldens; add a
    characterization or search test as appropriate.
 
+### Add or change a frontend keyboard shortcut
+Frontend shortcuts and their help text have **one** home:
+`src/multihex/shortcuts.py` (stdlib-only). Never hand-edit a frontend's help list
+or add a key in only one place — the TUI help popup and the GUI help dialog are
+both generated from the registry. The workflow:
+1. Edit `SHORTCUTS` in `src/multihex/shortcuts.py` (display keys, help text,
+   `tui_keys`/`gui_keys`, applicability). Add the TUI `Binding`/`action_*` in
+   `src/multihex/tui.py` and/or the GUI `_action_slots` entry in
+   `src/multihex/gui.py` only when adding/removing an action.
+2. Run `python3 -m pytest` — `tests/test_shortcuts.py` enforces that the TUI
+   `BINDINGS` key-set equals the registry, every binding has an `action_*` method,
+   and every GUI-applicable action is wired; update the headless help-content
+   assertions there.
+3. If the help popup's rendered text changed, regenerate the `tests_ui/` help-popup
+   SVG with `scripts/ui-tests/update_snapshots.sh` and review the diff like a golden
+   file. The diff is the deliberate-review gate, not a regression to silence.
+
 ### Add a TUI key or behavior
-1. Add a `Binding` and an `action_*` method in `src/multihex/tui.py`, and update
-   the in-app `HelpScreen` and the module docstring's key list.
+1. Add the shortcut to the registry first (see above), plus a `Binding` and an
+   `action_*` method in `src/multihex/tui.py`.
 2. Keep navigation/highlight state on the widget/app; pull bytes and markers from
    the core model — never recompute comparison meaning in the TUI.
-3. Add a headless test in `tests/test_tui_search.py` / `tests/test_tui_smoke.py`.
+3. Add a headless test in `tests/test_tui_*` (e.g. `test_tui_home_end.py`).
 
 ### Add a GUI behavior
-1. Add the widget/menu/action in `src/multihex/gui.py`. Keep Qt-free
-   navigation/filter/status logic in the `ViewState`/`format_status` helpers so it
-   stays unit-testable without a display.
+1. Add the widget/menu/action in `src/multihex/gui.py`. For a keyboard shortcut,
+   register it (see above) and wire `_action_slots`. Keep Qt-free
+   navigation/filter/status logic in the `ViewState`/`format_status` helpers, and
+   factor dialog-driven logic (e.g. `run_search`) into non-modal methods so it
+   stays unit-testable without a display (drive them via `trigger_action`).
 2. Pull bytes and markers from the core model — never recompute comparison
    meaning in the GUI. PySide6 stays import-guarded (the GUI is optional).
 3. Add a headless test in `tests/test_gui_*` (offscreen). For a visible rendering

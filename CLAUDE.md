@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/multihex/tui.py` — interactive Textual TUI frontend; console script `multihex-tui`
 - `src/multihex/gui.py` — read-only PySide6/Qt desktop frontend; console script `multihex-gui` (the `[gui]` extra)
 
-Supporting modules: `src/multihex/overlay.py` (the `OverlayState`/`OverlayRange` seam that loads/queries overlays), `src/multihex/layout_overlay_v1.py` (the overlay schema validator), and `src/multihex/tui_config.py` (TUI-only persisted preferences).
+Supporting modules: `src/multihex/overlay.py` (the `OverlayState`/`OverlayRange` seam that loads/queries overlays), `src/multihex/layout_overlay_v1.py` (the overlay schema validator), `src/multihex/tui_config.py` (TUI-only persisted preferences), and `src/multihex/shortcuts.py` (the stdlib-only shared keyboard-shortcut registry — the single source of truth for both interactive frontends' keymap and help text; never hand-edit a frontend's help, change the registry and let `tests/test_shortcuts.py` enforce parity).
 
 Install with `pip install -e '.[dev]'` to get all three scripts plus the test/lint deps. The commands below use the installed scripts; `python3 -m multihex.cli` / `python3 -m multihex.tui` / `python3 -m multihex.gui` work too.
 

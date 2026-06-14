@@ -14,11 +14,12 @@ pytest.importorskip("PySide6")
 # Render headless so the test needs no display.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QPoint, QPointF, Qt  # noqa: E402
-from PySide6.QtGui import QWheelEvent  # noqa: E402
+from PySide6.QtCore import QEvent, QPoint, QPointF, Qt  # noqa: E402
+from PySide6.QtGui import QKeyEvent, QWheelEvent  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 import multihex.gui as gui  # noqa: E402
+from multihex.shortcuts import gui_help_text, gui_shortcuts  # noqa: E402
 
 
 def _wheel(angle_y):
@@ -157,4 +158,204 @@ def test_empty_window_has_no_model(app):
     assert w.model is None
     assert w.view_widget.view is None
     assert "No files loaded" in w.statusBar().currentMessage()
+    w.close()
+
+
+# --------------------------------------------------------------------------- #
+# Shared shortcut registry -> GUI dispatch parity
+# --------------------------------------------------------------------------- #
+
+
+def test_action_slots_cover_every_gui_action(app):
+    """Every GUI-applicable registry action has a dispatch slot, and no extras."""
+    w = gui.MainWindow()
+    assert set(w._action_slots) == {s.action_id for s in gui_shortcuts()}
+    w.close()
+
+
+def test_trigger_action_navigation(app, tmp_path):
+    data = bytes((i * 7) % 256 for i in range(1024))  # 64 rows at width 16
+    a = _write(tmp_path, "a.bin", data)
+    b = _write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.resize(900, 400)
+    w.show()
+    app.processEvents()
+    vw = w.view_widget
+
+    w.trigger_action("end")
+    assert vw.view.top == vw.view.max_top(vw._page_rows())
+    assert vw.view.top > 0
+    w.trigger_action("home")
+    assert vw.view.top == 0
+    w.trigger_action("next_row")
+    assert vw.view.top == 1
+    w.trigger_action("next_page")
+    assert vw.view.top == 1 + vw._page_rows()
+    w.close()
+
+
+def test_trigger_action_toggles_flip_state_and_menu(app, tmp_path):
+    a = _write(tmp_path, "a.bin", bytes(48))
+    b = _write(tmp_path, "b.bin", bytes(48))
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    vw = w.view_widget
+
+    assert vw.color_on is True
+    w.trigger_action("toggle_color")
+    assert vw.color_on is False
+    assert w.act_color.isChecked() is False
+
+    assert vw.byte_classes_on is False
+    w.trigger_action("toggle_byte_classes")
+    assert vw.byte_classes_on is True
+    assert w.act_byte_classes.isChecked() is True
+
+    w.trigger_action("toggle_ascii")
+    assert vw.ascii_on is False
+    assert w.act_ascii.isChecked() is False
+
+    # cycle_markers is the GUI's strip on/off (no side-by-side "repeat" mode).
+    assert vw.markers_on is True
+    w.trigger_action("cycle_markers")
+    assert vw.markers_on is False
+    assert w.act_markers.isChecked() is False
+    w.close()
+
+
+def test_real_key_event_dispatches_and_bubbles(app, tmp_path):
+    """A QKeyEvent to the window dispatches; one to the focused child bubbles up."""
+    data = bytes((i * 7) % 256 for i in range(1024))
+    a = _write(tmp_path, "a.bin", data)
+    b = _write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.resize(900, 400)
+    w.show()
+    app.processEvents()
+    vw = w.view_widget
+
+    # Named key delivered straight to the window.
+    app.sendEvent(
+        w, QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_End, Qt.KeyboardModifier.NoModifier)
+    )
+    assert vw.view.top == vw.view.max_top(vw._page_rows())
+
+    # A key delivered to the focused child must bubble (HexCompareView.ignore()).
+    app.sendEvent(
+        vw, QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Home, Qt.KeyboardModifier.NoModifier)
+    )
+    assert vw.view.top == 0
+
+    # A printable key resolves via QKeyEvent.text().
+    app.sendEvent(
+        vw, QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_J, Qt.KeyboardModifier.NoModifier, "j")
+    )
+    assert vw.view.top == 1
+    w.close()
+
+
+# --------------------------------------------------------------------------- #
+# GUI search (reuses the core engine; renders/navigates only)
+# --------------------------------------------------------------------------- #
+
+
+def test_search_runs_navigates_and_highlights(app, tmp_path):
+    data = bytes(64)  # all zeros -> many "00 00" matches
+    a = _write(tmp_path, "a.bin", data)
+    b = _write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.resize(900, 400)
+    w.show()
+    app.processEvents()
+
+    w.run_search("hex", "00 00")
+    assert w.search_matches
+    assert w.search_index == 0
+    assert w.search_error is None
+    # highlight state is installed on the view
+    assert w.view_widget._search_covered
+    assert w.view_widget.search_current is w.search_matches[0]
+
+    first = w.search_index
+    w.search_next()
+    assert w.search_index == 1
+    w.search_prev()
+    assert w.search_index == first
+    # prev from the first wraps to the last
+    w.search_prev()
+    assert w.search_index == len(w.search_matches) - 1
+    w.close()
+
+
+def test_search_bad_hex_sets_error_without_crashing(app, tmp_path):
+    a = _write(tmp_path, "a.bin", bytes(16))
+    w = gui.MainWindow()
+    w.load_paths([a])
+    w.run_search("hex", "zz")  # invalid hex
+    assert w.search_error is not None
+    assert w.search_matches == []
+    assert w.search_index is None
+    assert w.view_widget._search_covered == set()
+    w.close()
+
+
+def test_search_hex_matches_bytes_not_ascii(app, tmp_path):
+    # The bytes 0x52 0x49 0x46 0x46 ("RIFF") appear; the ASCII text "5249..." must not.
+    data = b"....RIFF...." + bytes(40)
+    a = _write(tmp_path, "a.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a])
+    w.run_search("hex", "52 49 46 46")
+    assert [m.offset for m in w.search_matches] == [4]
+    w.close()
+
+
+def test_search_cleared_on_file_reload(app, tmp_path):
+    data = bytes(64)
+    a = _write(tmp_path, "a.bin", data)
+    b = _write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.run_search("hex", "00 00")
+    assert w.search_matches
+    w.load_paths([a, b])  # reload drops the stale results
+    assert w.search_matches == []
+    assert w.search_index is None
+    assert w.view_widget._search_covered == set()
+    w.close()
+
+
+# --------------------------------------------------------------------------- #
+# Help / options
+# --------------------------------------------------------------------------- #
+
+
+def test_help_dialog_text_is_generated_from_registry(app):
+    w = gui.MainWindow()
+    box = w._show_help_dialog()
+    assert box.text() == gui_help_text()
+    w.close()
+
+
+def test_settings_dialog_applies_immediately(app, tmp_path):
+    a = _write(tmp_path, "a.bin", bytes(48))
+    b = _write(tmp_path, "b.bin", bytes(48))
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    dlg = gui._SettingsDialog(w)
+
+    color_box = dlg._checks["Color highlighting"]
+    assert color_box.isChecked() is True
+    color_box.setChecked(False)  # drives act_color -> view, immediately
+    assert w.view_widget.color_on is False
+    assert w.act_color.isChecked() is False
+
+    classes_box = dlg._checks["Byte-class highlighting"]
+    classes_box.setChecked(True)
+    assert w.view_widget.byte_classes_on is True
+    dlg.reject()
     w.close()

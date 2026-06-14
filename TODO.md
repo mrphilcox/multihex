@@ -8,17 +8,7 @@ follow-ups you discover.
 
 ## Current focus
 
-- [ ] **Add Home and End key support in the TUI.** The interactive Textual
-      frontend should handle `Home` and `End` consistently with terminal
-      navigation expectations: `Home` should move the current viewport/cursor to
-      the beginning of the compared byte range, and `End` should move it to the
-      final address that can be displayed for the loaded files. Preserve the
-      fixed-offset comparison model while doing this; the keys should only
-      change navigation state and must not trigger byte alignment, resync, or any
-      inferred matching behavior. Add focused tests or characterization coverage
-      for the navigation helpers/TUI action paths so empty files, uneven file
-      lengths, explicit `--offset`/`--length` ranges, and search result state
-      remain well-defined. (The GUI already supports Home/End.)
+_(nothing in flight — pick the next item from Near-term)_
 
 ## Near-term
 
@@ -54,18 +44,14 @@ follow-ups you discover.
       validator are vendored from `bintools` (the producer), so coordinate any
       change there; decide whether it is a backward-compatible v1 extension or a
       v2 bump.
-- [ ] **GUI Phase 2 — usability.** Horizontal scrolling / wide-row overflow (the
-      view uses `ScrollBarAlwaysOff`, so a wide `--width` is silently clipped — see
-      the `TODO(GUI usability)` in `src/multihex/gui.py`); revisit that
-      `MainWindow.load_paths` re-applies the startup `--ref` on every File ▸ Open
-      rather than the last Compare-menu choice; remember window size/position and
-      recent files; keyboard shortcuts and a toolbar; a status bar showing current
-      offset/file info; configurable fonts; dark/light themes; sync shortcuts with
-      the TUI where practical.
-- [ ] **GUI Phase 3 — search.** Bring the core search engine to the GUI: hex and
-      ASCII/text search (case-insensitive option), next/previous navigation, match
-      highlighting, search across all files, and a results summary panel. Reuse
-      `core` search; the GUI renders and navigates only.
+- [ ] **GUI Phase 2 — usability (remaining).** Single-key shortcuts and TUI
+      parity now ship (see Done: the shared shortcut registry). Still open:
+      horizontal scrolling / wide-row overflow (the view uses `ScrollBarAlwaysOff`,
+      so a wide `--width` is silently clipped — see the `TODO(GUI usability)` in
+      `src/multihex/gui.py`; this is also why `v`/`←`/`→` stay TUI-only); revisit
+      that `MainWindow.load_paths` re-applies the startup `--ref` on every File ▸
+      Open rather than the last Compare-menu choice; remember window size/position
+      and recent files; a toolbar; configurable fonts; dark/light themes.
 
 ## Someday
 
@@ -103,6 +89,32 @@ follow-ups you discover.
 
 ## Done or superseded
 
+- [x] **TUI Home/End + shared shortcut registry (TUI⇄GUI parity).** The TUI now
+      binds `Home`/`End` (`action_home`/`action_end`): Home jumps to the start of
+      the compared range (honouring `--offset`), End is the bottom-anchored final
+      page. Navigation-only — no alignment/resync/inference, and search state is
+      untouched. Added `src/multihex/shortcuts.py`, the **single source of truth**
+      for both frontends' keymap and help text (the TUI `_HELP` popup and the GUI
+      help dialog are generated from it; `tests/test_shortcuts.py` enforces that
+      the live TUI `BINDINGS` and the GUI `_action_slots` cannot drift). The GUI
+      gained single-key parity for every shared action via a registry-driven
+      `MainWindow.keyPressEvent`/`trigger_action` dispatch (`HexCompareView` now
+      bubbles keys up), plus new GUI-native equivalents: text/hex **search** (Phase
+      3, below), `c` colour and `t` byte-class toggles, `r` reference picker, `o`
+      options dialog, and `h`/`?` help. `v` (layout cycle) and `←`/`→` (horizontal
+      scroll) stay **TUI-only** (documented in the registry) until the GUI grows a
+      side-by-side renderer (Phase 2). Tests: `tests/test_shortcuts.py`,
+      `tests/test_tui_home_end.py`, extended `tests/test_gui_widget.py`, and two new
+      `tests_ui/` SVG snapshots (End-scrolled, help popup) + a GUI help smoke.
+- [x] **GUI Phase 3 — search.** The core search engine now drives the GUI: text
+      and hex search (text has the case-insensitive ASCII option; hex matches
+      bytes, not ASCII), next/previous navigation (`n`/`N`/`p`), and a match
+      highlight tier in the painter (current match stronger; priority below
+      missing/diff, mirroring the TUI). Reuses `core` (`search_files` +
+      `make_*_query` + `*_match_index`); the GUI renders/navigates only and never
+      reimplements search. Stale results are dropped on file reload. Tests live in
+      `tests/test_gui_widget.py` (run/next/prev/error/clear) over the core
+      `tests/test_search.py`. A results *summary panel* remains a future nicety.
 - [x] **Layout-overlay consumption in the viewers.** Added `src/multihex/overlay.py`
       (`OverlayState`/`OverlayRange`): the frontend-agnostic seam that loads an
       overlay JSON, validates it via the `layout_overlay_v1` validator (structural

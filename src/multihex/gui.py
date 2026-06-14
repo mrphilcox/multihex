@@ -26,17 +26,29 @@ import sys
 from typing import List, Optional, Sequence, Tuple, Union
 
 from multihex.core import (
+    ByteClass,
     HexModel,
     Marker,
+    SearchError,
+    SearchMatch,
+    SearchQuery,
+    classify_byte,
+    first_match_index,
     format_ascii_char,
     format_byte,
     format_marker,
     load_files,
+    make_hex_query,
+    make_text_query,
     marker_prefix_width,
     name_column_width,
+    next_match_index,
     parse_int,
+    prev_match_index,
+    search_files,
 )
 from multihex.overlay import OverlayState
+from multihex.shortcuts import gui_help_text, gui_key_names, gui_text_map
 
 # --------------------------------------------------------------------------- #
 # Pure-Python helpers (no Qt). Defined unconditionally so they import and unit-
@@ -286,10 +298,18 @@ try:
     from PySide6.QtWidgets import (
         QAbstractScrollArea,
         QApplication,
+        QCheckBox,
+        QComboBox,
+        QDialog,
+        QDialogButtonBox,
         QFileDialog,
+        QFormLayout,
         QInputDialog,
+        QLabel,
+        QLineEdit,
         QMainWindow,
         QMessageBox,
+        QVBoxLayout,
     )
 
     _PYSIDE6_IMPORT_ERROR: Optional[BaseException] = None
@@ -307,6 +327,18 @@ if _PYSIDE6_IMPORT_ERROR is None:
     _COLOR_DIM = QColor(0x99, 0x99, 0x99)      # missing ("--") / MISSING marker
     _COLOR_REF = QColor(0x8A, 0x63, 0xD2)      # reference file's name
     _COLOR_OVERLAY = QColor(0x12, 0x8E, 0x9E)  # bytes inside a layout-overlay range
+    # Search-match highlight: a filled background behind the matched cell (the
+    # current match stronger than the others), with dark glyphs drawn on top.
+    _COLOR_SEARCH_BG = QColor(0xF2, 0xCC, 0x3D)      # other matches
+    _COLOR_SEARCH_CUR_BG = QColor(0xFF, 0xA5, 0x00)  # current match
+    _COLOR_SEARCH_FG = QColor(0x10, 0x10, 0x10)      # glyphs on a match highlight
+    # Byte-class foreground (the lowest-priority tier; display-only, needs colour
+    # on). OTHER/MISSING get no byte-class colour, mirroring the core/TUI.
+    _BYTE_CLASS_COLOR = {
+        ByteClass.ZERO: QColor(0x99, 0x99, 0x99),
+        ByteClass.WHITESPACE: QColor(0x12, 0x8E, 0x9E),
+        ByteClass.PRINTABLE_ASCII: QColor(0x2D, 0xA0, 0x44),
+    }
 
     class HexCompareView(QAbstractScrollArea):
         """Custom-painted, lazily-rendered comparison view.
@@ -337,10 +369,17 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.ascii_on = True
             self.markers_on = True
             self.color_on = True
+            self.byte_classes_on = False
             # Loaded layout overlay (None = none). Highlighting is gated on the
             # overlay being applicable, so a loaded-but-erroring overlay is kept
             # for "view current overlay" without ever highlighting.
             self.overlay: Optional[OverlayState] = None
+            # Search-highlight state (driven by MainWindow; the view only renders).
+            # ``search_current`` is the strongly-highlighted match; _search_covered
+            # is the set of every matched (file_index, absolute_offset).
+            self.search_matches: List[SearchMatch] = []
+            self.search_current: Optional[SearchMatch] = None
+            self._search_covered: set = set()
             self._char_w = 8
             self._line_h = 16
             self._ascent = 12
@@ -451,21 +490,11 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.viewChanged.emit()
 
         def keyPressEvent(self, event) -> None:
-            key = event.key()
-            if key in (Qt.Key.Key_Down, Qt.Key.Key_J):
-                self.scroll_rows(1)
-            elif key in (Qt.Key.Key_Up, Qt.Key.Key_K):
-                self.scroll_rows(-1)
-            elif key == Qt.Key.Key_PageDown:
-                self.page_by(1)
-            elif key == Qt.Key.Key_PageUp:
-                self.page_by(-1)
-            elif key == Qt.Key.Key_Home:
-                self.to_home()
-            elif key == Qt.Key.Key_End:
-                self.to_end()
-            else:
-                super().keyPressEvent(event)
+            # Single-key shortcuts are dispatched centrally from the shared
+            # registry in MainWindow.keyPressEvent. Ignore here so every key
+            # bubbles up to the parent window (do NOT call super(), which would
+            # let QAbstractScrollArea consume arrows/page keys for its scrollbar).
+            event.ignore()
 
         def wheelEvent(self, event) -> None:
             # Custom row-based paint: map the wheel delta to whole rows so mouse
@@ -487,6 +516,34 @@ if _PYSIDE6_IMPORT_ERROR is None:
         # -- display toggles ------------------------------------------------ #
         def set_ascii(self, on: bool) -> None:
             self.ascii_on = on
+            self.viewport().update()
+
+        def set_color_on(self, on: bool) -> None:
+            self.color_on = on
+            self.viewport().update()
+
+        def set_byte_classes(self, on: bool) -> None:
+            self.byte_classes_on = on
+            self.viewport().update()
+
+        def set_search(
+            self, matches: List[SearchMatch], current_index: Optional[int]
+        ) -> None:
+            """Install a result set and recompute the highlight coverage."""
+            self.search_matches = matches
+            covered: set = set()
+            for m in matches:
+                for off in range(m.offset, m.offset + m.length):
+                    covered.add((m.file_index, off))
+            self._search_covered = covered
+            self.set_current_match(current_index)
+
+        def set_current_match(self, index: Optional[int]) -> None:
+            """Point the strong highlight at result ``index`` (or clear it)."""
+            if self.search_matches and index is not None:
+                self.search_current = self.search_matches[index]
+            else:
+                self.search_current = None
             self.viewport().update()
 
         def set_markers_on(self, on: bool) -> None:
@@ -522,20 +579,51 @@ if _PYSIDE6_IMPORT_ERROR is None:
             return self.palette().color(QPalette.ColorRole.Text)
 
         def _cell_color(
-            self, value: Optional[int], marker: Marker, offset: Optional[int] = None
+            self,
+            value: Optional[int],
+            marker: Marker,
+            offset: Optional[int] = None,
+            fi: Optional[int] = None,
         ) -> "QColor":
-            # Priority mirrors the CLI/TUI: missing > diff > layout overlay >
-            # normal text. Overlay highlighting applies only to present, non-diff
-            # cells inside an applicable overlay's range.
+            # Priority mirrors the CLI/TUI: missing > current match > other match
+            # > diff > layout overlay > byte class > normal text. A missing byte is
+            # never part of a match, so it short-circuits before any search branch.
+            # Search/overlay/byte-class tiers apply only to present cells; overlay
+            # and byte class only to non-diff cells, so search and diff stay most
+            # visible. The match *background* is painted separately (_cell_search_bg).
             if not self.color_on:
                 return self._text_color()
             if value is None:
                 return _COLOR_DIM
+            if fi is not None and offset is not None and self._is_match(fi, offset):
+                return _COLOR_SEARCH_FG
             if marker is not Marker.SAME:
                 return _COLOR_DIFF
             if offset is not None and self.overlay is not None and self.overlay.covers(offset):
                 return _COLOR_OVERLAY
+            if self.byte_classes_on:
+                bc = _BYTE_CLASS_COLOR.get(classify_byte(value))
+                if bc is not None:
+                    return bc
             return self._text_color()
+
+        def _is_match(self, fi: int, offset: int) -> bool:
+            return (fi, offset) in self._search_covered
+
+        def _cell_search_bg(self, fi: int, offset: int) -> Optional["QColor"]:
+            """Background fill for a matched cell (current match stronger), or None."""
+            if not self.color_on:
+                return None
+            cur = self.search_current
+            if (
+                cur is not None
+                and fi == cur.file_index
+                and cur.offset <= offset < cur.offset + cur.length
+            ):
+                return _COLOR_SEARCH_CUR_BG
+            if (fi, offset) in self._search_covered:
+                return _COLOR_SEARCH_BG
+            return None
 
         def _marker_color(self, marker: Marker) -> "QColor":
             if not self.color_on:
@@ -588,6 +676,12 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 painter.setPen(color)
                 painter.drawText(int(col * cw), int(top + line * line_h + ascent), s)
 
+            def fill(col: int, line: int, ncols: int, color) -> None:
+                painter.fillRect(
+                    int(col * cw), int(top + line * line_h),
+                    int(ncols * cw), int(line_h), color,
+                )
+
             # offset address line
             draw(0, 0, f"0x{row.offset:08x}",
                  _COLOR_OFFSET if self.color_on else text_color)
@@ -600,15 +694,23 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 draw(2, line, name, name_color)
                 for c in range(width):
                     marker = row.markers[c]
+                    off = row.offset + c
+                    bg = self._cell_search_bg(fi, off)
+                    if bg is not None:
+                        fill(hex_start + c * 3, line, 2, bg)
                     draw(hex_start + c * 3, line, format_byte(row_bytes[c]),
-                         self._cell_color(row_bytes[c], marker, row.offset + c))
+                         self._cell_color(row_bytes[c], marker, off, fi))
                 if self.ascii_on:
                     acol = hex_start + width * 3 + 1  # past hex + "  |"
                     draw(acol, line, "|", text_color)
                     for c in range(width):
                         marker = row.markers[c]
+                        off = row.offset + c
+                        bg = self._cell_search_bg(fi, off)
+                        if bg is not None:
+                            fill(acol + 1 + c, line, 1, bg)
                         draw(acol + 1 + c, line, format_ascii_char(row_bytes[c]),
-                             self._cell_color(row_bytes[c], marker, row.offset + c))
+                             self._cell_color(row_bytes[c], marker, off, fi))
                     draw(acol + 1 + width, line, "|", text_color)
 
             # marker strip
@@ -655,10 +757,80 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.view_widget.viewChanged.connect(self._update_status)
 
             self._start_only_diff = only_diff
+            # Search state mirrors the TUI app; the view only renders highlights.
+            self.search_query: Optional["SearchQuery"] = None
+            self.search_matches: List[SearchMatch] = []
+            self.search_index: Optional[int] = None
+            self.search_error: Optional[str] = None
+            self.text_search_ignore_case = False
             self._build_menus()
+            self._build_key_dispatch()
             self.statusBar()
             self.resize(960, 640)
             self._update_status()
+
+        # -- single-key shortcut dispatch (shared registry) ----------------- #
+        def _build_key_dispatch(self) -> None:
+            """Wire the shared registry to GUI slots.
+
+            ``_action_slots`` maps every GUI-applicable ``action_id`` to a bound
+            zero-arg callable; ``trigger_action`` is the testable seam. The key
+            lookups are built straight from the registry so the GUI keymap cannot
+            drift from the TUI's. Checkable toggles map to ``QAction.toggle`` so a
+            keypress flips the menu item *and* fires its slot.
+            """
+            vw = self.view_widget
+            self._action_slots: dict = {
+                "quit": self.close,
+                "next_row": lambda: vw.scroll_rows(1),
+                "prev_row": lambda: vw.scroll_rows(-1),
+                "next_page": lambda: vw.page_by(1),
+                "prev_page": lambda: vw.page_by(-1),
+                "home": self._go_home,
+                "end": self._go_end,
+                "jump": self._jump_dialog,
+                "choose_ref": self._choose_ref_dialog,
+                "toggle_ascii": self.act_ascii.toggle,
+                "toggle_diff": self.act_diff.toggle,
+                "toggle_color": self.act_color.toggle,
+                "toggle_byte_classes": self.act_byte_classes.toggle,
+                "cycle_markers": self._cycle_markers,
+                "load_overlay": self._overlay_load_dialog,
+                "view_overlay": self._overlay_view,
+                "open_settings": self._open_settings_dialog,
+                "search_text": self._search_text_dialog,
+                "search_hex": self._search_hex_dialog,
+                "next_match": self.search_next,
+                "prev_match": self.search_prev,
+                "help": self._show_help_dialog,
+            }
+            self._key_text_actions: dict = gui_text_map()
+            self._key_code_actions: dict = {
+                getattr(Qt.Key, f"Key_{name}"): aid
+                for name, aid in gui_key_names().items()
+            }
+
+        def trigger_action(self, action_id: str) -> bool:
+            """Invoke the slot for ``action_id`` (the registry-driven seam)."""
+            slot = self._action_slots.get(action_id)
+            if slot is None:
+                return False
+            slot()
+            return True
+
+        def keyPressEvent(self, event) -> None:
+            # Central single-key dispatch. Named keys (Down/PageUp/Home/End) have an
+            # empty .text(), so resolve by key-code first, then by character. Modal
+            # dialogs grab focus, so typing in a search box never reaches here.
+            aid = self._key_code_actions.get(event.key())
+            if aid is None:
+                ch = event.text()
+                if ch:
+                    aid = self._key_text_actions.get(ch)
+            if aid is not None and self.trigger_action(aid):
+                event.accept()
+                return
+            super().keyPressEvent(event)
 
         # -- menus ---------------------------------------------------------- #
         def _build_menus(self) -> None:
@@ -691,6 +863,20 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.act_markers.setChecked(self.view_widget.markers_on)
             self.act_markers.toggled.connect(self._on_toggle_markers)
             viewm.addAction(self.act_markers)
+            self.act_color = QAction("&Color highlighting", self)
+            self.act_color.setCheckable(True)
+            self.act_color.setChecked(self.view_widget.color_on)
+            self.act_color.toggled.connect(self._on_toggle_color)
+            viewm.addAction(self.act_color)
+            self.act_byte_classes = QAction("&Byte-class highlighting", self)
+            self.act_byte_classes.setCheckable(True)
+            self.act_byte_classes.setChecked(self.view_widget.byte_classes_on)
+            self.act_byte_classes.toggled.connect(self._on_toggle_byte_classes)
+            viewm.addAction(self.act_byte_classes)
+            viewm.addSeparator()
+            act_options = QAction("&Options…", self)
+            act_options.triggered.connect(self._open_settings_dialog)
+            viewm.addAction(act_options)
             viewm.addSeparator()
             namem = viewm.addMenu("File &names")
             self.names_group = QActionGroup(self)
@@ -736,6 +922,27 @@ if _PYSIDE6_IMPORT_ERROR is None:
             act_ov_view = QAction("&View current overlay…", self)
             act_ov_view.triggered.connect(self._overlay_view)
             overlaym.addAction(act_ov_view)
+
+            searchm = mb.addMenu("&Search")
+            act_find = QAction("Find &text…", self)
+            act_find.setShortcut("Ctrl+F")
+            act_find.triggered.connect(self._search_text_dialog)
+            searchm.addAction(act_find)
+            act_find_hex = QAction("Find &hex…", self)
+            act_find_hex.triggered.connect(self._search_hex_dialog)
+            searchm.addAction(act_find_hex)
+            searchm.addSeparator()
+            act_next = QAction("&Next match", self)
+            act_next.triggered.connect(self.search_next)
+            searchm.addAction(act_next)
+            act_prev = QAction("&Previous match", self)
+            act_prev.triggered.connect(self.search_prev)
+            searchm.addAction(act_prev)
+
+            helpm = mb.addMenu("&Help")
+            act_keys = QAction("&Keyboard shortcuts…", self)
+            act_keys.triggered.connect(self._show_help_dialog)
+            helpm.addAction(act_keys)
 
         def _rebuild_ref_menu(self) -> None:
             """(Re)populate the Compare menu with the reference radio choices."""
@@ -788,6 +995,8 @@ if _PYSIDE6_IMPORT_ERROR is None:
             # drop it rather than silently re-applying it to a different binary.
             self.overlay = None
             self.view_widget.set_overlay(None)
+            # Likewise drop any search results computed against the old files.
+            self._reset_search()
             self.view_widget.set_model(
                 model, files, self.name_mode, only_diff=self.act_diff.isChecked()
             )
@@ -812,6 +1021,19 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _on_toggle_markers(self, checked: bool) -> None:
             self.view_widget.set_markers_on(checked)
             self._update_status()
+
+        def _on_toggle_color(self, checked: bool) -> None:
+            self.view_widget.set_color_on(checked)
+            self._update_status()
+
+        def _on_toggle_byte_classes(self, checked: bool) -> None:
+            self.view_widget.set_byte_classes(checked)
+            self._update_status()
+
+        def _cycle_markers(self) -> None:
+            # The GUI has no side-by-side layout, so there is no "repeat" mode;
+            # the marker cycle is a strip on/off toggle (reuses the menu action).
+            self.act_markers.toggle()
 
         def _on_names_changed(self, action) -> None:
             self.name_mode = action.data()
@@ -849,6 +1071,140 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 return
             self.view_widget.jump_to_offset(offset)
             self._update_status()
+
+        def _choose_ref_dialog(self) -> None:
+            """Pick the reference file (the GUI-native equivalent of the TUI 'r')."""
+            if self.model is None or not self.files:
+                return
+            labels = ["All agree (no reference)"]
+            labels += [
+                f"[{i}] {f.display_name(self.name_mode)}"
+                for i, f in enumerate(self.files)
+            ]
+            cur = self.model.ref
+            current_row = 0 if cur is None else cur + 1
+            choice, ok = QInputDialog.getItem(
+                self, "Reference file", "Compare every file against:",
+                labels, current_row, editable=False,
+            )
+            if not ok:
+                return
+            idx = labels.index(choice)
+            ref = None if idx == 0 else idx - 1
+            self.view_widget.set_ref(ref)
+            self._rebuild_ref_menu()  # keep the Compare radio group in sync
+            self._update_status()
+
+        # -- search (reuses the core engine; the GUI renders/navigates only) - #
+        def _reset_search(self) -> None:
+            self.search_query = None
+            self.search_matches = []
+            self.search_index = None
+            self.search_error = None
+            self.view_widget.set_search([], None)
+
+        def _search_text_dialog(self) -> None:
+            if self.model is None:
+                return
+            dlg = _TextSearchDialog(self.text_search_ignore_case, self)
+            if dlg.exec():
+                text, ignore_case = dlg.result_value()
+                self.text_search_ignore_case = bool(ignore_case)
+                self.run_search("text", text, ignore_case=ignore_case)
+
+        def _search_hex_dialog(self) -> None:
+            if self.model is None:
+                return
+            text, ok = QInputDialog.getText(
+                self, "Hex search", "Search hex (e.g. DE AD BE EF):"
+            )
+            if ok and text.strip():
+                self.run_search("hex", text)
+
+        def run_search(
+            self, mode: str, value: Optional[str], *, ignore_case: bool = False
+        ) -> None:
+            """Build a query, replace search state, and jump to the first match.
+
+            Mirrors ``tui._run_search``: invalid input sets an error status and
+            never crashes; an empty/cancelled value leaves the previous search
+            untouched. Factored out of the dialog so tests drive it directly.
+            """
+            if self.model is None or value is None or not value.strip():
+                return
+            text = value.strip()
+            try:
+                if mode == "text":
+                    query = make_text_query(text, case_sensitive=not ignore_case)
+                else:
+                    query = make_hex_query(text)
+            except SearchError as exc:
+                self.search_error = str(exc)
+                self.search_query = None
+                self.search_matches = []
+                self.search_index = None
+                self.view_widget.set_search([], None)
+                self.statusBar().showMessage(f"Search error: {exc}")
+                return
+            self.search_error = None
+            self.search_query = query
+            self.search_matches = search_files(
+                self.model.files, query, model=self.model
+            )
+            self.search_index = first_match_index(self.search_matches)
+            self.view_widget.set_search(self.search_matches, self.search_index)
+            if self.search_index is not None:
+                self._jump_to_current_match()
+            else:
+                self.statusBar().showMessage(f'No matches for {mode} "{text}"')
+
+        def search_next(self) -> None:
+            self._step_match(next_match_index)
+
+        def search_prev(self) -> None:
+            self._step_match(prev_match_index)
+
+        def _step_match(self, picker) -> None:
+            if not self.search_matches:
+                return
+            self.search_index = picker(self.search_matches, self.search_index or 0)
+            self.view_widget.set_current_match(self.search_index)
+            self._jump_to_current_match()
+
+        def _jump_to_current_match(self) -> None:
+            if self.search_index is None:
+                return
+            match = self.search_matches[self.search_index]
+            self.view_widget.jump_to_offset(match.offset)
+            self.statusBar().showMessage(
+                f"Match {self.search_index + 1}/{len(self.search_matches)} "
+                f"| file {match.file_index} | offset 0x{match.offset:08x}"
+            )
+
+        # -- options / help ------------------------------------------------- #
+        def _open_settings_dialog(self) -> None:
+            """Open the minimal GUI-native options pane (the 'o' key).
+
+            Apply-immediately: the dialog's controls drive the existing menu
+            actions, so changes show at once and the menu stays in sync. No
+            persistence -- the GUI has no config file (unlike the TUI).
+            """
+            _SettingsDialog(self).exec()
+
+        def _show_help_dialog(self):
+            """Show the keyboard-shortcut help (generated from the registry)."""
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Icon.Information)
+            box.setWindowTitle("multihex-gui - keys")
+            font = QFont("monospace")
+            font.setStyleHint(QFont.StyleHint.Monospace)
+            box.setFont(font)
+            box.setText(gui_help_text())
+            box.setStandardButtons(QMessageBox.StandardButton.Ok)
+            box.setModal(False)
+            box.show()
+            self._message_boxes.append(box)
+            return box
 
         # -- layout overlay (load / change / clear / view) ------------------ #
         def _show_message(self, title: str, text: str, *, warn: bool = False):
@@ -964,6 +1320,92 @@ if _PYSIDE6_IMPORT_ERROR is None:
                     sizes=self._sizes(),
                 )
             )
+
+    class _TextSearchDialog(QDialog):
+        """Modal text-search prompt with a case-insensitive (ASCII) checkbox.
+
+        Being modal, it owns keyboard focus while open, so the viewer's single-key
+        shortcuts never fire while typing. Dismisses with ``(text, ignore_case)``
+        via :meth:`result_value`; mirrors the TUI ``TextSearchScreen``.
+        """
+
+        def __init__(self, ignore_case: bool, parent=None) -> None:
+            super().__init__(parent)
+            self.setWindowTitle("Find text")
+            self.setModal(True)
+            layout = QVBoxLayout(self)
+            layout.addWidget(QLabel("Search text (UTF-8):"))
+            self._edit = QLineEdit(self)
+            layout.addWidget(self._edit)
+            self._ci = QCheckBox("Case-insensitive (ASCII)", self)
+            self._ci.setChecked(bool(ignore_case))
+            layout.addWidget(self._ci)
+            buttons = QDialogButtonBox(
+                QDialogButtonBox.StandardButton.Ok
+                | QDialogButtonBox.StandardButton.Cancel,
+                parent=self,
+            )
+            buttons.accepted.connect(self.accept)
+            buttons.rejected.connect(self.reject)
+            layout.addWidget(buttons)
+            self._edit.setFocus()
+
+        def result_value(self) -> tuple:
+            return self._edit.text(), self._ci.isChecked()
+
+    class _SettingsDialog(QDialog):
+        """Minimal options pane: controls that drive the View-menu QActions.
+
+        Apply-immediately with no persistence (the GUI has no config file). Each
+        control flips the matching MainWindow action, which fires its slot and
+        keeps the menu in sync, so the dialog and menus never disagree.
+        """
+
+        def __init__(self, window: "MainWindow") -> None:
+            super().__init__(window)
+            self.setWindowTitle("Options")
+            self.setModal(True)
+            self._window = window
+            form = QFormLayout(self)
+            self._checks = {}
+            for label, action in (
+                ("ASCII gutter", window.act_ascii),
+                ("Only differing rows", window.act_diff),
+                ("Marker strip", window.act_markers),
+                ("Color highlighting", window.act_color),
+                ("Byte-class highlighting", window.act_byte_classes),
+            ):
+                box = QCheckBox(self)
+                box.setChecked(action.isChecked())
+                # Two-way: the checkbox drives the action (applies + fires its
+                # slot); the action's state mirrors back so the box stays correct.
+                box.toggled.connect(action.setChecked)
+                action.toggled.connect(box.setChecked)
+                form.addRow(label, box)
+                self._checks[label] = box
+
+            self._names = QComboBox(self)
+            self._names.addItem("Basename", "basename")
+            self._names.addItem("Full path", "path")
+            self._names.setCurrentIndex(0 if window.name_mode == "basename" else 1)
+            self._names.currentIndexChanged.connect(self._on_names)
+            form.addRow("File names", self._names)
+
+            buttons = QDialogButtonBox(
+                QDialogButtonBox.StandardButton.Close, parent=self
+            )
+            buttons.rejected.connect(self.reject)
+            form.addRow(buttons)
+
+        def _on_names(self, index: int) -> None:
+            mode = self._names.itemData(index)
+            target = next(
+                (a for a in self._window.names_group.actions() if a.data() == mode),
+                None,
+            )
+            if target is not None:
+                target.setChecked(True)
+                self._window._on_names_changed(target)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

@@ -10,6 +10,7 @@ written under ``_artifacts/`` for human inspection only.
 Skips cleanly when PySide6 is missing.
 """
 
+import gc
 import json
 import os
 from pathlib import Path
@@ -25,6 +26,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 import multihex.gui as gui  # noqa: E402
 from multihex.core import Marker  # noqa: E402
+from multihex.shortcuts import gui_help_text  # noqa: E402
 
 _OVERLAY_JSON = str(Path(__file__).parent / "data" / "overlay_sample.json")
 _ARTIFACTS = Path(__file__).parent / "_artifacts"
@@ -181,6 +183,48 @@ def test_overlay_diff_render_after_navigation(app, tmp_path):
     home_image = _grab_image(w, "gui_overlay_scrolled_home.png")
     assert _is_painted(home_image)
     w.close()
+
+
+def test_help_dialog_smoke(app, tmp_path):
+    """The help dialog opens (non-modal, headless-safe) with registry-generated text."""
+    a = fx.write(tmp_path, "a.bin", fx.blob_no_magic())
+    w = gui.MainWindow()
+    w.load_paths([a])
+    w.show()
+    app.processEvents()
+
+    assert w.trigger_action("help") is True
+    app.processEvents()
+    assert w._message_boxes, "help dialog was not retained"
+    assert w._message_boxes[-1].text() == gui_help_text()
+    # Reap deterministically so the order-sensitive clean-shutdown test (which
+    # measures the global top-level pool) is not polluted by a lingering dialog.
+    w.close()
+    del w
+    gc.collect()
+    app.processEvents()
+
+
+def test_search_highlight_render_png(app, tmp_path):
+    """A run search paints a match-highlight tier without errors."""
+    data = b"....RIFF....RIFF...." + bytes(40)
+    a = fx.write(tmp_path, "a.bin", data)
+    b = fx.write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.resize(900, 420)
+    w.show()
+    app.processEvents()
+
+    w.run_search("hex", "52 49 46 46")  # "RIFF" bytes
+    assert w.search_matches
+    app.processEvents()
+    image = _grab_image(w, "gui_search.png")
+    assert _is_painted(image)
+    w.close()
+    del w
+    gc.collect()
+    app.processEvents()
 
 
 def test_clean_shutdown(app, tmp_path):

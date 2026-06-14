@@ -15,6 +15,8 @@ Keys:
     k / up        previous row
     PageDown      next page
     PageUp        previous page
+    Home          jump to start of range
+    End           jump to end (last page)
     g             jump to offset
     r             choose reference file
     a             toggle ASCII gutter
@@ -66,6 +68,7 @@ from multihex.core import (
     search_files,
 )
 from multihex.overlay import OverlayState
+from multihex.shortcuts import tui_help_text
 from multihex.tui_config import (
     TuiSettings,
     default_config_path,
@@ -596,32 +599,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
         }
         """
 
-        _HELP = (
-            "multihex-tui - keys\n\n"
-            "  q             quit\n"
-            "  j / down      next row\n"
-            "  k / up        previous row\n"
-            "  PageDown      next page\n"
-            "  PageUp        previous page\n"
-            "  g             jump to offset\n"
-            "  r             choose reference file\n"
-            "  a             toggle ASCII gutter\n"
-            "  d             toggle only-diff rows\n"
-            "  c             toggle color\n"
-            "  t             toggle byte-class highlighting\n"
-            "  v             cycle layout (stacked / side-by-side)\n"
-            "  m             cycle markers (single / repeat / none)\n"
-            "  l             load/change layout overlay (blank path clears)\n"
-            "  L             view current layout overlay (c clears)\n"
-            "  left / right  scroll horizontally (side-by-side)\n"
-            "  o             open settings / options pane\n"
-            "  /             text search (case-insensitive toggle)\n"
-            "  x             hex search (matches bytes, not ASCII)\n"
-            "  n             next match\n"
-            "  N / p         previous match\n"
-            "  h / ?         this help\n\n"
-            "  (any key to close)"
-        )
+        # Generated from the shared shortcut registry (the single source of truth
+        # for both frontends' help). Never hand-edit -- change multihex.shortcuts.
+        _HELP = tui_help_text()
 
         def compose(self) -> "ComposeResult":
             with Vertical():
@@ -823,6 +803,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Binding("up", "prev_row", "Up"),
             Binding("pagedown", "next_page", "PgDn"),
             Binding("pageup", "prev_page", "PgUp"),
+            Binding("home", "home", "Home", show=False),
+            Binding("end", "end", "End", show=False),
             Binding("g", "jump", "Goto"),
             Binding("r", "choose_ref", "Ref"),
             Binding("a", "toggle_ascii", "ASCII"),
@@ -1028,6 +1010,22 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
         def action_prev_page(self) -> None:
             self.view.page(-1)
+            self.update_status()
+
+        def action_home(self) -> None:
+            # Navigation only: jump to the first displayable row (the start of the
+            # compared range, honouring --offset). Touches no comparison/search
+            # state; render()'s _clamp_top keeps an out-of-range top safe.
+            self.view.top = 0
+            self.view.refresh()
+            self.update_status()
+
+        def action_end(self) -> None:
+            # Navigation only: bottom-anchored final page (the last displayable row
+            # is the last fully visible row). With no rows / zero diff rows in
+            # only-diff mode, _max_top() is 0, so this is a stable no-op.
+            self.view.top = self.view._max_top()
+            self.view.refresh()
             self.update_status()
 
         def action_toggle_ascii(self) -> None:

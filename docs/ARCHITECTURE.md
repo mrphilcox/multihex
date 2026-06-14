@@ -180,6 +180,38 @@ The two color schemes **differ on purpose** — do not unify them. The CLI is fo
 spotting exact differing bytes in a scrollback or a pipe; the TUI is for scanning
 column stability at a glance.
 
+- **`gui.py`** is a read-only PySide6 window. A custom `QAbstractScrollArea`
+  (`HexCompareView`) paints only the visible rows, with the same tier order as the
+  TUI (missing > current match > other match > diff > overlay > byte class); search
+  matches get a filled background behind the cell. Qt-free `ViewState`/
+  `format_status` hold the navigation/status logic so it is testable without a
+  display. Single-key shortcuts are dispatched centrally from
+  `MainWindow.keyPressEvent` via `trigger_action`, and the child view `ignore()`s
+  keys so they bubble up. Search reuses the core engine (`search_files` +
+  `make_*_query` + `*_match_index`) — the GUI renders and navigates only.
+
+## Keyboard shortcuts (`shortcuts.py`)
+
+Both interactive frontends draw their keymap and on-screen help from one
+**stdlib-only** registry, `src/multihex/shortcuts.py` (no core/Textual/PySide6
+imports), so they cannot drift. `SHORTCUTS` is an ordered table of `Shortcut`
+records keyed by a stable `action_id`; each carries the help `display_keys`/
+`help_text`, the Textual `tui_keys`, abstract `gui_keys`, and `tui`/`gui`
+applicability with a `note` for any exclusion.
+
+- The TUI help popup is `tui_help_text()`; the GUI help dialog is `gui_help_text()`.
+- The GUI resolves `gui_keys` itself: `"t:<char>"` matches `QKeyEvent.text()`
+  (printable keys, case-sensitive), `"k:<Name>"` matches `QKeyEvent.key()` via
+  `Qt.Key.Key_<Name>` (named keys whose `.text()` is empty). `gui_text_map()`/
+  `gui_key_names()` build the lookups (returning plain strings, so the registry
+  stays Qt-free).
+- `cycle_layout` (`v`) and `scroll_horizontal` (`←`/`→`) are `gui=False`: they pair
+  with the side-by-side layout the GUI does not implement (a documented `note`).
+- `tests/test_shortcuts.py` enforces the contract: the TUI `BINDINGS` key-set
+  equals the registry, every binding has an `action_*`, and every GUI-applicable
+  action has a `_action_slots` entry. **Change shortcuts in the registry, never by
+  editing a frontend's help independently.**
+
 ## TUI configuration (`tui_config.py`)
 
 Persistent preferences are a **TUI-only** concern; the batch CLI never reads a

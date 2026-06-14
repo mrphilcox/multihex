@@ -361,6 +361,8 @@ multihex-tui --ref 0 file*.bin
 | `k` / `↑`      | previous row                          |
 | `PageDown`     | next page                             |
 | `PageUp`       | previous page                         |
+| `Home`         | jump to the start of the range        |
+| `End`          | jump to the final page (bottom-anchored) |
 | `←` / `→`      | scroll horizontally (side-by-side)    |
 | `g`            | jump to an offset                     |
 | `r`            | choose the reference file             |
@@ -464,10 +466,11 @@ file list are all per-session and are never written to the config.
 
 ## The desktop GUI (`multihex-gui`)
 
-A read-only **PySide6/Qt** desktop viewer — a first-pass MVP that reuses the same
-comparison engine as the CLI and TUI (identical fixed-offset semantics and markers;
-no editing, search, or selection yet). It requires the `[gui]` extra (`PySide6`); if
-it isn't installed the command prints a clear message and exits.
+A read-only **PySide6/Qt** desktop viewer that reuses the same comparison engine as
+the CLI and TUI (identical fixed-offset semantics and markers; no editing or
+selection). It now mirrors the TUI's keyboard workflow — including search — and
+requires the `[gui]` extra (`PySide6`); if it isn't installed the command prints a
+clear message and exits.
 
 On Linux/X11, Qt's `xcb` platform plugin may also require native system libraries.
 If startup reports a missing `xcb` platform dependency such as `libxcb-cursor.so.0`,
@@ -490,15 +493,29 @@ multihex-gui                       # empty window; open files from the File menu
 the **Overlay** menu).
 
 The window has a menu bar (**File** ▸ Open/Quit, **View** ▸ ASCII gutter /
-only-diff / markers / file-name mode, **Navigate** ▸ jump-to-offset and start/end,
-**Compare** ▸ reference file incl. *all-agree*, **Overlay** ▸ load/change, clear,
-and view current layout overlay), a custom comparison view that
-paints only the visible rows (so it stays light on large files), and a status bar
-showing the visible offset range, row position, reference mode, toggle states, and
-file sizes. Navigate with the scrollbar, `Up`/`Down`, `PageUp`/`PageDown`, the
-mouse wheel, or `Home`/`End`. The block layout mirrors the CLI/TUI: an offset line,
-one `name  hex  |ascii|` line per file, then the marker strip; columns that differ
-(or are missing) are highlighted, and missing bytes render as `--`.
+only-diff / markers / colour / byte-classes / file-name mode / options, **Navigate**
+▸ jump-to-offset and start/end, **Compare** ▸ reference file incl. *all-agree*,
+**Overlay** ▸ load/change, clear, and view current layout overlay, **Search** ▸
+find text/hex and next/previous, **Help** ▸ keyboard shortcuts), a custom comparison
+view that paints only the visible rows (so it stays light on large files), and a
+status bar showing the visible offset range, row position, reference mode, toggle
+states, and file sizes. The block layout mirrors the CLI/TUI: an offset line, one
+`name  hex  |ascii|` line per file, then the marker strip; columns that differ (or
+are missing) are highlighted, and missing bytes render as `--`.
+
+**Keyboard shortcuts mirror the TUI** (the keymap and on-screen help for both
+frontends come from one shared registry, `src/multihex/shortcuts.py`, so they cannot
+drift). Press `h` or `?` for the in-app list. Navigate with `j`/`k` or `↑`/`↓`,
+`PageUp`/`PageDown`, `Home`/`End`, the scrollbar, or the mouse wheel; `g` jumps to an
+offset and `r` picks the reference file. Toggle the display with `a` (ASCII gutter),
+`d` (only-diff), `m` (marker strip), `c` (colour), and `t` (byte classes); `o` opens
+an options dialog; `l`/`L` manage the overlay. Search with `/` (text, with a
+case-insensitive ASCII option) and `x` (hex, matching byte values), then step matches
+with `n` and `N`/`p` — the current match is highlighted most strongly, with the same
+priority as the TUI (missing > current match > other match > diff). Search reuses the
+core engine; the GUI only renders and navigates. The two TUI-only shortcuts are `v`
+(layout cycle) and `←`/`→` (horizontal scroll), which pair with the side-by-side
+layout the GUI does not yet implement.
 
 **Layout overlays** work as in the CLI/TUI: the **Overlay** menu loads/changes,
 clears, and views a [layout-overlay-v1](docs/layout-overlay-v1.md) annotation
@@ -507,8 +524,8 @@ an overlay with errors is reported but not applied, and overlay paths are not sa
 in config. Loading new files drops a previously loaded overlay (its validation was
 file-specific).
 
-This is the GUI's first phase. Search, selection/copy, editing, persistent
-settings, and a side-by-side layout are tracked as later phases in `TODO.md`.
+Selection/copy, editing, persistent settings, a side-by-side layout, and a
+search results-summary panel are tracked as later phases in `TODO.md`.
 
 ## Recipes
 
