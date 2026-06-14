@@ -7,7 +7,7 @@ name = "multihex"
 version = "0.1.0"
 description = "Side-by-side fixed-offset hex comparison of multiple binary files"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 dependencies = []
 
 [project.optional-dependencies]
