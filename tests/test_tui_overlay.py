@@ -117,6 +117,25 @@ def test_error_overlay_loaded_but_not_applied(tmp_path):
     asyncio.run(go())
 
 
+def test_missing_overlay_path_loaded_but_not_applied(tmp_path):
+    # A nonexistent overlay path must not raise inside the app: it is kept as a
+    # failed-load state (so 'L' can explain it), reported as not applied, and
+    # never highlights.
+    missing = str(tmp_path / "nope.json")
+
+    async def go():
+        app = _make_app()
+        async with app.run_test() as pilot:
+            app._apply_overlay(missing)
+            await pilot.pause()
+            assert app.overlay is not None
+            assert app.overlay.loaded is False
+            assert app.overlay.applicable is False
+            assert app.view._cell_style(0, 0, Marker.SAME, 0x00) == ""
+
+    asyncio.run(go())
+
+
 def test_cell_style_overlay_priority(tmp_path):
     doc = {"schema": SCHEMA, "ranges": [{"offset": 0, "length": 2}]}
     f = HexFile("a.bin", bytes(16))

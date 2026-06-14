@@ -13,13 +13,14 @@ GUI parts importorskip PySide6; TUI parts skip without textual.
 
 import json
 import os
+import struct
 import subprocess
 import sys
 
 import pytest
 
 import multihex.tui as tui
-from multihex.core import HexFile, HexModel, format_marker
+from multihex.core import HexFile, HexModel, Marker, format_marker
 from multihex.overlay import OverlayState
 
 SCHEMA = {"name": "bintools.layout-overlay", "version": 1}
@@ -59,10 +60,12 @@ def _core_markers(ref):
     ]
 
 
-def _cli_json_markers(paths, ref):
+def _cli_json_markers(paths, ref, length=None):
     args = ["--json"]
     if ref is not None:
         args += ["--ref", str(ref)]
+    if length is not None:
+        args += ["--length", str(length)]
     proc = subprocess.run(
         [sys.executable, "-m", "multihex.cli", *args, *paths],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
@@ -77,6 +80,49 @@ def _model_markers(model):
         (model.build_row(i).offset, [format_marker(m) for m in model.build_row(i).markers])
         for i in range(model.row_count)
     ]
+
+
+def _struct_mixed():
+    """A deliberately unaligned, mixed-width record and a truncated sibling.
+
+    Field widths span u8..u64 and both endiannesses, and every multi-byte field
+    starts at an odd/unaligned offset, so nothing here implies a 4-byte/aligned
+    canonical shape. The full record is 32 bytes; the sibling is truncated to 24
+    bytes so the later fields are *missing* in it (and an overlay range over them
+    extends past its EOF).
+    """
+    full = b"".join([
+        bytes([0xA5]),                       # off 0:  u8
+        struct.pack("<H", 0x1234),           # off 1:  u16le  (unaligned)
+        struct.pack(">H", 0x1234),           # off 3:  u16be
+        struct.pack("<I", 0x89ABCDEF),       # off 5:  u32le  (unaligned)
+        struct.pack(">I", 0x89ABCDEF),       # off 9:  u32be
+        struct.pack("<Q", 0x0102030405060708),  # off 13: u64le (unaligned)
+        struct.pack(">Q", 0x0102030405060708),  # off 21: u64be
+        bytes([0xDE, 0xAD, 0xBE]),           # off 29: 3 trailing bytes -> EOF 32
+    ])
+    assert len(full) == 32
+    return full, full[:24]
+
+
+def _struct_overlay_doc():
+    # Ranges mirror the field layout, including a u64be that runs [21, 29) and a
+    # tail [29, 32) ending exactly at the full file's EOF.
+    return {
+        "schema": SCHEMA,
+        "name": "struct_mixed",
+        "source_size": 32,
+        "ranges": [
+            {"path": "tag", "offset": 0, "length": 1, "type": "u8"},
+            {"path": "a", "offset": 1, "length": 2, "type": "u16le"},
+            {"path": "b", "offset": 3, "length": 2, "type": "u16be"},
+            {"path": "c", "offset": 5, "length": 4, "type": "u32le"},
+            {"path": "d", "offset": 9, "length": 4, "type": "u32be"},
+            {"path": "e", "offset": 13, "length": 8, "type": "u64le"},
+            {"path": "f", "offset": 21, "length": 8, "type": "u64be"},
+            {"path": "tail", "offset": 29, "length": 3, "type": "bytes"},
+        ],
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -101,6 +147,88 @@ def test_ref_markers_agree_cli_and_gui_with_core(tmp_path, ref):
     assert w.load_paths(paths) is True
     try:
         assert _model_markers(w.model) == core
+    finally:
+        w.close()
+
+
+# --------------------------------------------------------------------------- #
+# An unaligned, varied-width fixture compares identically across frontends
+# --------------------------------------------------------------------------- #
+
+
+def _write_struct_pair(tmp_path):
+    full, short = _struct_mixed()
+    paths = []
+    for name, data in (("full.bin", full), ("short.bin", short)):
+        p = tmp_path / name
+        p.write_bytes(data)
+        paths.append(str(p))
+    return paths
+
+
+def test_unaligned_varied_width_markers_agree(tmp_path):
+    # The truncated sibling makes the trailing fields MISSING; assert the CLI and
+    # GUI agree with the core model on the marker grid for this non-4-byte,
+    # unaligned layout (so MISSING/diff handling is not frontend-specific).
+    #
+    # The batch CLI defaults --length to the *shortest* file while the TUI/core
+    # derive the window from the *largest* (a documented, intentional divergence).
+    # Pin an explicit length so all frontends use the same window and the
+    # truncation surfaces as MISSING in every one of them.
+    pytest.importorskip("PySide6")
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    import multihex.gui as gui
+
+    paths = _write_struct_pair(tmp_path)
+    full, short = _struct_mixed()
+    files = [HexFile("full.bin", full), HexFile("short.bin", short)]
+    window = len(full)  # 32: extends past the 24-byte sibling's EOF
+    core = _model_markers(HexModel(files, width=16, length=window))
+
+    assert _cli_json_markers(paths, None, length=window) == core
+    # The truncation must actually surface as a MISSING ("--") column.
+    missing = format_marker(Marker.MISSING)
+    assert any(missing in markers for _, markers in core)
+
+    QApplication.instance() or QApplication([])
+    w = gui.MainWindow()
+    assert w.load_paths(paths) is True
+    try:
+        # The GUI/TUI model is largest-file derived; with this fixture that is
+        # exactly the explicit window above, so the grids must match.
+        assert _model_markers(w.model) == core
+    finally:
+        w.close()
+
+
+def test_struct_overlay_past_eof_applicability_agrees(tmp_path):
+    # An overlay whose later ranges run past the truncated file's EOF stays
+    # applicable (out-of-bounds is a warning), and the shared gate agrees with
+    # what the GUI sees.
+    pytest.importorskip("PySide6")
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    import multihex.gui as gui
+
+    paths = _write_struct_pair(tmp_path)
+    full, short = _struct_mixed()
+    files = [HexFile("full.bin", full), HexFile("short.bin", short)]
+    ov_path = _overlay_files(tmp_path, _struct_overlay_doc())
+
+    state = OverlayState.load(ov_path, files)
+    assert state.applicable is True
+    assert any("range-out-of-bounds" in line for line in state.diagnostic_lines())
+
+    QApplication.instance() or QApplication([])
+    w = gui.MainWindow()
+    w.load_paths(paths)
+    try:
+        w.load_overlay(ov_path)
+        assert w.overlay is not None
+        assert w.overlay.applicable is True
     finally:
         w.close()
 

@@ -126,6 +126,20 @@ def test_error_overlay_loaded_not_applied(app, tmp_path):
     w.close()
 
 
+def test_missing_overlay_path_loaded_not_applied(app, tmp_path):
+    # A nonexistent overlay path is a load failure: the GUI keeps the failed
+    # state, never highlights, and surfaces the error in a non-blocking dialog
+    # rather than raising.
+    w = _loaded_window(tmp_path)
+    st = w.load_overlay(str(tmp_path / "does-not-exist.json"))
+    assert st.loaded is False
+    assert st.applicable is False
+    assert w.overlay is st
+    assert w.view_widget._cell_color(0x00, Marker.SAME, 0) == w.view_widget._text_color()
+    assert w._message_boxes
+    w.close()
+
+
 def test_reloading_files_drops_stale_overlay(app, tmp_path):
     path = _write_json(tmp_path, "ov.json", {
         "schema": SCHEMA, "ranges": [{"offset": 0, "length": 2}],
