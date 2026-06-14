@@ -11,6 +11,7 @@ the Ctrl-C path, both of which previously leaked Python tracebacks.
 import errno
 import io
 import os
+import stat
 import subprocess
 import sys
 
@@ -34,6 +35,13 @@ class _FullStdout:
 
     def close(self):
         raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+
+def _has_dev_full():
+    try:
+        return stat.S_ISCHR(os.stat("/dev/full").st_mode)
+    except OSError:
+        return False
 
 
 def test_write_oserror_reports_and_exits_nonzero(monkeypatch):
@@ -64,8 +72,8 @@ def test_keyboard_interrupt_exits_130_quietly(monkeypatch):
 
 
 @pytest.mark.skipif(
-    not (os.path.exists("/dev/full") and os.environ.get("MULTIHEX_DEV_FULL_TEST")),
-    reason="opt-in: set MULTIHEX_DEV_FULL_TEST=1 on Linux with /dev/full",
+    not _has_dev_full(),
+    reason="platform has no /dev/full character device",
 )
 def test_dev_full_end_to_end(tmp_path):
     """End-to-end ENOSPC against the real /dev/full: clean diagnostic, no trace."""
@@ -81,6 +89,7 @@ def test_dev_full_end_to_end(tmp_path):
             stdout=full,
             stderr=subprocess.PIPE,
             text=True,
+            timeout=10,
         )
 
     assert proc.returncode == 1
