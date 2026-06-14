@@ -81,7 +81,24 @@ python3 -m pytest tests/test_multihex_characterization.py::test_stdout_matches_g
 `coverage.py` is in the `[dev]` extra; configuration lives in `pyproject.toml`
 (`[tool.coverage.*]`, branch coverage and parallel mode on). Parallel mode means
 each process writes its own data fragment, so a `combine` step is always needed
-before reporting. A quick parent-process measurement:
+before reporting.
+
+Use the coverage runner for normal local checks:
+
+```bash
+scripts/coverage/run_coverage.sh
+scripts/coverage/run_coverage.sh --html          # writes htmlcov/
+scripts/coverage/run_coverage.sh --xml           # writes coverage.xml
+scripts/coverage/run_coverage.sh --fail-under 65 # override the coarse guard
+```
+
+The default run covers the default pytest suite only, prints a terminal summary
+and total percentage, and does not write HTML or XML artifacts unless requested.
+Its fail-under threshold is a coarse regression guard for meaningful drops, not a
+goal to chase 100% coverage. The full-suite runner includes this coverage check
+by default.
+
+A quick parent-process measurement:
 
 ```bash
 python3 -m coverage run -m pytest && python3 -m coverage combine \

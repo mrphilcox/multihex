@@ -33,6 +33,25 @@ pytest collection.
 scripts/integration/run_all.sh
 ```
 
+## Coverage
+
+The coverage runner measures the default pytest suite with subprocess-aware
+coverage:
+
+```sh
+scripts/coverage/run_coverage.sh
+scripts/coverage/run_coverage.sh --html
+scripts/coverage/run_coverage.sh --xml
+scripts/coverage/run_coverage.sh --fail-under 65
+```
+
+Many CLI tests run `multihex` in child processes, so the runner sets
+`COVERAGE_PROCESS_START`, an absolute `COVERAGE_FILE`, and `PYTHONPATH` so those
+children record coverage fragments through `sitecustomize.py`. The default run
+prints only the terminal summary and total percentage; HTML (`htmlcov/`) and XML
+(`coverage.xml`) are opt-in. The fail-under threshold is a coarse regression
+guard, not a 100% coverage goal.
+
 ## UI And Visual Tests
 
 The visual-regression suite lives in `tests_ui/` and runs through the UI test
@@ -99,9 +118,10 @@ By default it runs:
 
 1. `ruff check .`
 2. `python3 -m pytest`
-3. `scripts/integration/run_all.sh`
-4. `scripts/ui-tests/run_ui_tests.sh`
-5. `scripts/stress/run_all.sh`
+3. `scripts/coverage/run_coverage.sh`
+4. `scripts/integration/run_all.sh`
+5. `scripts/ui-tests/run_ui_tests.sh`
+6. `scripts/stress/run_all.sh`
 
 It skips performance tests by default with a message explaining how to opt in.
 Pass `--include-performance` to add the performance runner:

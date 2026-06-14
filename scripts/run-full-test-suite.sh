@@ -5,7 +5,7 @@
 # Run the full local validation suite.
 #
 # Correctness-oriented layers run by default:
-#   lint, default pytest, integration, UI/visual, and stress.
+#   lint, default pytest, coverage, integration, UI/visual, and stress.
 #
 # Performance tests are environment-sensitive timing/resource measurements and
 # run only when explicitly requested with --include-performance.
@@ -21,9 +21,9 @@ usage() {
   cat <<EOF
 Usage: scripts/run-full-test-suite.sh [--include-performance] [--keep-going]
 
-Runs lint, default pytest tests, integration tests, UI/visual tests, and stress
-tests. Stress tests are correctness/robustness tests for edge cases and hostile
-inputs, so they are included in the default full suite.
+Runs lint, default pytest tests, coverage, integration tests, UI/visual tests,
+and stress tests. Stress tests are correctness/robustness tests for edge cases
+and hostile inputs, so they are included in the default full suite.
 
 Performance tests measure timing, throughput, and resource behavior. They are
 environment-sensitive and skipped by default; pass --include-performance to run
@@ -98,6 +98,7 @@ echo "Performance tests are timing/resource measurements and are opt-in."
 
 run_layer "lint" ruff check .
 run_layer "default pytest tests" python3 -m pytest
+run_layer "coverage" scripts/coverage/run_coverage.sh
 run_layer "integration tests" scripts/integration/run_all.sh
 run_layer "UI/visual tests" scripts/ui-tests/run_ui_tests.sh
 run_layer "stress tests" scripts/stress/run_all.sh
