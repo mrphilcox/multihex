@@ -36,7 +36,7 @@ scripts/performance/run_all.sh.
 
 Mutation testing is a targeted, manual quality audit and is slow (it reruns the
 whole pytest suite once per mutant). It is skipped by default; pass
---include-mutation to run scripts/run_mutation.sh.
+--include-mutation to run scripts/mutation/run_mutation.sh.
 
 --all runs every layer, including the opt-in performance and mutation lanes,
 and implies --keep-going so the run does not stop on the first failure.
@@ -134,10 +134,10 @@ fi
 
 # Mutation testing is intentionally last: it is slow (a full mutmut run reruns
 # the whole pytest suite per mutant) and is a manual audit, not a gate.
-# scripts/run_mutation.sh exits 0 even when mutants survive, so including it
+# scripts/mutation/run_mutation.sh exits 0 even when mutants survive, so including it
 # never turns the suite red on survivors.
 if [ "$include_mutation" -eq 1 ]; then
-  run_layer "mutation tests" scripts/run_mutation.sh
+  run_layer "mutation tests" scripts/mutation/run_mutation.sh
 else
   printf '\n==== mutation tests ====\n'
   echo "SKIP mutation tests; use --include-mutation to run them"

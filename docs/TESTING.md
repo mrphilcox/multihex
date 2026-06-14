@@ -77,7 +77,7 @@ incompatibly in 3.x). The targets are configured in `[tool.mutmut]` in
 Workflow:
 
 ```sh
-scripts/run_mutation.sh      # runs `mutmut run` against the configured targets
+scripts/mutation/run_mutation.sh  # runs `mutmut run` against the configured targets
 mutmut results               # list survived/killed mutants
 mutmut show <ID>             # inspect a specific mutant's diff
 mutmut browse                # interactive results browser
@@ -85,7 +85,7 @@ mutmut browse                # interactive results browser
 
 The runner warns (but does not abort) on a dirty working tree, passes extra
 arguments through to `mutmut run` (for example
-`scripts/run_mutation.sh --paths-to-mutate src/multihex/shortcuts.py` to scope a
+`scripts/mutation/run_mutation.sh --paths-to-mutate src/multihex/shortcuts.py` to scope a
 run), and never applies a mutant to the working tree. `mutmut` caches results in
 `.mutmut-cache` (gitignored); delete it to force a full re-run.
 

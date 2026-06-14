@@ -85,7 +85,7 @@ norecursedirs = ["tests/integration"]
 # gate, not a release blocker. See docs/TESTING.md. The five paths below are the
 # only mutation targets; the UI frontends (tui.py/gui.py), the CLI argument glue
 # (cli.py, covered by characterization goldens), and __init__.py are excluded by
-# omission, so no paths_to_exclude is needed. Run via scripts/run_mutation.sh.
+# omission, so no paths_to_exclude is needed. Run via scripts/mutation/run_mutation.sh.
 [tool.mutmut]
 paths_to_mutate = "src/multihex/core.py,src/multihex/overlay.py,src/multihex/layout_overlay_v1.py,src/multihex/shortcuts.py,src/multihex/tui_config.py"
 runner = "python3 -m pytest"

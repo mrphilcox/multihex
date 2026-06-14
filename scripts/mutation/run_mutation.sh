@@ -20,11 +20,11 @@
 # the `.bak` back) and delete the leftover `.bak`.
 #
 # Any extra arguments are passed through to `mutmut run`, e.g. to scope a run:
-#   scripts/run_mutation.sh --paths-to-mutate src/multihex/shortcuts.py
+#   scripts/mutation/run_mutation.sh --paths-to-mutate src/multihex/shortcuts.py
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$REPO_ROOT"
 

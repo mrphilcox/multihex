@@ -37,7 +37,7 @@ _(nothing in flight — pick the next item from Near-term)_
       the full matrix), or gate baseline checks so version drift warns rather than
       fails.
 - [ ] **Expand mutation-testing coverage as the test suite matures.** The
-      `mutmut` lane (`scripts/run_mutation.sh`; targets in `[tool.mutmut]`) audits
+      `mutmut` lane (`scripts/mutation/run_mutation.sh`; targets in `[tool.mutmut]`) audits
       the deterministic core today. As tests grow, triage survivors and extend the
       target set if other modules become deterministic enough to mutate usefully.
 - [ ] **Consider a non-blocking CI job for mutation testing later.** Mutation
