@@ -114,6 +114,9 @@ class HexFile:
 
     path: str
     data: Union[mmap.mmap, bytes, bytearray]
+    # Explicit display label (e.g. "<stdin>") that overrides the path-derived
+    # name. Used for inputs that have no filesystem path; None for real files.
+    name: Optional[str] = None
 
     @property
     def size(self) -> int:
@@ -126,6 +129,8 @@ class HexFile:
         return None
 
     def display_name(self, mode: str = "basename") -> str:
+        if self.name is not None:
+            return self.name
         if mode == "path":
             return self.path
         return os.path.basename(self.path)
@@ -149,6 +154,19 @@ def _open_buffer(path: str) -> Union[mmap.mmap, bytes]:
 def load_files(paths: Sequence[str]) -> List[HexFile]:
     """Open every path for lazy random access. Raises OSError on failure."""
     return [HexFile(path=p, data=_open_buffer(p)) for p in paths]
+
+
+def hexfile_from_bytes(data: Union[bytes, bytearray], *, name: str) -> HexFile:
+    """Build a HexFile from in-memory bytes with a display name and no path.
+
+    This is the bytes->HexFile seam for inputs that do not come from the
+    filesystem (e.g. the CLI reading ``sys.stdin.buffer``). ``path`` is left
+    empty to mark "no filesystem path", and ``name`` is the label every frontend
+    shows regardless of its basename/path display mode. ``bytes(data)`` produces
+    a binary-safe, random-access buffer that :meth:`HexFile.byte_at` and
+    :attr:`HexFile.size` handle exactly like an mmap-backed file.
+    """
+    return HexFile(path="", data=bytes(data), name=name)
 
 
 # --------------------------------------------------------------------------- #

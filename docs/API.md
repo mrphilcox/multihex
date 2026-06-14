@@ -7,7 +7,7 @@ exact searches in your own programs. Everything below is importable from
 
 ```python
 from multihex.core import (
-    HexModel, HexFile, Row, Marker, load_files,
+    HexModel, HexFile, Row, Marker, load_files, hexfile_from_bytes,
     make_text_query, make_hex_query, search_files,
 )
 ```
@@ -20,16 +20,23 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for how these pieces fit together.
 Open every path for lazy, memory-mapped random access. Raises `OSError` on
 failure. Use this for real files.
 
+### `hexfile_from_bytes(data, *, name) -> HexFile`
+Build a `HexFile` from in-memory bytes with no filesystem path. `name` is the
+display label every frontend shows regardless of its basename/path mode (the CLI
+uses this for stdin, with `name="<stdin>"`). The bytes are stored as a plain
+`bytes` buffer, so `byte_at`/`size` behave exactly like an mmap-backed file.
+
 ### `class HexFile`
 A single file as random-access bytes.
 
 ```python
-HexFile(path: str, data: mmap.mmap | bytes | bytearray)
+HexFile(path: str, data: mmap.mmap | bytes | bytearray, name: str | None = None)
 ```
 
 - `size -> int` — length in bytes.
 - `byte_at(offset) -> int | None` — the byte value, or `None` past the end.
-- `display_name(mode="basename") -> str` — `"basename"` or `"path"`.
+- `display_name(mode="basename") -> str` — `"basename"` or `"path"`. When `name`
+  is set it is returned verbatim, ignoring `mode` (used for path-less inputs).
 
 For tests or in-memory data you can construct one directly from `bytes`:
 

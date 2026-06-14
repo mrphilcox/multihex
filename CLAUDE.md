@@ -26,6 +26,8 @@ Human-facing docs: `README.md` (users), `docs/ARCHITECTURE.md` and `docs/API.md`
 multihex FILE1 FILE2 FILE3
 multihex --offset 0x40 --length 0x80 FILE1 FILE2
 multihex --json FILE1 FILE2
+cat FILE1 | multihex -            # read one input from stdin ('-', at most once)
+multihex - other.bin             # compare stdin against a file
 
 # Search (exact byte/text match; reports observed matches only)
 multihex --search-text RIFF FILE1 FILE2

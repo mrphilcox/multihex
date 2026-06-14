@@ -33,6 +33,7 @@ from multihex.core import (
     format_ascii_char,
     format_byte,
     format_marker,
+    hexfile_from_bytes,
     load_files,
     make_hex_query,
     make_text_query,
@@ -42,6 +43,11 @@ from multihex.core import (
     search_files,
 )
 from multihex.overlay import OverlayState
+
+# Conventional stdin filename: a lone "-" positional reads raw bytes from
+# sys.stdin.buffer and is labelled "<stdin>" (it has no filesystem path).
+STDIN_ARG = "-"
+STDIN_NAME = "<stdin>"
 
 RED = "\033[31m"
 GREEN = "\033[32m"
@@ -110,7 +116,9 @@ def build_parser():
         prog="multihex",
         description="Compare byte values across multiple binary files at fixed offsets.",
     )
-    p.add_argument("files", nargs="+", help="one or more binary files")
+    p.add_argument("files", nargs="+",
+                   help="one or more binary files. Use '-' to read bytes from "
+                        "stdin (at most once).")
     p.add_argument("--offset", type=parse_int, default=0,
                    help="start offset (default 0). Accepts 0x40, 64, 0b1000000.")
     p.add_argument("--length", type=parse_int, default=None,
@@ -177,6 +185,30 @@ def build_parser():
     search.add_argument("--search-overlap", action="store_true",
                         help="also report overlapping matches (default: non-overlapping)")
     return p
+
+
+def load_inputs(paths):
+    """Resolve positional inputs to HexFiles, reading stdin for any ``-``.
+
+    A lone ``-`` reads raw binary from ``sys.stdin.buffer`` once and becomes a
+    HexFile labelled ``<stdin>`` with no filesystem path; everything downstream
+    (comparison, markers, --ref, search, overlay) treats it like any other file.
+    stdin is not seekable, so it is read fully into memory here. ``-`` may appear
+    at most once -- stdin cannot be read twice. Real paths are loaded lazily via
+    the core mmap loader, preserving the existing OSError message format.
+    """
+    if paths.count(STDIN_ARG) > 1:
+        sys.exit("multihex: '-' (stdin) may be given at most once")
+    files = []
+    for p in paths:
+        if p == STDIN_ARG:
+            files.append(hexfile_from_bytes(sys.stdin.buffer.read(), name=STDIN_NAME))
+        else:
+            try:
+                files.append(load_files([p])[0])
+            except OSError as exc:
+                sys.exit(f"multihex: {exc}")
+    return files
 
 
 def resolve_color(mode, as_json):
@@ -438,11 +470,13 @@ def main(argv=None):
     if args.offset < 0:
         sys.exit("multihex: --offset must be >= 0")
 
-    try:
-        sizes = [os.path.getsize(f) for f in args.files]
-    except OSError as exc:
-        sys.exit(f"multihex: {exc}")
+    # Load inputs first (reading stdin for any "-"), then derive sizes from the
+    # loaded buffers. stdin bytes live in memory, so its size is known without a
+    # filesystem stat -- this keeps the default-length math identical for files
+    # and stdin alike.
+    files = load_inputs(args.files)
 
+    sizes = [f.size for f in files]
     available = [max(0, s - args.offset) for s in sizes]
     if args.length is None:
         length = min(available) if available else 0
@@ -451,12 +485,9 @@ def main(argv=None):
     if length < 0:
         sys.exit("multihex: --length must be >= 0")
 
-    try:
-        files = load_files(args.files)
-    except OSError as exc:
-        sys.exit(f"multihex: {exc}")
-
-    names = [os.path.basename(f) if args.names == "basename" else f for f in args.files]
+    # Labels come from the loaded files: byte-identical to the old path-derived
+    # names for real files, and "<stdin>" for a stdin input regardless of --names.
+    names = [f.display_name(args.names) for f in files]
     name_w = max((len(n) for n in names), default=0)
 
     # Search short-circuits the normal dump; existing output is untouched when
@@ -519,7 +550,8 @@ def main(argv=None):
             "width": args.width,
             "ref": args.ref,
             "files": names,
-            "paths": list(args.files),
+            # A stdin input ("-") has no filesystem path: its path is null.
+            "paths": [None if p == STDIN_ARG else p for p in args.files],
             "rows": json_rows,
         }
         write_stdout(json.dumps(out, indent=2))

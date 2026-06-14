@@ -144,6 +144,19 @@ multihex [OPTIONS] FILE1 [FILE2 ...]
 By default it shows the largest range common to all files starting at offset 0,
 16 bytes per row, with the ASCII gutter on and color when writing to a terminal.
 
+Use `-` as an input file to read bytes from stdin (at most once). It is just
+another input among possibly many, so it can be compared against files:
+
+```bash
+cat /path/to/binary.data | multihex -
+cat /path/to/binary.data | multihex --byte-classes -
+cat /path/to/binary.data | multihex --overlay /path/to/layout.json -
+multihex - other.bin            # compare stdin against a file
+```
+
+A stdin input is labelled `<stdin>` regardless of `--names`, and its
+`--json` `paths` entry is `null` (it has no filesystem path).
+
 ### Options reference
 
 **Windowing**
