@@ -102,11 +102,19 @@ fi
 error_check "width zero" "--width must be >= 1" --width 0 "$WORK/plain.bin"
 error_check "negative offset" "--offset must be >= 0" --offset -1 "$WORK/plain.bin"
 error_check "negative length" "--length must be >= 0" --length -1 "$WORK/plain.bin"
+error_check "limit rows zero" "--limit-rows must be >= 1" \
+  --limit-rows 0 "$WORK/plain.bin"
+error_check "negative limit rows" "--limit-rows must be >= 1" \
+  --limit-rows -1 "$WORK/plain.bin"
 error_check "ref out of range" "--ref 9 out of range" --ref 9 "$WORK/plain.bin"
 argparse_error_check "invalid around" "--around expects OFF:N" \
   --around bad "$WORK/plain.bin"
 error_check "bad search context" "--search-context must be >= 0" \
   --search-hex 00 --search-context -1 "$WORK/plain.bin"
+error_check "search max results zero" "--search-max-results must be >= 1" \
+  --search-hex 00 --search-max-results 0 "$WORK/plain.bin"
+error_check "negative search max results" "--search-max-results must be >= 1" \
+  --search-hex 00 --search-max-results -1 "$WORK/plain.bin"
 
 if run_capture 0 "$PYTHON" -m multihex.cli --help \
     && ! grep -q -- "--config" "$LAST_OUT" \

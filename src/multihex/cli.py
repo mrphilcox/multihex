@@ -412,6 +412,10 @@ def main(argv=None):
 
     if args.width < 1:
         sys.exit("multihex: --width must be >= 1")
+    if args.limit_rows is not None and args.limit_rows < 1:
+        sys.exit("multihex: --limit-rows must be >= 1")
+    if args.search_max_results is not None and args.search_max_results < 1:
+        sys.exit("multihex: --search-max-results must be >= 1")
 
     if args.around is not None:
         off, n = args.around

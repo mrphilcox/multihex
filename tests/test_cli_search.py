@@ -64,6 +64,22 @@ def test_invalid_hex_exits_nonzero(fixtures):
     assert 'invalid hex byte "GG"' in proc.stderr
 
 
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_search_max_results_rejects_nonpositive_values(fixtures, value):
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--search-text", "a", "--search-max-results", value, "eqA"])
+    assert proc.returncode != 0
+    assert "--search-max-results must be >= 1" in proc.stderr
+
+
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_limit_rows_rejects_nonpositive_values(fixtures, value):
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--limit-rows", value, "eqA", "eqB"])
+    assert proc.returncode != 0
+    assert "--limit-rows must be >= 1" in proc.stderr
+
+
 def test_hex_search_matches_byte_not_ascii(tmp_path):
     """--search-hex D9 finds byte 0xd9, never the ASCII spelling 44 39.
 
