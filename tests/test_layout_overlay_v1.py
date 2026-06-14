@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Smoke/regression tests for the layout-overlay-v1 validator contract.
+
+Dependency-free: run directly with `python3 test_layout_overlay_v1.py`
+(exit 0 = all pass, 1 = failures). Also collectible under pytest if dropped
+in a tests/ directory.
+
+Contract under test: `ok` means *loadable/usable* (no error-severity
+diagnostics), NOT *perfectly clean*. Advisory problems (unknown-type,
+unsafe-integer, malformed-hex, range-out-of-bounds, source-* mismatches)
+are warnings and leave ok == True.
+"""
+
+import sys
+
+from multihex.layout_overlay_v1 import validate
+
+
+def ok_codes(doc, data=None):
+    """Return (ok, sorted_codes). `ok` is loadable, not pristine."""
+    r = validate(doc, data)
+    return (r.ok, sorted(d.code for d in r.diagnostics))
+
+
+def severities(doc, data=None):
+    """Return {code: severity} to assert on severity, not just presence."""
+    r = validate(doc, data)
+    return {d.code: d.severity for d in r.diagnostics}
+
+
+GOOD_MAIN = {
+    "schema": {"name": "bintools.layout-overlay", "version": 1},
+    "name": "example_layout", "source_file": "sample.bin", "source_size": 20,
+    "ranges": [
+        {"path": "header.identifier", "offset": 0, "length": 3,
+         "kind": "identifier", "label": "format identifier", "type": "ascii",
+         "raw_hex_preview": "464d54", "decoded": "FMT",
+         "expected_hex": "464d54", "status": "ok"},
+        {"path": "header.record_count", "offset": 3, "length": 2,
+         "kind": "count", "label": "record count", "type": "u16be",
+         "raw_hex_preview": "0002", "decoded": 2, "status": "ok"},
+        {"path": "header.padding", "offset": 5, "length": 2, "kind": "padding",
+         "label": "alignment padding", "type": "bytes",
+         "raw_hex_preview": "0000", "status": "unchecked"},
+        {"path": "payload", "offset": 7, "length": 13, "kind": "payload",
+         "label": "payload bytes", "type": "bytes", "status": "unchecked"},
+    ],
+    "diagnostics": [],
+}
+
+GOOD_MIN = {
+    "schema": {"name": "bintools.layout-overlay", "version": 1},
+    "ranges": [
+        {"offset": 0, "length": 4, "label": "file marker"},
+        {"offset": 4, "length": 4, "label": "version", "type": "u32le"},
+        {"offset": 8, "length": 56, "label": "page header", "kind": "reserved"},
+    ],
+}
+
+# The 20-byte file the main example describes.
+MAIN_BYTES = (bytes.fromhex("464d54") + b"\x00\x02" + b"\x00\x00"
+              + bytes.fromhex("00112233445566778899aabbcc"))
+
+
+def _sch(ranges, **top):
+    d = {"schema": {"name": "bintools.layout-overlay", "version": 1},
+         "ranges": ranges}
+    d.update(top)
+    return d
+
+
+_fails = 0
+
+
+def check(name, got, want):
+    global _fails
+    if got == want:
+        print(f"PASS: {name}")
+    else:
+        print(f"FAIL: {name}\n   got:  {got}\n   want: {want}")
+        _fails += 1
+
+
+def run():
+    # --- clean cases: loadable AND no diagnostics ---
+    check("main example clean", ok_codes(GOOD_MAIN), (True, []))
+    check("minimal example clean", ok_codes(GOOD_MIN), (True, []))
+    check("main example file-aware clean",
+          ok_codes(GOOD_MAIN, MAIN_BYTES), (True, []))
+
+    # --- hard structural errors: NOT loadable ---
+    check("wrong name", ok_codes(_sch([], schema={"name": "nope", "version": 1})),
+          (False, ["wrong-schema-name"]))
+    check("bad version",
+          ok_codes(_sch([], schema={"name": "bintools.layout-overlay",
+                                    "version": 2})),
+          (False, ["unsupported-version"]))
+    check("missing ranges",
+          ok_codes({"schema": {"name": "bintools.layout-overlay",
+                               "version": 1}}),
+          (False, ["missing-ranges"]))
+    check("missing offset+length", ok_codes(_sch([{"label": "x"}])),
+          (False, ["bad-length", "bad-offset"]))
+    check("duplicate path",
+          ok_codes(_sch([{"offset": 0, "length": 1, "path": "a"},
+                         {"offset": 1, "length": 1, "path": "a"}])),
+          (False, ["duplicate-path"]))
+    check("bad path",
+          ok_codes(_sch([{"offset": 0, "length": 1, "path": "a..b"}])),
+          (False, ["bad-path"]))
+    check("bad status",
+          ok_codes(_sch([{"offset": 0, "length": 1, "status": "green"}])),
+          (False, ["bad-status"]))
+    check("bool offset rejected",
+          ok_codes(_sch([{"offset": True, "length": 1}])),
+          (False, ["bad-offset"]))
+    check("zero-length carrying bytes",
+          ok_codes(_sch([{"offset": 4, "length": 0,
+                          "raw_hex_preview": "00", "type": "u32le"}])),
+          (False, ["zero-length-bytes", "zero-length-scalar"]))
+
+    # --- advisory warnings: STILL loadable (ok == True) ---
+    check("unknown type loadable",
+          ok_codes(_sch([{"offset": 0, "length": 4, "type": "f32le"}])),
+          (True, ["unknown-type"]))
+    check("malformed hex loadable",
+          ok_codes(_sch([{"offset": 0, "length": 2,
+                          "raw_hex_preview": "xyz"}])),
+          (True, ["malformed-hex"]))
+    check("unsafe integer loadable",
+          ok_codes(_sch([{"offset": 0, "length": 8, "type": "u64le",
+                          "decoded": 2 ** 60}])),
+          (True, ["unsafe-integer"]))
+    check("preview length mismatch loadable",
+          ok_codes(_sch([{"offset": 0, "length": 4,
+                          "raw_hex_preview": "00"}])),
+          (True, ["preview-length-mismatch"]))
+
+    # --- file-aware warnings: loadable ---
+    check("out of bounds loadable", ok_codes(GOOD_MIN, b"\x00" * 10),
+          (True, ["range-out-of-bounds"]))
+    check("preview mismatch loadable",
+          ok_codes(_sch([{"offset": 0, "length": 2,
+                          "raw_hex_preview": "dead"}]), b"\xbe\xef"),
+          (True, ["raw-preview-mismatch"]))
+    check("size+sha mismatch loadable",
+          ok_codes(_sch([], source_size=99, source_sha256="0" * 64),
+                   b"\x00\x00"),
+          (True, ["source-sha256-mismatch", "source-size-mismatch"]))
+
+    # --- severity-aware contract assertions ---
+    sevs = severities(_sch([{"offset": 0, "length": 4, "type": "f32le"}]))
+    check("unknown-type is a warning", sevs.get("unknown-type"), "warning")
+    sevs = severities(_sch([{"offset": 0, "length": 8, "type": "u64le",
+                             "decoded": 2 ** 60}]))
+    check("unsafe-integer is a warning (SHOULD, not MUST)",
+          sevs.get("unsafe-integer"), "warning")
+    sevs = severities(_sch([{"offset": 0, "length": 1, "path": "a"},
+                            {"offset": 1, "length": 1, "path": "a"}]))
+    check("duplicate-path is an error", sevs.get("duplicate-path"), "error")
+
+    print()
+    print("ALL PASS" if _fails == 0 else f"{_fails} FAILED")
+    return 1 if _fails else 0
+
+
+# pytest entry points (one assert per case when collected by pytest)
+def test_contract():
+    assert run() == 0
+
+
+if __name__ == "__main__":
+    sys.exit(run())
