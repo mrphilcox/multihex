@@ -32,6 +32,29 @@ def test_parse_args_allows_zero_files():
     assert args.files == []
 
 
+def test_parse_args_all_options():
+    args = gui_mod.parse_args(
+        ["f1", "f2", "--width", "0x20", "--no-ascii", "--only-diff",
+         "--markers", "none", "--names", "path", "--ref", "1"]
+    )
+    assert args.files == ["f1", "f2"]
+    assert args.width == 0x20
+    assert args.no_ascii is True
+    assert args.only_diff is True
+    assert args.markers == "none"
+    assert args.names == "path"
+    assert args.ref == 1
+
+
+def test_main_rejects_bad_width_and_offset():
+    # These checks live in main() after the PySide6 guard, so they only fire when
+    # PySide6 is importable; gate the test on it (otherwise main() returns 2 for
+    # the missing-dependency reason instead and the assertion is meaningless).
+    pytest.importorskip("PySide6")
+    assert gui_mod.main(["--width", "0", "x"]) == 2
+    assert gui_mod.main(["--offset", "-1", "x"]) == 2
+
+
 def test_help_exits_zero():
     proc = subprocess.run(
         [sys.executable, "-m", "multihex.gui", "--help"],

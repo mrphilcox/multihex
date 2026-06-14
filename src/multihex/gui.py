@@ -208,6 +208,18 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     return build_parser().parse_args(argv)
 
 
+def clamp_ref(ref: Optional[int], nfiles: int) -> Optional[int]:
+    """Validate a reference file index against the loaded file count.
+
+    Returns ``ref`` when it is a valid 0-based index into ``nfiles`` files,
+    otherwise ``None`` ("all agree" — no reference). Qt-free so the GUI's
+    reference-selection validation is unit-testable without a display.
+    """
+    if ref is not None and 0 <= ref < nfiles:
+        return ref
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # PySide6 import guard. Like the TUI's textual guard, keep imports working (and
 # --help functional) when PySide6 is absent; only main() needs it to actually run.
@@ -279,6 +291,9 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self._char_w = 8
             self._line_h = 16
             self._ascent = 12
+            # TODO(GUI usability): horizontal scrolling is not implemented, so a
+            # wide --width (rows wider than the viewport) is silently clipped on
+            # the right. Add a horizontal scrollbar / overflow handling later.
             self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             self.viewport().setAutoFillBackground(True)
@@ -398,6 +413,23 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 self.to_end()
             else:
                 super().keyPressEvent(event)
+
+        def wheelEvent(self, event) -> None:
+            # Custom row-based paint: map the wheel delta to whole rows so mouse
+            # (120-unit notches) and trackpad (pixel-delta) wheels both scroll
+            # predictably, instead of QAbstractScrollArea's pixel-oriented default.
+            if self.view is None:
+                super().wheelEvent(event)
+                return
+            delta = event.angleDelta().y()
+            if delta == 0:
+                return
+            notches = delta / 120.0           # one mouse notch == 120 units
+            rows = int(notches * 3)           # ~3 rows per notch
+            if rows == 0:                     # tiny/high-res deltas still move a row
+                rows = 1 if notches > 0 else -1
+            self.scroll_rows(-rows)           # wheel-up (positive delta) -> earlier rows
+            event.accept()
 
         # -- display toggles ------------------------------------------------ #
         def set_ascii(self, on: bool) -> None:
@@ -630,7 +662,9 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 self.ref_group.removeAction(a)
             self.comparem.clear()
             cur_ref = self.model.ref if self.model is not None else None
-            a_all = QAction("All agree (no reference)", self)
+            # Parent the radio actions to the menu so comparem.clear() reclaims
+            # them on every rebuild (parenting to MainWindow would leak them).
+            a_all = QAction("All agree (no reference)", self.comparem)
             a_all.setCheckable(True)
             a_all.setData(None)
             a_all.setChecked(cur_ref is None)
@@ -639,7 +673,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             if self.files:
                 self.comparem.addSeparator()
                 for i, f in enumerate(self.files):
-                    a = QAction(f"[{i}] {f.display_name(self.name_mode)}", self)
+                    a = QAction(f"[{i}] {f.display_name(self.name_mode)}", self.comparem)
                     a.setCheckable(True)
                     a.setData(i)
                     a.setChecked(cur_ref == i)
@@ -654,9 +688,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 sys.stderr.write(f"multihex-gui: {exc}\n")
                 QMessageBox.warning(self, "Open files", f"Could not open files:\n{exc}")
                 return False
-            ref = self._start_ref
-            if ref is not None and not (0 <= ref < len(files)):
-                ref = None
+            ref = clamp_ref(self._start_ref, len(files))
             try:
                 model = HexModel(
                     files,

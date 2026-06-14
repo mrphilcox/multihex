@@ -14,9 +14,25 @@ pytest.importorskip("PySide6")
 # Render headless so the test needs no display.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import QPoint, QPointF, Qt  # noqa: E402
+from PySide6.QtGui import QWheelEvent  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 import multihex.gui as gui  # noqa: E402
+
+
+def _wheel(angle_y):
+    """A vertical QWheelEvent with the given angle delta (120 units == 1 notch)."""
+    return QWheelEvent(
+        QPointF(10, 10),            # local position
+        QPointF(10, 10),            # global position
+        QPoint(0, 0),               # pixelDelta
+        QPoint(0, angle_y),         # angleDelta
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,                      # inverted
+    )
 
 
 @pytest.fixture(scope="module")
@@ -90,6 +106,49 @@ def test_menu_toggles_and_reference(app, tmp_path):
     target.trigger()
     assert w.model.ref == 1
     assert "ref=b.bin" in w.statusBar().currentMessage()
+    w.close()
+
+
+def test_wheel_scrolls_whole_rows_and_clamps(app, tmp_path):
+    data = bytes((i * 7) % 256 for i in range(1024))  # 64 rows at width 16
+    a = _write(tmp_path, "a.bin", data)
+    b = _write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.resize(900, 400)
+    w.show()
+    app.processEvents()
+    vw = w.view_widget
+    assert vw.view.top == 0
+    # max_top is large for 64 rows in this viewport, so 3 rows is unclamped.
+    assert vw.view.max_top(vw._page_rows()) >= 3
+
+    vw.wheelEvent(_wheel(-120))   # one notch down -> 3 rows forward
+    assert vw.view.top == 3
+    vw.wheelEvent(_wheel(-120))
+    assert vw.view.top == 6
+    vw.wheelEvent(_wheel(120))    # one notch up -> 3 rows back
+    assert vw.view.top == 3
+    vw.wheelEvent(_wheel(120))
+    vw.wheelEvent(_wheel(120))    # past the top -> clamps at 0
+    assert vw.view.top == 0
+    w.close()
+
+
+def test_ref_menu_rebuild_does_not_accumulate_actions(app, tmp_path):
+    a = _write(tmp_path, "a.bin", bytes(48))
+    b = _write(tmp_path, "b.bin", bytes(48))
+    c = _write(tmp_path, "c.bin", bytes(48))
+    w = gui.MainWindow()
+    w.load_paths([a, b, c])
+    # one "all agree" + one per file
+    assert len(w.ref_group.actions()) == 4
+    # reloading a smaller set must rebuild, not append.
+    w.load_paths([a, b])
+    assert len(w.ref_group.actions()) == 3
+    # a name-mode change also rebuilds the menu; still no duplicates.
+    w._on_names_changed(next(x for x in w.names_group.actions() if x.data() == "path"))
+    assert len(w.ref_group.actions()) == 3
     w.close()
 
 

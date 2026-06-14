@@ -5,7 +5,7 @@ do not touch PySide6, so they run regardless of whether PySide6 is installed.
 """
 
 from multihex.core import HexFile, HexModel
-from multihex.gui import ViewState, format_status
+from multihex.gui import ViewState, clamp_ref, format_status
 
 
 def _model(*datas, width=16, ref=None, only_diff=False):
@@ -90,6 +90,56 @@ def test_position_for_offset_round_trip():
     assert vs.index_for_offset(0x20) == 2
     assert vs.position_for_offset(0x20) == 2
     assert vs.position_for_offset(0x25) == 2  # within the same row block
+
+
+def test_offset_to_row_with_start_offset():
+    # Window starting at 0x10, width 16: row 0 covers 0x10..0x1f, row 1 0x20...
+    files = [HexFile("a", bytes(160)), HexFile("b", bytes(160))]
+    model = HexModel(files, start_offset=0x10, width=16)
+    vs = ViewState(model)
+    assert vs.index_for_offset(0x05) == 0   # before the window start -> first row
+    assert vs.index_for_offset(0x10) == 0
+    assert vs.index_for_offset(0x1F) == 0
+    assert vs.index_for_offset(0x20) == 1
+    assert vs.index_for_offset(0x25) == 1
+    assert vs.offset_at(0) == 0x10
+    assert vs.position_for_offset(0x20) == 1
+
+
+def test_position_for_offset_snaps_forward_in_only_diff():
+    a = bytearray(64)
+    b = bytearray(64)
+    b[20] = 1  # row 1 (0x10..0x1f)
+    b[60] = 1  # row 3 (0x30..0x3f)
+    vs = ViewState(_model(bytes(a), bytes(b)), only_diff=True)
+    assert list(vs.visible_indices()) == [1, 3]
+    assert vs.position_for_offset(0x00) == 0   # row 0 not visible -> first diff row
+    assert vs.position_for_offset(0x10) == 0   # row 1 is the first diff row
+    assert vs.position_for_offset(0x20) == 1   # row 2 not visible -> snap to row 3
+    assert vs.position_for_offset(0x30) == 1   # row 3
+
+
+# --------------------------------------------------------------------------- #
+# clamp_ref (reference-selection validation; Qt-free)
+# --------------------------------------------------------------------------- #
+def test_clamp_ref_valid_index_kept():
+    assert clamp_ref(0, 3) == 0
+    assert clamp_ref(2, 3) == 2
+
+
+def test_clamp_ref_out_of_range_becomes_none():
+    assert clamp_ref(3, 3) is None    # == nfiles is out of range
+    assert clamp_ref(9, 3) is None
+    assert clamp_ref(-1, 3) is None
+
+
+def test_clamp_ref_none_stays_none():
+    assert clamp_ref(None, 3) is None
+
+
+def test_clamp_ref_single_file_edge():
+    assert clamp_ref(0, 1) == 0
+    assert clamp_ref(1, 1) is None
 
 
 # --------------------------------------------------------------------------- #

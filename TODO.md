@@ -65,6 +65,15 @@ Repo-wide tasks and follow-ups to track.
 
 ### Phase 2 - Usability
 
+* [ ] **Horizontal scrolling / wide-row overflow (GUI).** The view has no horizontal
+      scrollbar (`ScrollBarAlwaysOff`), so a wide `--width` (rows wider than the
+      viewport) is silently clipped on the right. Add a horizontal scrollbar or
+      overflow handling. See the `TODO(GUI usability)` at the policy site in
+      `src/multihex/gui.py`.
+* [ ] **GUI reload reuses the startup `--ref` (minor).** `MainWindow.load_paths`
+      re-applies `self._start_ref` (the CLI value) on every File ▸ Open, rather than
+      the reference the user last picked from the Compare menu. Defensible (a fresh
+      file set resets to the CLI default) but revisit if it surprises users.
 * [ ] Remember window size and position.
 * [ ] Remember recent files.
 * [ ] Add keyboard shortcuts.
