@@ -9,17 +9,22 @@
 #
 # Performance tests are environment-sensitive timing/resource measurements and
 # run only when explicitly requested with --include-performance.
+#
+# Mutation testing is a targeted, manual quality audit (mutmut); it is slow
+# (it reruns the whole pytest suite once per mutant) and is not a gate, so it
+# runs only when explicitly requested with --include-mutation.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 include_performance=0
+include_mutation=0
 keep_going=0
 
 usage() {
   cat <<EOF
-Usage: scripts/run-full-test-suite.sh [--include-performance] [--keep-going]
+Usage: scripts/run-full-test-suite.sh [--include-performance] [--include-mutation] [--keep-going]
 
 Runs lint, default pytest tests, coverage, integration tests, UI/visual tests,
 and stress tests. Stress tests are correctness/robustness tests for edge cases
@@ -28,6 +33,10 @@ and hostile inputs, so they are included in the default full suite.
 Performance tests measure timing, throughput, and resource behavior. They are
 environment-sensitive and skipped by default; pass --include-performance to run
 scripts/performance/run_all.sh.
+
+Mutation testing is a targeted, manual quality audit and is slow (it reruns the
+whole pytest suite once per mutant). It is skipped by default; pass
+--include-mutation to run scripts/run_mutation.sh.
 EOF
 }
 
@@ -35,6 +44,9 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --include-performance)
       include_performance=1
+      ;;
+    --include-mutation)
+      include_mutation=1
       ;;
     --keep-going)
       keep_going=1
@@ -95,6 +107,7 @@ run_layer() {
 echo "Full test suite for multihex"
 echo "Stress tests are correctness tests and run by default."
 echo "Performance tests are timing/resource measurements and are opt-in."
+echo "Mutation testing is a slow, targeted manual audit and is opt-in."
 
 run_layer "lint" ruff check .
 run_layer "default pytest tests" python3 -m pytest
@@ -109,6 +122,18 @@ else
   printf '\n==== performance tests ====\n'
   echo "SKIP performance tests; use --include-performance to run them"
   record_result "performance tests" "SKIP" "use --include-performance to run them"
+fi
+
+# Mutation testing is intentionally last: it is slow (a full mutmut run reruns
+# the whole pytest suite per mutant) and is a manual audit, not a gate.
+# scripts/run_mutation.sh exits 0 even when mutants survive, so including it
+# never turns the suite red on survivors.
+if [ "$include_mutation" -eq 1 ]; then
+  run_layer "mutation tests" scripts/run_mutation.sh
+else
+  printf '\n==== mutation tests ====\n'
+  echo "SKIP mutation tests; use --include-mutation to run them"
+  record_result "mutation tests" "SKIP" "use --include-mutation to run them"
 fi
 
 printf '\n========================\n'
