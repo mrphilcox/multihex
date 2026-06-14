@@ -81,6 +81,24 @@ def _tall_app() -> "tui.MultiHexApp":
     )
 
 
+def _byte_class_app() -> "tui.MultiHexApp":
+    """Two identical mixed-byte blobs with byte-class highlighting on.
+
+    The blobs are equal so no diff markers compete, leaving the byte-class
+    colours (zero / printable / other) as the thing the snapshot locks in --
+    a rendered-grid concern the state-level tests can't assert.
+    """
+    data = fx.blob_mixed()
+    return tui.MultiHexApp(
+        fx.model(data, data, width=16),
+        ascii_on=True,
+        only_diff=False,
+        color_on=True,
+        byte_classes_on=True,
+        name_mode="basename",
+    )
+
+
 def _side_by_side_app() -> "tui.MultiHexApp":
     files = [
         fx.hexfile("left.bin", bytes(range(16))),
@@ -148,6 +166,12 @@ def test_snapshot_overlay_view(snap_compare):
 @requires_snapshot
 def test_snapshot_side_by_side_repeat_markers(snap_compare):
     assert snap_compare(_side_by_side_app(), terminal_size=TERM)
+
+
+@requires_snapshot
+def test_snapshot_byte_classes_view(snap_compare):
+    # Locks the byte-class-highlighted grid (zero/printable/other colours).
+    assert snap_compare(_byte_class_app(), terminal_size=TERM)
 
 
 @requires_snapshot
