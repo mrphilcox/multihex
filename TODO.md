@@ -36,6 +36,81 @@ Repo-wide tasks and follow-ups to track.
       (v1 uses one neutral highlight); and **multiple independent overlays** for
       multi-file views (currently one `--overlay` = one shared layer).
 
+---
+## Layout Overlay Future Enhancements
+
+- [ ] **Add signed integer support to layout-overlay-v1**
+
+Current `layout-overlay-v1` only defines:
+
+- `u8`
+- `u16le`, `u16be`
+- `u32le`, `u32be`
+- `u64le`, `u64be`
+- `bytes`
+- `ascii`
+- `utf8`
+
+Signed integer fields currently have no exact representation and must be
+exported conservatively (e.g. `type=bytes` with a signed decoded value).
+
+Future schema revision:
+
+- Add `i8`
+- Add `i16le`, `i16be`
+- Add `i32le`, `i32be`
+- Add `i64le`, `i64be`
+
+Consider whether this belongs in a backward-compatible overlay-v1 extension
+or requires a layout-overlay-v2 schema revision.
+
+---
+
+- [ ] **Standalone C structure layout extractor**
+
+Create a standalone utility that generates `layout-overlay` JSON from C
+structure definitions.
+
+Goal:
+
+```text
+C source/header
+        ↓
+layout extractor
+        ↓
+layout-overlay JSON
+        ↓
+multihex
+```
+- This tool should live alongside multihex as a helper utility, but should not
+be built into the interactive viewer itself.
+
+- Requirements:
+
+  - Extract structure layout information from real C code.
+  - Support nested structures, unions, arrays, and typedefs.
+  - Handle header files that depend on #include chains.
+  - Respect compiler ABI layout, packing, alignment, and attributes.
+  - Generate stable overlay paths and field metadata suitable for
+    layout-overlay.
+
+- Implementation notes:
+
+  - Do not implement a custom C parser.
+  - Prefer compiler-assisted approaches:
+     - Clang AST / libclang
+     - DWARF debug information
+     - pahole / dwarves
+     - compiler record-layout dumps
+  - The generated overlay should represent actual compiled layout rather than
+    assumptions about source code.
+
+Possible future command:
+
+- `cstruct-layout header.h --struct my_struct --overlay-out my_struct.overlay.json`
+
+---
+
 ## Documentation
 
 * [ ] Create TOOLS.md.
@@ -49,24 +124,13 @@ Repo-wide tasks and follow-ups to track.
 * [ ] Search result bookmarks.
 * [ ] Shared navigation model.
 
+---
+## TUI Frontend (Textual)
+
+---
+
 ## GUI Frontend (PySide6)
 
-### Phase 1 - MVP — complete (see Done; implemented in `src/multihex/gui.py`)
-
-* [x] Add PySide6 optional dependency group.
-* [x] Add `multihex-gui` entry point.
-* [x] Create initial GUI frontend using existing backend.
-* [x] Support opening multiple files from command line.
-* [x] Support opening files from a file picker dialog.
-* [x] Display side-by-side file comparison.
-* [x] Support vertical scrolling.
-* [x] Support jump-to-offset.
-* [x] Support reference-file selection.
-* [x] Support ASCII column toggle.
-* [x] Support marker mode toggle.
-* [x] Support only-diff mode.
-* [x] Preserve existing CLI/TUI formatting semantics.
-* [x] Lazy rendering of visible rows only.
 
 
 ### Phase 2 - Usability
@@ -172,6 +236,9 @@ Repo-wide tasks and follow-ups to track.
 - [ ] Standalone application bundles.
 - [ ] Release automation.
 
+---
+
+
 ## Done
 
 - [x] **Layout-overlay consumption in the viewers.** Added `src/multihex/overlay.py`
@@ -217,3 +284,23 @@ Repo-wide tasks and follow-ups to track.
       in the Qt-free `ViewState`/`format_status` helpers and unit-tested
       (`tests/test_gui_viewstate.py`), with smoke + offscreen-widget tests
       (`tests/test_gui_smoke.py`, `tests/test_gui_widget.py`).
+
+---
+## GUI Frontend (PySide6)
+### Phase 1 - MVP — complete (see Done; implemented in `src/multihex/gui.py`)
+
+* [x] Add PySide6 optional dependency group.
+* [x] Add `multihex-gui` entry point.
+* [x] Create initial GUI frontend using existing backend.
+* [x] Support opening multiple files from command line.
+* [x] Support opening files from a file picker dialog.
+* [x] Display side-by-side file comparison.
+* [x] Support vertical scrolling.
+* [x] Support jump-to-offset.
+* [x] Support reference-file selection.
+* [x] Support ASCII column toggle.
+* [x] Support marker mode toggle.
+* [x] Support only-diff mode.
+* [x] Preserve existing CLI/TUI formatting semantics.
+* [x] Lazy rendering of visible rows only.
+---
