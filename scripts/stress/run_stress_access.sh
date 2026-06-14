@@ -54,8 +54,11 @@ else
 fi
 
 # --- a directory passed where a regular file is expected ---------------------
+# The loader stats the path first and rejects any non-regular file, so a
+# directory surfaces as "not a regular file" rather than the open() "is a
+# directory" error it produced before the stat guard.
 mkdir -p "$WORK/adir"
-clean_error_case "$WORK/adir" "is a directory" "directory-as-file"
+clean_error_case "$WORK/adir" "regular file" "directory-as-file"
 
 # --- broken symlink ----------------------------------------------------------
 ln -s "$WORK/does-not-exist" "$WORK/broken.lnk"
