@@ -73,23 +73,55 @@ _BYTE_CLASS_COLOR = {
 }
 
 
-def _silence_stdout_after_broken_pipe():
-    """Prevent Python from reporting a second broken pipe during shutdown."""
+def _silence_stdout():
+    """Redirect stdout to os.devnull so CPython's exit-time flush stays quiet.
+
+    After a failed stdout write, the original stream still holds buffered data
+    that CPython tries to flush during interpreter shutdown, producing a second
+    "Exception ignored ..." report. Closing the failed stream (its final flush
+    may raise the same OSError again, which we swallow) and pointing sys.stdout
+    at os.devnull makes that shutdown flush a no-op.
+    """
     try:
         sys.stdout.close()
-    except BrokenPipeError:
+    except OSError:
         pass
     sys.stdout = open(os.devnull, "w")
 
 
+def _stderr_diagnostic(message):
+    """Print a diagnostic to stderr, best-effort.
+
+    A broken stderr cannot itself be reported, so swallow the error; the caller
+    still signals failure through a non-zero exit code.
+    """
+    try:
+        print(message, file=sys.stderr)
+    except OSError:
+        pass
+
+
 def write_stdout_chunk(text):
-    """Write CLI stdout and treat closed downstream pipes as normal termination."""
+    """Write CLI stdout, handling closed pipes and other write failures cleanly.
+
+    EPIPE (a downstream consumer closing the pipe, e.g. ``| head``) surfaces as
+    BrokenPipeError and is treated as normal termination: quiet, exit 0. Any
+    other OSError (ENOSPC on a full device, EIO, ...) is a real failure the user
+    must know about, so report it on stderr and exit non-zero. Partitioning by
+    exception class is precise because CPython maps EPIPE to BrokenPipeError, so
+    the remaining OSError branch is inherently non-EPIPE.
+    """
     try:
         sys.stdout.write(text)
         sys.stdout.flush()
     except BrokenPipeError:
-        _silence_stdout_after_broken_pipe()
+        _silence_stdout()
         raise SystemExit(0)
+    except OSError as exc:
+        _silence_stdout()
+        detail = exc.strerror or str(exc)
+        _stderr_diagnostic(f"multihex: error writing output: {detail}")
+        raise SystemExit(1)
 
 
 def write_stdout(text):
@@ -486,7 +518,7 @@ def run_search(args, files, names, name_w):
         )
 
 
-def main(argv=None):
+def _run(argv=None):
     args = build_parser().parse_args(argv)
 
     if args.width < 1:
@@ -593,5 +625,18 @@ def main(argv=None):
         print("multihex: nothing to display for this range", file=sys.stderr)
 
 
+def main(argv=None):
+    """Entry point wrapper: turn Ctrl-C into a quiet exit 130, no traceback.
+
+    Only KeyboardInterrupt is caught here. Validation ``sys.exit(...)`` calls and
+    the write-path SystemExit codes propagate unchanged, and unrelated errors
+    still surface as tracebacks so genuine bugs are not masked.
+    """
+    try:
+        return _run(argv)
+    except KeyboardInterrupt:
+        return 130
+
+
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
