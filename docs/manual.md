@@ -6,6 +6,8 @@ internals see `docs/ARCHITECTURE.md` and `docs/API.md`.
 
 Every statement here is derived from the source in `src/multihex/`. Where the
 source and the prose documentation disagree, this manual follows the source.
+Discrepancies found during the source survey are listed in
+[Appendix E](#appendix-e-doccode-discrepancies-found).
 
 ## Table of contents
 
@@ -25,6 +27,7 @@ source and the prose documentation disagree, this manual follows the source.
 14. [Appendix B: key and menu index](#appendix-b-key-and-menu-index)
 15. [Appendix C: glossary](#appendix-c-glossary)
 16. [Appendix D: overlay diagnostic codes](#appendix-d-overlay-diagnostic-codes)
+17. [Appendix E: doc/code discrepancies found](#appendix-e-doccode-discrepancies-found)
 
 ---
 
@@ -45,8 +48,9 @@ This manual covers four invokable surfaces:
 Notation in this manual:
 
 - `INDEX` is a 0-based file index.
-- `N` is a non-negative integer accepted in any base understood by Python's
-  `int(x, 0)`: decimal, `0x` hex, `0o` octal, `0b` binary, with an optional sign.
+- `N` is an integer accepted in any base understood by Python's `int(x, 0)`:
+  decimal, `0x` hex, `0o` octal, `0b` binary, with an optional sign. Each option
+  table states whether negative values are accepted.
 - "Visual-only" / "display-only" means the option changes rendering only and
   never affects offsets, byte values, comparison markers, `--ref`, `--only-diff`,
   search results, or `--json` output.
@@ -363,6 +367,20 @@ no alignment, and no inference. In the batch CLI a `--search-*` flag
 short-circuits the normal dump and prints match lines instead. The TUI and GUI
 expose search interactively. All three reuse the same core engine.
 
+Batch search is its own output mode, not JSON or a filtered dump. When
+`--search-text` or `--search-hex` is present:
+
+- `--json` is ignored; output is match lines, not a JSON object.
+- `--offset`, `--length`, and `--around` are validated but do not restrict search
+  or context rows; search uses a full-file model starting at offset 0.
+- `--ref` is not validated and has no effect in search mode.
+- `--only-diff`, `--limit-rows`, `--color`, `--byte-classes`, and `--overlay` do
+  not affect search output. A non-positive `--limit-rows` is still rejected before
+  search runs.
+- `--width` controls context-row width. `--names`, `--ascii`, `--layout`, and
+  `--markers` affect context rows and match-line names.
+- `--search-context` is validated only when a search mode is active.
+
 ### 6.1 Query model
 
 Two modes that never overlap:
@@ -400,7 +418,7 @@ returned, keeping the deterministic prefix.
 | `--search-hex HEX` | hex pattern | Hex byte pattern. Mutually exclusive with `--search-text`. |
 | `--search-ignore-case` | flag | Case-insensitive text search (ASCII letters). Applies to text mode only. |
 | `--search-file INDEX_OR_NAME` | index or name | Restrict to one file. Resolves a 0-based index, then a display name, path, or basename. No match is an error (exit 1). |
-| `--search-context N` | integer >= 0 | Print `N` comparison rows above and below each match. `0` prints match lines only (same as omitting). Negative is an error. |
+| `--search-context N` | integer >= 0 | Print `N` full-file comparison rows above and below each match. `0` prints match lines only (same as omitting). Negative is an error when search mode is active. |
 | `--search-max-results N` | integer >= 1 | Stop after `N` matches. `< 1` is an error. |
 | `--search-overlap` | flag | Also report overlapping matches. |
 
@@ -416,8 +434,9 @@ Fields: `file` (0-based index), `path` (display name, honoring `--names`),
 `offset` (8-hex), `len` (byte length), `match` (matched bytes as spaced hex),
 `ascii` (the matched bytes through the gutter rules). With `--search-context N`,
 each match is followed by `N` rows of context on each side, rendered as plain
-comparison rows (honoring `--names`, `--ascii`, `--layout`, `--markers`); the
-context rows are not colored and do not highlight the match. A blank line
+comparison rows from the full-file grid (honoring `--names`, `--ascii`,
+`--layout`, `--markers`, and `--width`); the context rows are not colored and do
+not highlight the match. A blank line
 separates context blocks.
 
 ```bash
@@ -438,8 +457,10 @@ stderr and the command exits 0.
 ### 6.5 Interactive search (TUI and GUI)
 
 The TUI and GUI build the same queries and highlight matches in place. The
-current match is highlighted most strongly, with priority missing > current match
-> other match > diff. See [section 7](#7-multihex-tui-reference) and
+current match is highlighted most strongly. TUI search styling is current match >
+other match > non-SAME marker (including missing columns) > overlay > byte class;
+GUI styling is missing byte > current match > other match > diff > overlay > byte
+class. See [section 7](#7-multihex-tui-reference) and
 [section 8](#8-multihex-gui-reference) for keys and dialogs. Interactive search
 always scans full files (independent of any display window), so a match anywhere
 gets a row to navigate to.
@@ -744,6 +765,8 @@ What `multihex` highlights and what it ignores:
 - The overlay file's own `diagnostics` array (producer-emitted) is validated only
   for being an array; its contents are not read or displayed. Only the validator's
   own diagnostics are surfaced.
+- Unknown top-level and range fields are ignored. They do not produce diagnostics
+  and do not affect rendering.
 
 ### 10.2 Top-level fields
 
@@ -752,33 +775,33 @@ What `multihex` highlights and what it ignores:
 | `schema` | yes | object | Identity block; see below. |
 | `ranges` | yes | array | The byte ranges; may be empty. |
 | `name` | no | string | Human label for the overlay. |
-| `source_file` | no | string | Advisory file name. Not compared to anything by the validator. |
+| `source_file` | no | string | Advisory file name. Type-checked only; not compared to anything by the validator. |
 | `source_size` | no | integer >= 0 | If present and it disagrees with the loaded file size, warning `source-size-mismatch`. |
 | `source_sha256` | no | string | Must be 64 lowercase hex digits (else error `bad-field`). If present and it disagrees with the file hash, warning `source-sha256-mismatch`. |
-| `diagnostics` | no | array | Must be an array if present (else error `bad-diagnostics`). Contents are otherwise ignored by multihex. |
+| `diagnostics` | no | array | Must be an array if present (else error `bad-diagnostics`). Contents are otherwise ignored by the validator and by multihex viewers. |
 
 `schema` block:
 
 | Field | Required | Type | Notes |
 |-------|----------|------|-------|
-| `name` | yes | string | Must equal `"bintools.layout-overlay"`. A wrong or missing name is error `wrong-schema-name` / `missing-schema`; the rest is not trusted. |
-| `version` | yes | integer | Must equal `1`. Non-integer is error `missing-schema-version`; any other integer is error `unsupported-version`. |
+| `name` | yes | string | Must equal `"bintools.layout-overlay"`. A wrong or missing schema object is error `missing-schema`; a wrong name is error `wrong-schema-name`. File-aware checks are skipped unless this name matches. Structural checks may still continue so authors see additional shape errors. |
+| `version` | yes | integer | Must equal `1`. Non-integer or bool is error `missing-schema-version`; any other integer is error `unsupported-version`. |
 
 ### 10.3 Range fields
 
 | Field | Required | Type | Allowed / notes |
 |-------|----------|------|-----------------|
-| `offset` | yes | integer >= 0 | Else error `bad-offset`. |
-| `length` | yes | integer >= 0 | `0` permitted (zero-width marker). Else error `bad-length`. |
-| `label` | no | string | Human name. Viewer falls back to `path`, then a generic label. |
+| `offset` | yes | integer >= 0 | Else error `bad-offset`. JSON bools are rejected. |
+| `length` | yes | integer >= 0 | `0` permitted (zero-width marker). Else error `bad-length`. JSON bools are rejected. |
+| `label` | no | string | Human name. Not type-checked by the validator; viewers use it only when it is a string. Viewer display falls back to `path`, then a generic label. |
 | `path` | no | string | Dotted segments, each `ident` with optional `[n]`, for example `header.records[0].id`. Must match the grammar (else error `bad-path`) and be unique within `ranges` (else error `duplicate-path`). |
-| `kind` | no | string | Open vocabulary. Not validated. Advisory only. |
+| `kind` | no | string | Open vocabulary. Not type-checked by the validator; viewers copy it only when it is a string. Advisory only. |
 | `type` | no | string | Recognized set below; an unrecognized string is warning `unknown-type` (treated as opaque bytes); a non-string is error `bad-type`. |
 | `decoded` | no | string / number / bool | Else error `bad-decoded`. An integer above 2^53 - 1 is warning `unsafe-integer`. |
 | `raw_hex_preview` | no | string | Lowercase, even number of hex digits, else warning `malformed-hex`. Compared to file bytes when in bounds and lengths match. |
 | `expected_hex` | no | string | Same hex-form check as above. NOT compared to file bytes. |
 | `status` | no | string | One of `ok`, `warning`, `error`, `unchecked` (default `unchecked`). Other values are error `bad-status`. |
-| `diagnostics` | no | array | Range-level; not surfaced by multihex. |
+| `diagnostics` | no | any | Range-level producer diagnostics are not validated or surfaced by multihex. |
 
 Recognized `type` values: `u8`, `u16le`, `u16be`, `u32le`, `u32be`, `u64le`,
 `u64be`, `bytes`, `ascii`, `utf8`. The scalar subset (used by the zero-length
@@ -790,6 +813,11 @@ Zero-length rules: for `length: 0`, a non-empty `raw_hex_preview` or
 
 `raw_hex_preview` whose decoded byte length does not match `length` (for non-zero
 length) is warning `preview-length-mismatch`.
+
+Viewer range parsing keeps only ranges with valid non-negative integer `offset`
+and `length`. A malformed overlay with structural errors can therefore still show
+well-formed ranges in "view current overlay", but it is not applicable and does
+not highlight until all error-severity diagnostics are gone.
 
 ### 10.4 File-aware checks
 
@@ -818,123 +846,174 @@ An out-of-bounds range's bytes are not compared (the byte check is skipped).
 
 ### 10.6 Complete annotated example
 
-The following overlay describes a fictional 32-byte "SCR1" sensor-capture record:
-a 4-byte ASCII magic, a 2-byte big-endian version, a 1-byte channel count, one
-padding byte, an 8-byte little-endian nanosecond timestamp (decoded as a string to
-avoid precision loss), a 4-byte little-endian sample rate, a 12-byte payload, and
-a zero-width end-of-record marker. It uses mixed endianness and varied widths
-deliberately.
+The following commands create a 33-byte fictional QPX telemetry frame and a
+matching overlay. The layout deliberately uses unaligned offsets, mixed
+endianness, varied field widths, and a zero-length marker. The overlay validates
+cleanly both structurally and file-aware against the generated binary.
 
-This document validates clean (no diagnostics) both structurally and file-aware
-against the 32-byte file it describes. The `source_sha256` is the SHA-256 of that
-exact file.
+```bash
+python3 - <<'PY'
+from pathlib import Path
 
-```json
+Path("qpx-frame.bin").write_bytes(bytes.fromhex(
+    "a57e"                  # sync preamble
+    "04"                    # version
+    "0003"                  # record_count, u16be
+    "a0"                    # flags
+    "78563412"              # packet_id, u32le
+    "fa00"                  # temperature_tenths_c, u16le
+    "0000018f2bc3abcd"      # sequence, u64be
+    "09"                    # payload length
+    "dead0020417f805510"    # payload
+    "010203"                # check bytes
+))
+PY
+
+cat > qpx-frame.overlay.json <<'JSON'
 {
   "schema": { "name": "bintools.layout-overlay", "version": 1 },
-  "name": "sensor capture record (SCR1)",
-  "source_file": "capture.scr",
-  "source_size": 32,
-  "source_sha256": "c5fa308489cc3788996876fe8220401434047cbda3603a208e8be1ec18c003f3",
+  "name": "qpx telemetry frame example",
+  "source_file": "qpx-frame.bin",
+  "source_size": 33,
+  "source_sha256": "dc3bdef95c724adf922d25edc5344bd1b0e8fc517017b9722411f309aed54cce",
   "ranges": [
     {
-      "path": "header.magic",
+      "path": "sync.preamble",
       "offset": 0,
-      "length": 4,
+      "length": 2,
       "kind": "identifier",
-      "label": "format magic \"SCR1\"",
-      "type": "ascii",
-      "raw_hex_preview": "53435231",
-      "decoded": "SCR1",
-      "expected_hex": "53435231",
+      "label": "sync preamble",
+      "type": "bytes",
+      "raw_hex_preview": "a57e",
+      "expected_hex": "a57e",
       "status": "ok"
     },
     {
       "path": "header.version",
-      "offset": 4,
-      "length": 2,
+      "offset": 2,
+      "length": 1,
       "kind": "integer",
       "label": "format version",
-      "type": "u16be",
-      "raw_hex_preview": "0002",
-      "decoded": 2,
+      "type": "u8",
+      "raw_hex_preview": "04",
+      "decoded": 4,
       "status": "ok"
     },
     {
-      "path": "header.channels",
-      "offset": 6,
-      "length": 1,
+      "path": "header.record_count",
+      "offset": 3,
+      "length": 2,
       "kind": "count",
-      "label": "channel count",
-      "type": "u8",
-      "raw_hex_preview": "03",
+      "label": "record count",
+      "type": "u16be",
+      "raw_hex_preview": "0003",
       "decoded": 3,
       "status": "ok"
     },
     {
-      "path": "header.padding",
-      "offset": 7,
+      "path": "header.flags",
+      "offset": 5,
       "length": 1,
-      "kind": "padding",
-      "label": "reserved padding",
-      "type": "bytes",
-      "raw_hex_preview": "00",
-      "status": "unchecked"
+      "kind": "flags",
+      "label": "capture flags",
+      "type": "u8",
+      "raw_hex_preview": "a0",
+      "decoded": 160,
+      "status": "warning"
     },
     {
-      "path": "header.timestamp",
-      "offset": 8,
-      "length": 8,
-      "kind": "timestamp",
-      "label": "capture time (ns since epoch)",
-      "type": "u64le",
-      "raw_hex_preview": "00002a36fe9c9717",
-      "decoded": "1700000000000000000",
-      "status": "ok"
-    },
-    {
-      "path": "header.sample_rate",
-      "offset": 16,
+      "path": "header.packet_id",
+      "offset": 6,
       "length": 4,
       "kind": "integer",
-      "label": "sample rate (Hz)",
+      "label": "packet id",
       "type": "u32le",
-      "raw_hex_preview": "80bb0000",
-      "decoded": 48000,
+      "raw_hex_preview": "78563412",
+      "decoded": 305419896,
       "status": "ok"
     },
     {
-      "path": "payload",
+      "path": "header.temperature_tenths_c",
+      "offset": 10,
+      "length": 2,
+      "kind": "integer",
+      "label": "temperature tenths C",
+      "type": "u16le",
+      "raw_hex_preview": "fa00",
+      "decoded": 250,
+      "status": "ok"
+    },
+    {
+      "path": "header.sequence",
+      "offset": 12,
+      "length": 8,
+      "kind": "timestamp",
+      "label": "monotonic sequence",
+      "type": "u64be",
+      "raw_hex_preview": "0000018f2bc3abcd",
+      "decoded": "1714426194893",
+      "status": "ok"
+    },
+    {
+      "path": "payload.length",
       "offset": 20,
-      "length": 12,
+      "length": 1,
+      "kind": "length",
+      "label": "payload length",
+      "type": "u8",
+      "raw_hex_preview": "09",
+      "decoded": 9,
+      "status": "ok"
+    },
+    {
+      "path": "payload.bytes",
+      "offset": 21,
+      "length": 9,
       "kind": "payload",
-      "label": "sample payload",
+      "label": "payload bytes",
       "type": "bytes",
       "status": "unchecked"
     },
     {
-      "path": "eof",
-      "offset": 32,
+      "path": "trailer.check_bytes",
+      "offset": 30,
+      "length": 3,
+      "kind": "checksum",
+      "label": "check bytes",
+      "type": "bytes",
+      "raw_hex_preview": "010203",
+      "expected_hex": "010203",
+      "status": "ok"
+    },
+    {
+      "path": "eof.marker",
+      "offset": 33,
       "length": 0,
       "kind": "reserved",
-      "label": "end-of-record marker"
+      "label": "end marker",
+      "status": "unchecked"
     }
   ],
   "diagnostics": []
 }
+JSON
+
+python3 -m multihex.layout_overlay_v1 qpx-frame.overlay.json
+python3 -m multihex.layout_overlay_v1 qpx-frame.overlay.json -b qpx-frame.bin
+multihex --overlay qpx-frame.overlay.json --color always --length 33 qpx-frame.bin
 ```
 
-Validate it (structural, then file-aware against the binary it describes):
+Notes on the example:
 
-```bash
-python3 -m multihex.layout_overlay_v1 capture.overlay.json
-python3 -m multihex.layout_overlay_v1 capture.overlay.json -b capture.scr
-multihex --overlay capture.overlay.json --color always capture.scr
-```
-
-The `payload` range carries no `raw_hex_preview` (the file is authoritative and
-the range is large-ish), so it is `unchecked`. The `eof` zero-length marker is
-loaded and listed but highlights nothing.
+| Path | Offset/length | Purpose |
+|------|---------------|---------|
+| `sync.preamble` | `0+2` | Byte identifier, checked by `raw_hex_preview` and `expected_hex`. |
+| `header.record_count` | `3+2` | Big-endian scalar at an unaligned offset. |
+| `header.packet_id` | `6+4` | Little-endian scalar. |
+| `header.sequence` | `12+8` | Big-endian 64-bit scalar with `decoded` stored as a string. |
+| `header.flags` | `5+1` | `status: "warning"` is a range status, not a validator warning; it still validates and renders with the same overlay color. |
+| `payload.bytes` | `21+9` | No `raw_hex_preview`; the file remains authoritative. |
+| `eof.marker` | `33+0` | Loaded and listed, covers no bytes, highlights nothing. |
 
 ### 10.7 The overlay validator CLI
 
@@ -950,9 +1029,10 @@ python3 -m multihex.layout_overlay_v1 OVERLAY [-b BINARY] [--json]
 | `-b`, `--binary BINARY` | Optional binary for file-aware checks. |
 | `--json` | Emit the diagnostics as a JSON array. |
 
-Exit codes: `0` clean, `1` warnings only, `2` errors present, `3` the validator
-could not run (bad arguments or an unreadable file). Without `--json` it prints
-one `severity: code [path]: message` line per diagnostic, or `ok: no diagnostics`.
+Exit codes: `0` clean, `1` warnings only, `2` errors present or argparse usage
+error, `3` the validator could not read or parse the overlay or binary. Without
+`--json` it prints one `severity: code [path]: message` line per diagnostic, or
+`ok: no diagnostics`.
 
 ---
 
@@ -965,6 +1045,11 @@ one `severity: code [path]: message` line per diagnostic, or `ok: no diagnostics
 | `0` | Normal completion. Also: no search matches, "nothing to display", and a broken downstream pipe. |
 | `1` | Runtime error reported as `multihex: <message>` on stderr: `--width < 1`, `--limit-rows < 1`, `--search-max-results < 1`, `--offset < 0`, `--length < 0`, `--search-context < 0`, `--ref` out of range, a malformed `--around`, an unreadable input file, `-` given more than once, an invalid search query, or `--search-file` matching no file. |
 | `2` | argparse usage error (unknown flag, bad choice, missing positional, mutually-exclusive conflict). |
+
+In batch search mode, invalid `--ref` is ignored because the search path returns
+before reference validation. Invalid `--search-context` is only checked when a
+search mode is active. Invalid `--width`, `--limit-rows`, `--search-max-results`,
+`--offset`, `--length`, `--around`, inputs, and search queries are still errors.
 
 ### 11.2 multihex-tui
 
@@ -990,7 +1075,8 @@ and shows a warning dialog but does not exit.
 
 ### 11.4 Overlay validator CLI
 
-`0` clean, `1` warnings only, `2` errors present, `3` could not run. See
+`0` clean, `1` warnings only, `2` validator errors or argparse usage errors, `3`
+unreadable/unparseable overlay or unreadable binary. See
 [10.7](#107-the-overlay-validator-cli).
 
 ---
@@ -1008,6 +1094,9 @@ and shows a warning dialog but does not exit.
   (gutter). There is no alignment or resync.
 - Plain text output streams row by row. JSON is one complete object. Bound large
   JSON or text dumps with `--offset` / `--length` / `--limit-rows`.
+- TUI and GUI only-diff mode build a visible-row index by checking every row in
+  the current model. This is correct but O(row count) when toggled or when the
+  reference changes.
 
 Known limitations (tracked in `TODO.md`):
 
@@ -1021,6 +1110,9 @@ Known limitations (tracked in `TODO.md`):
 - A FIFO or other non-regular input with no writer can block indefinitely on open.
 - An all-matching search (for example searching `00` in an all-zero file)
   materializes every match; cap it with `--search-max-results`.
+- A full-file absent-pattern search can fault every searched page into memory.
+- The batch CLI handles broken downstream pipes cleanly, but other stdout/stderr
+  write failures (for example `/dev/full`) are tracked as a known robustness gap.
 
 ---
 
@@ -1114,7 +1206,7 @@ Severities are fixed by the validator. An `error` makes the overlay non-applicab
 | `bad-status` | error | `status` not in the closed vocabulary. |
 | `bad-type` | error | `type` present but not a string. |
 | `bad-decoded` | error | `decoded` not a string, number, or bool. |
-| `bad-field` | error | A top-level `name`/`source_file`/`source_size`/`source_sha256` has the wrong type, or `source_sha256` is not 64 lowercase hex digits. |
+| `bad-field` | error | A top-level `name`/`source_file`/`source_size`/`source_sha256` has the wrong type, `source_size` is negative or bool, or `source_sha256` is not 64 lowercase hex digits. |
 | `bad-diagnostics` | error | Top-level `diagnostics` present but not an array. |
 | `zero-length-bytes` | error | A zero-length range carries a non-empty `raw_hex_preview` or `expected_hex`. |
 | `unknown-type` | warning | `type` is a string outside the recognized set. |
@@ -1126,5 +1218,21 @@ Severities are fixed by the validator. An `error` makes the overlay non-applicab
 | `source-size-mismatch` | warning | `source_size` disagrees with the file size (file-aware). |
 | `source-sha256-mismatch` | warning | `source_sha256` disagrees with the file hash (file-aware). |
 | `raw-preview-mismatch` | warning | `raw_hex_preview` disagrees with file bytes (file-aware). |
-</content>
-</invoke>
+
+---
+
+## Appendix E: doc/code discrepancies found
+
+The source survey found these discrepancies in existing prose or docstrings. This
+manual documents the source behavior above; these items are listed for follow-up
+in the older documents.
+
+| Claim location | Source behavior |
+|----------------|-----------------|
+| `docs/layout-overlay-v1.md` says `source_file` mismatch can produce a diagnostic. | `validate_file_aware()` never compares `source_file`; it is type-checked only. |
+| `docs/layout-overlay-v1.md` describes producer diagnostics as structured objects. | The validator only checks top-level `diagnostics` is an array; it does not validate diagnostic entries and does not check range-level `diagnostics`. |
+| `docs/layout-overlay-v1.md` says wrong/missing `schema.name` means "do not parse" ranges. | The structural validator continues after schema errors to report additional shape diagnostics; file-aware checks are skipped and the overlay is not applicable. |
+| Overlay prose lists `label` and `kind` as string fields. | The validator does not diagnose non-string `label`/`kind`; viewers use them only when they are strings. |
+| Validator docstring/manual text described bad validator arguments as exit `3`. | `argparse` usage errors exit `2`; exit `3` is used for unreadable/unparseable overlay or unreadable binary. |
+| README/architecture prose summarizes TUI/GUI search styling as `missing > current match > other match > diff`. | GUI follows that ordering. TUI applies search first, then non-SAME marker styling; missing columns are styled as non-SAME marker columns rather than a separate missing tier. |
+| Existing docs did not spell out batch search mode ordering. | Search mode ignores `--ref` validation and normal dump/window/filter/JSON/overlay output, while still validating several startup flags before dispatch. |
