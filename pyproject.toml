@@ -6,9 +6,29 @@ build-backend = "hatchling.build"
 name = "multihex"
 version = "0.1.0"
 description = "Side-by-side fixed-offset hex comparison of multiple binary files"
+readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 dependencies = []
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/multihex"
+Repository = "https://github.com/your-org/multihex"
+Changelog = "https://github.com/your-org/multihex/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 tui = [

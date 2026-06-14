@@ -4,28 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-`multihex` is a Python tool for side-by-side fixed-offset hex comparison of multiple binary files. It has two frontends sharing one core:
+`multihex` is a Python tool for side-by-side fixed-offset hex comparison of multiple binary files. It is a `src/`-layout package (`src/multihex/`) with two console-script frontends sharing one core:
 
-- `multihex_core.py` — stdlib-only shared logic: file loading, `HexModel`/`Row` dataclasses, `Marker` enum, cell formatting
-- `multihex.py` — batch CLI frontend (text/JSON output, ANSI color)
-- `multihex-tui.py` — interactive Textual TUI frontend
+- `src/multihex/core.py` — stdlib-only shared logic: file loading, `HexModel`/`Row` dataclasses, `Marker` enum, cell formatting, exact search
+- `src/multihex/cli.py` — batch CLI frontend (text/JSON output, ANSI color); console script `multihex`
+- `src/multihex/tui.py` — interactive Textual TUI frontend; console script `multihex-tui`
+
+Install with `pip install -e '.[dev]'` to get both scripts plus the test/lint deps. The commands below use the installed scripts; `python3 -m multihex.cli` / `python3 -m multihex.tui` work too.
+
+Human-facing docs: `README.md` (users), `docs/ARCHITECTURE.md` and `docs/API.md` (developers), `CONTRIBUTING.md` (workflow). Keep them in sync with behavior changes.
+
+`TODO.md` tracks repo-wide tasks and follow-ups. Check it for outstanding work, and when you finish a tracked item move it to the Done section (or add new follow-ups you discover).
 
 ## Commands
 
 ```bash
 # Run the batch CLI
-python3 multihex.py FILE1 FILE2 FILE3
-python3 multihex.py --offset 0x40 --length 0x80 FILE1 FILE2
-python3 multihex.py --json FILE1 FILE2
+multihex FILE1 FILE2 FILE3
+multihex --offset 0x40 --length 0x80 FILE1 FILE2
+multihex --json FILE1 FILE2
 
 # Search (exact byte/text match; reports observed matches only)
-python3 multihex.py --search-text RIFF FILE1 FILE2
-python3 multihex.py --search-hex "52 49 46 46" FILE1 FILE2
-python3 multihex.py --search-text content-type --search-ignore-case FILE1
-python3 multihex.py --search-text RIFF --search-context 2 FILE1
+multihex --search-text RIFF FILE1 FILE2
+multihex --search-hex "52 49 46 46" FILE1 FILE2
+multihex --search-text content-type --search-ignore-case FILE1
+multihex --search-text RIFF --search-context 2 FILE1
 
 # Run the TUI (requires textual + rich)
-python3 multihex-tui.py FILE1 FILE2
+multihex-tui FILE1 FILE2
 # TUI search keys:  /  text search   x  hex search   n  next   N/p  previous
 
 # Run all tests
@@ -72,7 +78,7 @@ When updating `tests/goldens/*.out`, review the diff carefully and note the reas
 
 ## Key constraints for new code
 
-- Keep all comparison **and search** semantics in `multihex_core.py`; frontends render and navigate only.
-- `multihex_core.py` must remain stdlib-only (no third-party imports).
+- Keep all comparison **and search** semantics in `src/multihex/core.py`; frontends render and navigate only.
+- `src/multihex/core.py` must remain stdlib-only (no third-party imports).
 - Search is exact: report observed byte matches only. Never add wildcards, alignment, or inference to it.
 - The batch CLI and TUI color differently by design: CLI colors individual cells that differ from the reference; TUI colors whole columns by marker state. Do not unify them.

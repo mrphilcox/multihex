@@ -2,24 +2,28 @@
 
 ## Project Structure & Module Organization
 
-This repository contains a small Python hex comparison tool. `multihex_core.py`
-holds the shared comparison model, byte formatting, and file loading logic.
-`multihex.py` is the batch CLI frontend, and `multihex-tui.py` is the interactive
-Textual frontend. Tests live under `tests/`; generated binary fixtures are built
-from `tests/fixtures.py`, named cases are in `tests/golden_cases.py`, and
-expected CLI output is stored in `tests/goldens/*.out`.
+This repository contains a small Python hex comparison tool laid out as a `src/`
+package (`src/multihex/`). `src/multihex/core.py` holds the shared comparison
+model, byte formatting, file loading, and exact search logic. `src/multihex/cli.py`
+is the batch CLI frontend (console script `multihex`), and `src/multihex/tui.py`
+is the interactive Textual frontend (console script `multihex-tui`). Tests live
+under `tests/`; generated binary fixtures are built from `tests/fixtures.py`,
+named cases are in `tests/golden_cases.py`, and expected CLI output is stored in
+`tests/goldens/*.out`. Human-facing docs live in `README.md`, `docs/`, and
+`CONTRIBUTING.md`. `TODO.md` tracks repo-wide tasks and follow-ups — consult it
+for outstanding work and keep it updated as items are completed or discovered.
 
 ## Build, Test, and Development Commands
 
-- `python3 multihex.py FILE1 FILE2 --json`: run the batch CLI locally.
-- `python3 multihex.py --offset 0x40 --length 0x80 FILE1 FILE2`: inspect a
-  fixed byte range.
-- `python3 multihex.py --search-text RIFF FILE1 FILE2`: exact text search;
+- `pip install -e '.[dev]'`: install both console scripts plus test/lint deps.
+- `multihex FILE1 FILE2 --json`: run the batch CLI locally.
+- `multihex --offset 0x40 --length 0x80 FILE1 FILE2`: inspect a fixed byte range.
+- `multihex --search-text RIFF FILE1 FILE2`: exact text search;
   `--search-hex "52 49 46 46"` for bytes, `--search-ignore-case` (ASCII) and
   `--search-context N` are also available.
-- `python3 multihex-tui.py FILE1 FILE2`: run the TUI; requires `textual` and
-  `rich` to be installed in the active environment. Search keys: `/` text,
-  `x` hex, `n` next, `N`/`p` previous.
+- `multihex-tui FILE1 FILE2`: run the TUI; requires `textual` and `rich`
+  (the `[tui]` or `[dev]` extra). Search keys: `/` text, `x` hex, `n` next,
+  `N`/`p` previous.
 - `python3 -m pytest`: run all tests.
 - `python3 tests/capture_goldens.py`: regenerate golden output files after an
   intentional CLI rendering change.
@@ -30,8 +34,9 @@ Use Python 3 with standard-library dependencies in core and batch code unless a
 frontend already requires otherwise. Follow the existing style: four-space
 indentation, descriptive snake_case functions, PascalCase dataclasses/classes,
 and concise docstrings for public helpers or non-obvious behavior. Keep
-comparison semantics in `multihex_core.py`; frontends should render and navigate,
-not reimplement marker rules.
+comparison semantics in `src/multihex/core.py`; frontends should render and navigate,
+not reimplement marker rules. The core (`src/multihex/core.py`) and batch CLI
+must stay stdlib-only; only the TUI may depend on `textual`/`rich`.
 
 ## Testing Guidelines
 
