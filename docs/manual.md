@@ -642,39 +642,41 @@ check detects it is missing, the GUI prints an install hint (for example
 | `--names basename\|path` | choice | `basename` | File-name mode. |
 | `--only-diff` | flag | off | Start with only differing rows. |
 | `--no-ascii` | flag | on | Start with the gutter hidden. |
-| `--markers single\|none` | choice | `single` | Show the marker strip (`single`) or hide it (`none`). There is no `repeat` in the GUI. |
+| `--markers single\|repeat\|none` | choice | `single` | Initial marker text: `single`, `repeat` (repeat the strip under each segment in side-by-side; same as `single` when stacked), or `none`. Cycle at runtime with `m`. |
+| `--layout stacked\|side-by-side` | choice | `stacked` | Initial layout. `side-by-side` lays the files out horizontally; cycle at runtime with `v`. |
 | `--overlay PATH` | path | unset | Load an overlay at startup; needs files on the command line too, otherwise a stderr note is printed and the overlay is skipped. Never persisted. |
 
-The GUI has no `--color`, `--byte-classes`, or `--layout` flags; those are
-runtime-only (View menu / keys). Color starts on.
+The GUI has no `--color` or `--byte-classes` flags; those are runtime-only (View
+menu / keys). Color starts on.
 
 ### 8.2 Menus
 
 | Menu | Items |
 |------|-------|
 | File | Open (`Ctrl+O`), Quit (`Ctrl+Q`) |
-| View | ASCII gutter, Only differing rows, Show markers, Color highlighting, Byte-class highlighting, Options, File names (Basename / Full path) |
+| View | ASCII gutter, Only differing rows, Side-by-side layout, Markers (Single / Repeat / None), Color highlighting, Byte-class highlighting, Options, File names (Basename / Full path) |
 | Navigate | Jump to offset (`Ctrl+G`), Go to start (`Ctrl+Home`), Go to end (`Ctrl+End`) |
 | Search | Find text (`Ctrl+F`), Find hex, Next match, Previous match |
 | Compare | Choose reference (dialog), All agree (no reference), then one radio item per file |
 | Overlay | Load/change overlay, Clear overlay, View current overlay |
 | Help | Keyboard shortcuts |
 
-Menu items also display their single-key shortcuts (`a`, `d`, `m`, `c`, `t`, `o`,
-`x`, `n`, `N`, `r`, `l`, `L`, `h`) as hint text; the keys themselves are dispatched
-by the shared registry, not by Qt shortcuts.
+Menu items also display their single-key shortcuts (`a`, `d`, `v`, `m`, `c`, `t`,
+`o`, `x`, `n`, `N`, `r`, `l`, `L`, `h`) as hint text; the keys themselves are
+dispatched by the shared registry, not by Qt shortcuts.
 
 ### 8.3 Single-key shortcuts
 
-The GUI shares the TUI keymap through `shortcuts.py`, except the two TUI-only
-entries `v` (layout cycle) and `Left`/`Right` (horizontal scroll), which pair with
-the side-by-side layout the GUI does not implement. The shared keys behave as in
-[7.2](#72-keybindings) with these GUI specifics:
+The GUI shares the full TUI keymap through `shortcuts.py` (no frontend-exclusive
+entries remain). The shared keys behave as in [7.2](#72-keybindings) with these GUI
+specifics:
 
-- `m` toggles the marker strip on or off (there is no `repeat` mode).
+- `v` cycles the layout (stacked / side-by-side); `m` cycles the marker mode
+  (single / repeat / none); `Left` / `Right` scroll a wide row horizontally by 8
+  columns (a no-op when the row fits).
 - `l` / `L` manage the overlay via dialogs; `o` opens an apply-immediately options
-  dialog (display toggles, file-name mode, and bytes-per-row) with no persistence
-  (the GUI has no config file).
+  dialog (display toggles, layout, markers, file-name mode, and bytes-per-row) with
+  no persistence (the GUI has no config file).
 - `h` / `?` shows the keyboard-shortcut dialog (a scrollable text report).
 
 Named keys (Down, PageUp, Home, End) are dispatched by key code; printable keys by
@@ -684,14 +686,17 @@ shortcuts do not fire.
 ### 8.4 Mouse and scrolling
 
 Vertical scrollbar, plus the mouse wheel (about three rows per notch; trackpad
-pixel deltas always move at least one row). The horizontal scrollbar is disabled.
+pixel deltas always move at least one row). The horizontal scrollbar appears as
+needed: a row wider than the viewport (a large `--width`, or a `side-by-side` row)
+scrolls instead of clipping, and `Left` / `Right` move it 8 columns per press.
 
 ### 8.5 Rendering and status bar
 
 The view paints only the visible blocks (it never renders the whole range into a
-buffer), so it stays light on large files. Block layout mirrors the CLI/TUI: the
-offset gutter on the first file line, one `name  hex  |ascii|` line per file, then
-the optional marker strip.
+buffer), so it stays light on large files. Block layout mirrors the CLI/TUI: in
+`stacked`, the offset gutter on the first file line, one `name  hex  |ascii|` line
+per file, then the optional marker strip; in `side-by-side`, all files joined
+horizontally across one row (the painter's columns match `core.render_row_text`).
 
 Color scheme (whole-column, like the TUI): the offset gutter is blue; a column
 whose marker is not SAME is red; missing cells and the `==`/`--` markers are dim
@@ -704,9 +709,10 @@ the widget palette, so the view follows the system theme. The hex view uses the
 platform's fixed-pitch font; UI chrome stays in the proportional system font.
 
 The status bar is segmented: visible offset range and row position, reference
-mode, the `ascii diff markers color classes` toggles, overlay state (name, range
-count, warning/error tint — persistent while an overlay is loaded), and per-file
-sizes. An active search keeps its own persistent segment (query, match position,
+mode, the `ascii diff markers color classes layout` toggles, overlay state (name,
+range count, warning/error tint — persistent while an overlay is loaded), and
+per-file sizes. An active search keeps its own persistent segment (query, match
+position,
 file and offset of the current match, or `no matches` / the error); transient
 notices (overlay summary toasts) appear briefly in the message area. The window
 title shows the loaded file names.
@@ -1146,8 +1152,8 @@ that frontend.
 | `--names basename\|path` | yes | yes | yes | `basename` | file-name mode |
 | `--color auto\|always\|never` | yes | yes | | `auto` | color (GUI is runtime-only) |
 | `--byte-classes` | yes | yes | | off | byte-class tint (GUI runtime-only) |
-| `--layout stacked\|side-by-side` | yes | yes | | `stacked` | layout (GUI runtime-only, no side-by-side) |
-| `--markers ...` | `single\|repeat\|none` | `single\|repeat\|none` | `single\|none` | `single` | marker display |
+| `--layout stacked\|side-by-side` | yes | yes | yes | `stacked` | layout (cycle with `v`) |
+| `--markers ...` | `single\|repeat\|none` | `single\|repeat\|none` | `single\|repeat\|none` | `single` | marker display |
 | `--overlay PATH` | yes | yes | yes | unset | layout overlay |
 | `--json` | yes | | | off | JSON output (CLI only) |
 | `--search-text TEXT` | yes | | | | batch search (interactive in T/G) |

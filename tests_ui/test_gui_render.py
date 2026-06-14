@@ -118,11 +118,35 @@ def test_toggled_view_render_png(app, tmp_path):
     app.processEvents()
 
     w.act_ascii.setChecked(False)
-    w.act_markers.setChecked(False)
+    none_marker = next(a for a in w.markers_group.actions() if a.data() == "none")
+    none_marker.trigger()
     app.processEvents()
 
     image = _grab_image(w, "gui_toggled.png")
     assert _is_painted(image)
+    w.close()
+
+
+def test_side_by_side_render_png(app, tmp_path):
+    """Side-by-side layout paints the per-file segments across one row."""
+    a_data, b_data = fx.diff_pair()
+    a = fx.write(tmp_path, "a.bin", a_data)
+    b = fx.write(tmp_path, "b.bin", b_data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.view_widget.set_layout("side-by-side")
+    w.resize(1100, 420)
+    w.show()
+    app.processEvents()
+
+    image = _grab_image(w, "gui_sidebyside.png")
+    assert _is_painted(image)
+
+    # "repeat" adds the per-segment marker line; it still paints cleanly.
+    w.view_widget.set_markers_mode("repeat")
+    app.processEvents()
+    repeat_image = _grab_image(w, "gui_sidebyside_repeat.png")
+    assert _is_painted(repeat_image)
     w.close()
 
 

@@ -95,10 +95,10 @@ def test_block_geometry_attaches_offset_to_first_row(app, tmp_path):
     w.load_paths([a, b])
     vw = w.view_widget
 
-    assert vw.markers_on is True
+    assert vw.markers_mode == "single"
     assert vw._lines_per_block() == 4
     # Hiding the marker strip drops one more line.
-    vw.set_markers_on(False)
+    vw.set_markers_mode("none")
     assert vw._lines_per_block() == 3
     # The block paints without error after the geometry change.
     w.resize(900, 400)
@@ -127,8 +127,9 @@ def test_menu_toggles_and_reference(app, tmp_path):
     assert vw.view.only_diff is True
     assert vw.view.visible_count == 1
 
-    w.act_markers.setChecked(False)
-    assert vw.markers_on is False
+    none_marker = next(a for a in w.markers_group.actions() if a.data() == "none")
+    none_marker.trigger()
+    assert vw.markers_mode == "none"
 
     w.act_ascii.setChecked(False)
     assert vw.ascii_on is False
@@ -264,11 +265,17 @@ def test_trigger_action_toggles_flip_state_and_menu(app, tmp_path):
     assert vw.ascii_on is False
     assert w.act_ascii.isChecked() is False
 
-    # cycle_markers is the GUI's strip on/off (no side-by-side "repeat" mode).
-    assert vw.markers_on is True
+    # cycle_markers rotates single -> repeat -> none (TUI parity), keeping the
+    # Markers radio group in sync.
+    assert vw.markers_mode == "single"
     w.trigger_action("cycle_markers")
-    assert vw.markers_on is False
-    assert w.act_markers.isChecked() is False
+    assert vw.markers_mode == "repeat"
+    w.trigger_action("cycle_markers")
+    assert vw.markers_mode == "none"
+    w.trigger_action("cycle_markers")
+    assert vw.markers_mode == "single"
+    checked = next(a for a in w.markers_group.actions() if a.isChecked())
+    assert checked.data() == "single"
     w.close()
 
 
@@ -428,10 +435,10 @@ def test_markers_toggle_reflected_in_status(app, tmp_path):
     w.show()
     app.processEvents()
 
-    assert "markers:on" in w.status_toggles.text()
+    assert "markers:single" in w.status_toggles.text()
     w.trigger_action("cycle_markers")
-    assert w.view_widget.markers_on is False
-    assert "markers:off" in w.status_toggles.text()
+    assert w.view_widget.markers_mode == "repeat"
+    assert "markers:repeat" in w.status_toggles.text()
     w.close()
 
 
@@ -606,7 +613,8 @@ def test_menu_items_show_registry_key_hints(app):
     w = gui.MainWindow()
     assert w.act_ascii.text().endswith("\ta")
     assert w.act_diff.text().endswith("\td")
-    assert w.act_markers.text().endswith("\tm")
+    assert w.act_layout.text().endswith("\tv")
+    assert w.markers_menu.menuAction().text().endswith("\tm")
     assert w.act_color.text().endswith("\tc")
     assert w.act_byte_classes.text().endswith("\tt")
     # The Compare menu's picker carries the 'r' hint.

@@ -125,19 +125,17 @@ _(nothing in flight — pick the next item from Near-term)_
       change there; decide whether it is a backward-compatible v1 extension or a
       v2 bump.
 - [ ] **GUI Phase 2 — usability (remaining).** Single-key shortcuts and TUI
-      parity now ship (see Done: the shared shortcut registry), and the visual
+      parity now ship (see Done: the shared shortcut registry), the visual
       polish pass added system-theme-following light/dark accents, the platform
       fixed-pitch font, a segmented status bar with persistent search/overlay
       segments, scrollable report dialogs, menu key hints, and a runtime
-      bytes-per-row control in Options (see Done). Still open:
-      horizontal scrolling / wide-row overflow (the view uses `ScrollBarAlwaysOff`,
-      so a wide `--width` is silently clipped — see the `TODO(GUI usability)` in
-      `src/multihex/gui.py`; this is also why `v`/`←`/`→` stay TUI-only); revisit
-      that `MainWindow.load_paths` re-applies the startup `--ref` on every File ▸
-      Open rather than the last Compare-menu choice; remember window size/position
-      and recent files; a toolbar; user-configurable fonts and an explicit theme
-      picker (beyond following the system palette); `--color`/`--byte-classes`
-      startup flags for TUI flag parity.
+      bytes-per-row control in Options, and the side-by-side layout with
+      tri-state markers and horizontal scrolling now ship too (see Done). Still
+      open: revisit that `MainWindow.load_paths` re-applies the startup `--ref`
+      on every File ▸ Open rather than the last Compare-menu choice; remember
+      window size/position and recent files; a toolbar; user-configurable fonts
+      and an explicit theme picker (beyond following the system palette);
+      `--color`/`--byte-classes` startup flags for TUI flag parity.
 
 - [ ] **Performance Testing**
   - Current coverage is intentionally minimal and serves primarily as a harness smoke test.
@@ -202,6 +200,28 @@ Guidelines:
 
 ## Done or superseded
 
+- [x] **GUI side-by-side layout (+ tri-state markers, horizontal scrolling).**
+      Brought the PySide6 GUI to layout parity with the CLI/TUI. The custom
+      painter (`HexCompareView._paint_block`) gained a `side-by-side` branch that
+      mirrors `core.render_row_text`'s column geometry exactly (cross-checked in
+      `tests/test_gui_layout.py`), reusing a single per-file segment painter for
+      both layouts; `v` cycles the layout from the shared registry (no longer
+      `gui=False`). Markers became tri-state (single / repeat / none) like the
+      TUI — a Markers radio submenu, `m` cycle, an Options combo, a widened
+      `--markers`, and a new `--layout` startup flag. Horizontal scrolling is now
+      "any overflow": the horizontal scrollbar appears as needed and `←`/`→`
+      (also un-gated from the registry) scroll a row wider than the viewport in
+      either layout, so a large `--width` in `stacked` scrolls instead of
+      clipping (closes the old `TODO(GUI usability)` / `ScrollBarAlwaysOff`). The
+      status bar gained `layout` and the marker mode. Display-only throughout:
+      no change to offsets, bytes, markers, `--only-diff`, `--ref`, search, or
+      JSON, and `core.py` is untouched. Tests: new `tests/test_gui_layout.py`
+      (cycling, display-only invariants, geometry-vs-core, highlight-priority
+      independence, horizontal scroll), updated `test_shortcuts.py` /
+      `test_gui_widget.py` / `test_gui_viewstate.py`, and a `tests_ui/`
+      side-by-side render smoke; the help-popup SVG snapshot was regenerated for
+      the now layout-agnostic `scroll_horizontal` help text. A companion commit
+      extends the TUI's `←`/`→` scroll to engage in stacked overflow too.
 - [x] **GUI visual polish pass (modern native Qt).** Reworked the PySide6 GUI's
       presentation without touching comparison/search semantics or the core:
       platform fixed-pitch font sized off the UI font (monospace only for data

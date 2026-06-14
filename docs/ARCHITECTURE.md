@@ -110,11 +110,14 @@ concern*, not a core one: it is a plain string (no enum, no core type) that each
 renderer branches on. `stacked` (the default) prints one file per line;
 `side-by-side` joins the per-file segments horizontally. `render_row_text()` takes
 a `layout` keyword (so the CLI's search-context rows honor it); the CLI and TUI
-renderers each apply the same join. The GUI currently renders stacked rows only.
+renderers each apply the same join, and the GUI painter mirrors the same column
+geometry (cross-checked against `render_row_text()` in `tests/test_gui_layout.py`).
 Layout is purely visual — it never touches offsets, bytes, markers, filtering,
-search, or JSON. The TUI additionally cycles layout live (`v`) and adds its own
-horizontal scroll (`←`/`→`, a character offset cropped off each rendered line)
-because side-by-side rows routinely exceed the viewport width.
+search, or JSON. The TUI and GUI both cycle layout live (`v`) and add horizontal
+scrolling for rows that exceed the viewport: the TUI crops a character offset off
+each rendered line (`←`/`→`), the GUI translates its painter by a pixel offset
+backed by a real horizontal scrollbar (so a wide `--width` in `stacked` scrolls
+too, instead of clipping).
 
 **Marker display** (`--markers single|repeat|none`) is a *separate* frontend
 rendering concern from layout, and likewise a plain string in the CLI/TUI
@@ -122,12 +125,12 @@ renderers (`render_row_text()` also takes a `markers` keyword for search-context
 rows). It controls only the marker *text*: `single` (default) draws one strip per
 block — in `side-by-side` as its own left prefix column rather than attached to
 the first file; `repeat` repeats the strip under each segment in `side-by-side`
-(and is identical to `single` when `stacked`); `none` hides the strip. The GUI
-exposes the same concept as show/hide marker strip because it has no side-by-side
-layout. Marker *computation* stays the single source of truth in
-`HexModel._markers()` and is untouched — this mode only hides/positions rendered
-text, so it never affects `--only-diff`, diff/missing highlighting, search, or
-JSON. The TUI cycles it live (`m`).
+(and is identical to `single` when `stacked`); `none` hides the strip. All three
+frontends expose the same three modes (the GUI as a Markers radio submenu). Marker
+*computation* stays the single source of truth in `HexModel._markers()` and is
+untouched — this mode only hides/positions rendered text, so it never affects
+`--only-diff`, diff/missing highlighting, search, or JSON. The TUI and GUI cycle it
+live (`m`).
 
 The core also owns **byte classification** for the optional `--byte-classes`
 highlighting: `classify_byte(value) -> ByteClass` maps a byte (or `None`) to a
@@ -207,7 +210,7 @@ The TUI and GUI draw their keymap and on-screen help from one
 imports), so they cannot drift. `SHORTCUTS` is an ordered table of `Shortcut`
 records keyed by a stable `action_id`; each carries the help `display_keys`/
 `help_text`, the Textual `tui_keys`, abstract `gui_keys`, and `tui`/`gui`
-applicability with a `note` for any exclusion.
+applicability flags (with a `note` field for documenting any future exclusion).
 
 - The TUI help popup is `tui_help_text()`; the GUI help dialog is `gui_help_text()`.
 - The GUI resolves `gui_keys` itself: `"t:<char>"` matches `QKeyEvent.text()`
@@ -215,8 +218,11 @@ applicability with a `note` for any exclusion.
   `Qt.Key.Key_<Name>` (named keys whose `.text()` is empty). `gui_text_map()`/
   `gui_key_names()` build the lookups (returning plain strings, so the registry
   stays Qt-free).
-- `cycle_layout` (`v`) and `scroll_horizontal` (`←`/`→`) are `gui=False`: they pair
-  with the side-by-side layout the GUI does not implement (a documented `note`).
+- Every action now applies to both frontends (`tui=True, gui=True`): the GUI gained
+  the side-by-side layout (`v`) and horizontal scroll (`←`/`→`) the TUI already had,
+  so no entry is frontend-exclusive. Left/Right map to one `scroll_horizontal`
+  action (like the TUI's two bindings for one entry); the GUI's `keyPressEvent`
+  records the direction before dispatch.
 - `tests/test_shortcuts.py` enforces the contract: the TUI `BINDINGS` key-set
   equals the registry, every binding has an `action_*`, and every GUI-applicable
   action has a `_action_slots` entry. **Change shortcuts in the registry, never by

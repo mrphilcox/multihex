@@ -230,31 +230,35 @@ def test_invalidate_forces_recompute():
 def test_format_status_all_agree():
     s = format_status(
         offset_start=0, offset_end=0x0F, row_pos=1, row_count=3,
-        ref_label="all-agree", ascii_on=True, only_diff=False, markers_on=True,
+        ref_label="all-agree", ascii_on=True, only_diff=False, markers="single",
         sizes=[("a", 48), ("b", 48)],
     )
     assert s == (
         "0x00000000-0x0000000f | row 1/3 | ref=all-agree | "
-        "ascii:on diff:off markers:on color:on classes:off | sizes: a=48  b=48"
+        "ascii:on diff:off markers:single color:on classes:off layout:stacked"
+        " | sizes: a=48  b=48"
     )
 
 
 def test_format_status_ref_and_toggles_off():
     s = format_status(
         offset_start=0x10, offset_end=0x1F, row_pos=2, row_count=4,
-        ref_label="b.bin", ascii_on=False, only_diff=True, markers_on=False,
-        color_on=False, byte_classes_on=True,
+        ref_label="b.bin", ascii_on=False, only_diff=True, markers="none",
+        color_on=False, byte_classes_on=True, layout="side-by-side",
         sizes=[("a.bin", 70), ("b.bin", 70)],
     )
     assert s.startswith("0x00000010-0x0000001f | row 2/4 | ref=b.bin | ")
-    assert "ascii:off diff:on markers:off color:off classes:on" in s
+    assert (
+        "ascii:off diff:on markers:none color:off classes:on layout:side-by-side"
+        in s
+    )
     assert s.endswith("sizes: a.bin=70  b.bin=70")
 
 
 def test_format_status_no_rows():
     s = format_status(
         offset_start=0, offset_end=0, row_pos=0, row_count=0,
-        ref_label="all-agree", ascii_on=True, only_diff=True, markers_on=True,
+        ref_label="all-agree", ascii_on=True, only_diff=True, markers="single",
         sizes=[],
     )
     assert s.startswith("no rows | ref=all-agree | ")
@@ -265,14 +269,14 @@ def test_format_status_parts_segments():
     # exactly the " | " join of these.
     kwargs = dict(
         offset_start=0, offset_end=0x0F, row_pos=1, row_count=3,
-        ref_label="all-agree", ascii_on=True, only_diff=False, markers_on=True,
-        sizes=[("a", 48)],
+        ref_label="all-agree", ascii_on=True, only_diff=False, markers="repeat",
+        layout="side-by-side", sizes=[("a", 48)],
     )
     parts = format_status_parts(**kwargs)
     assert parts == [
         "0x00000000-0x0000000f | row 1/3",
         "ref=all-agree",
-        "ascii:on diff:off markers:on color:on classes:off",
+        "ascii:on diff:off markers:repeat color:on classes:off layout:side-by-side",
         "sizes: a=48",
     ]
     assert format_status(**kwargs) == " | ".join(parts)

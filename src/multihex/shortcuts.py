@@ -50,8 +50,9 @@ class Shortcut:
 
 
 # Ordered exactly as the TUI help popup reads, with Home/End added after the
-# paging keys. ``v`` (layout cycle) and ``left/right`` (horizontal scroll) are
-# TUI-only: they pair with the side-by-side layout the GUI does not implement.
+# paging keys. Every action applies to both interactive frontends: the GUI gained
+# the side-by-side layout (``v``) and horizontal scrolling (``left``/``right``)
+# the TUI already had, so no entry is frontend-exclusive anymore.
 SHORTCUTS: tuple = (
     Shortcut("quit", "q", "quit", ("q",), ("t:q",)),
     Shortcut("next_row", "j / down", "next row", ("j", "down"), ("t:j", "k:Down")),
@@ -71,12 +72,11 @@ SHORTCUTS: tuple = (
     ),
     Shortcut(
         "cycle_layout", "v", "cycle layout (stacked / side-by-side)",
-        ("v",), (), tui=True, gui=False,
-        note="TUI-only: the GUI does not implement side-by-side layout (Phase 2).",
+        ("v",), ("t:v",),
     ),
     Shortcut(
         "cycle_markers", "m", "cycle markers (single / repeat / none)",
-        ("m",), ("t:m",), gui_help="toggle marker strip",
+        ("m",), ("t:m",),
     ),
     Shortcut(
         "load_overlay", "l", "load/change layout overlay (blank path clears)",
@@ -87,9 +87,8 @@ SHORTCUTS: tuple = (
         ("L",), ("t:L",), gui_help="view current layout overlay",
     ),
     Shortcut(
-        "scroll_horizontal", "left / right", "scroll horizontally (side-by-side)",
-        ("left", "right"), (), tui=True, gui=False,
-        note="TUI-only: horizontal scroll pairs with side-by-side layout (Phase 2).",
+        "scroll_horizontal", "left / right", "scroll horizontally",
+        ("left", "right"), ("k:Left", "k:Right"),
     ),
     Shortcut("open_settings", "o", "open settings / options pane", ("o",), ("t:o",)),
     Shortcut(
@@ -138,9 +137,9 @@ def tui_help_text(
 def gui_help_text(title: str = "multihex-gui - keys") -> str:
     """Render the GUI help dialog body from the registry.
 
-    Uses each shortcut's ``gui_help`` override where set (e.g. GUI overlay/marker
-    wording), and omits the TUI-only entries. No "any key to close" footer -- the
-    GUI help is a dismissible dialog.
+    Uses each shortcut's ``gui_help`` override where set (e.g. GUI overlay
+    wording), and includes only ``gui``-applicable entries. No "any key to close"
+    footer -- the GUI help is a dismissible dialog.
     """
     body = _help_body(gui_shortcuts(), lambda s: s.gui_help or s.help_text)
     return f"{title}\n\n{body}"

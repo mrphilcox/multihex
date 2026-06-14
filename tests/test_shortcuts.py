@@ -41,20 +41,24 @@ def test_tui_help_format_and_lists_home_end():
         assert f"  {s.display_keys:<13} {s.help_text}" in lines
 
 
-def test_gui_help_excludes_tui_only_and_uses_overrides():
+def test_gui_help_includes_layout_and_scroll():
     text = gui_help_text()
     assert text.startswith("multihex-gui - keys")
-    assert "cycle layout" not in text          # v (cycle_layout) is TUI-only
-    assert "scroll horizontally" not in text   # left/right is TUI-only
-    assert "toggle marker strip" in text       # gui_help override for cycle_markers
+    # The GUI now has the side-by-side layout and horizontal scroll the TUI had,
+    # so both entries appear in its help (no longer TUI-only).
+    assert "cycle layout" in text              # v (cycle_layout)
+    assert "scroll horizontally" in text       # left/right (scroll_horizontal)
+    # The marker-strip override is gone now that the GUI matches the TUI's
+    # single/repeat/none cycle.
+    assert "cycle markers (single / repeat / none)" in text
+    assert "toggle marker strip" not in text
 
 
-def test_tui_only_entries_are_documented():
-    by_id = {s.action_id: s for s in SHORTCUTS}
-    for aid in ("cycle_layout", "scroll_horizontal"):
-        s = by_id[aid]
-        assert s.tui is True and s.gui is False
-        assert s.note, f"{aid} must document why it is TUI-only"
+def test_no_frontend_exclusive_entries_remain():
+    # Every action now applies to both frontends; none carries an exclusion note.
+    for s in SHORTCUTS:
+        assert s.tui is True and s.gui is True
+        assert not s.note, f"{s.action_id} should not be frontend-exclusive"
 
 
 def test_gui_key_maps_are_collision_free_and_cover_every_gui_action():

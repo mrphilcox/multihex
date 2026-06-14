@@ -184,27 +184,30 @@ def format_status_parts(
     ref_label: str,
     ascii_on: bool,
     only_diff: bool,
-    markers_on: bool,
+    markers: str,
     color_on: bool = True,
     byte_classes_on: bool = False,
+    layout: str = "stacked",
     sizes: Sequence[Tuple[str, int]],
 ) -> List[str]:
     """Build the status-bar segments from primitives (pure; testable without Qt).
 
     Mirrors the TUI status line content: visible offset range, row
-    position/count, reference mode, the display toggles, and per-file sizes.
-    One string per status-bar segment, in display order.
+    position/count, reference mode, the display toggles (including the layout and
+    the marker mode), and per-file sizes. One string per status-bar segment, in
+    display order.
     """
     if row_count <= 0:
         where = "no rows"
     else:
         where = f"0x{offset_start:08x}-0x{offset_end:08x} | row {row_pos}/{row_count}"
-    toggles = "ascii:%s diff:%s markers:%s color:%s classes:%s" % (
+    toggles = "ascii:%s diff:%s markers:%s color:%s classes:%s layout:%s" % (
         "on" if ascii_on else "off",
         "on" if only_diff else "off",
-        "on" if markers_on else "off",
+        markers,
         "on" if color_on else "off",
         "on" if byte_classes_on else "off",
+        layout,
     )
     sizes_s = "sizes: " + "  ".join(f"{name}={size}" for name, size in sizes)
     return [where, f"ref={ref_label}", toggles, sizes_s]
@@ -219,9 +222,10 @@ def format_status(
     ref_label: str,
     ascii_on: bool,
     only_diff: bool,
-    markers_on: bool,
+    markers: str,
     color_on: bool = True,
     byte_classes_on: bool = False,
+    layout: str = "stacked",
     sizes: Sequence[Tuple[str, int]],
 ) -> str:
     """The status segments joined into one line (see format_status_parts)."""
@@ -234,9 +238,10 @@ def format_status(
             ref_label=ref_label,
             ascii_on=ascii_on,
             only_diff=only_diff,
-            markers_on=markers_on,
+            markers=markers,
             color_on=color_on,
             byte_classes_on=byte_classes_on,
+            layout=layout,
             sizes=sizes,
         )
     )
@@ -311,8 +316,17 @@ def build_parser() -> argparse.ArgumentParser:
                    help="start with only differing rows shown")
     p.add_argument("--no-ascii", action="store_true", dest="no_ascii",
                    help="start with the ASCII gutter hidden")
-    p.add_argument("--markers", choices=["single", "none"], default="single",
-                   help="show the marker strip (default single) or hide it (none)")
+    p.add_argument("--markers", choices=["single", "repeat", "none"],
+                   default="single",
+                   help="initial marker text display: single (default), repeat "
+                        "(repeat the strip under each segment in side-by-side; "
+                        "same as single when stacked), or none (hidden). Cycle "
+                        "with 'm'. Display-only.")
+    p.add_argument("--layout", choices=["stacked", "side-by-side"],
+                   default="stacked",
+                   help="initial layout: stacked (default) or side-by-side "
+                        "(cycle with 'v'; scroll horizontally with left/right). "
+                        "Display-only.")
     p.add_argument("--overlay", metavar="PATH", default=None,
                    help="load a bintools.layout-overlay v1 JSON file (a read-only "
                         "annotation layer) and highlight its byte ranges. Manage "
@@ -544,7 +558,14 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.name_mode = "basename"
             self.name_width = 0
             self.ascii_on = True
-            self.markers_on = True
+            # Marker-text display mode: "single" / "repeat" / "none" (parity with
+            # the TUI/CLI). Display-only; never affects marker computation,
+            # only-diff, or search. "repeat" only differs from "single" in
+            # side-by-side layout (see _paint_block).
+            self.markers_mode = "single"
+            # Display layout: "stacked" (one file per line) or "side-by-side"
+            # (the per-file segments joined horizontally). Visual-only.
+            self.layout_mode = "stacked"
             self.color_on = True
             self.byte_classes_on = False
             # Loaded layout overlay (None = none). Highlighting is gated on the
@@ -560,10 +581,12 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self._char_w = 8
             self._line_h = 16
             self._ascent = 12
-            # TODO(GUI usability): horizontal scrolling is not implemented, so a
-            # wide --width (rows wider than the viewport) is silently clipped on
-            # the right. Add a horizontal scrollbar / overflow handling later.
-            self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            # Horizontal scroll offset in *pixels* (the horizontal scrollbar's
+            # value; the painter is translated left by it). Engaged whenever the
+            # rendered content is wider than the viewport, in either layout -- so
+            # a wide --width (stacked) or a side-by-side row no longer clips.
+            self.h_offset_px = 0
+            self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
             self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             self.viewport().setAutoFillBackground(True)
             self._init_font()
@@ -584,18 +607,63 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.name_mode = name_mode
             self.name_width = name_column_width(files, name_mode) if files else 0
             self.view = ViewState(model, only_diff=only_diff)
+            self.h_offset_px = 0  # a freshly loaded set starts un-scrolled
             self._sync_scrollbar()
             self.viewport().update()
 
         # -- geometry ------------------------------------------------------- #
         def _lines_per_block(self) -> int:
-            # one line per file (the offset rides the first as a left gutter)
-            # + optional marker line + blank gap
+            # Mirrors tui.HexView._lines_per_block so the page math matches the
+            # other interactive frontend. The offset rides the first content line
+            # as a left gutter; a trailing blank line separates blocks.
             nfiles = len(self.files) if self.files else 1
-            return nfiles + (1 if self.markers_on else 0) + 1
+            if self.layout_mode == "side-by-side":
+                # All files share one content line; "repeat" adds a marker line
+                # ("single" draws its strip inline on the content line).
+                content = 1
+                marker = 1 if self.markers_mode == "repeat" else 0
+            else:
+                content = nfiles
+                marker = 0 if self.markers_mode == "none" else 1
+            return content + marker + 1
 
         def _block_px(self) -> int:
             return self._lines_per_block() * self._line_h
+
+        # -- horizontal geometry (character units; mirrors core.render_row_text) - #
+        def _seg_width_chars(self) -> int:
+            """Width in characters of one file's segment (name + hex + ASCII)."""
+            width = self.view.model.width if self.view is not None else 16
+            chars = self.name_width + 2 + (3 * width - 1)
+            if self.ascii_on:
+                chars += width + 4  # "  |" + ascii + "|"
+            return chars
+
+        def _content_width_chars(self) -> int:
+            """Width in characters of the widest line a block paints.
+
+            Deterministic from the layout, width, name width, ASCII/marker state,
+            and file count (the model uses length=None, so every row is full
+            width). Drives the horizontal scrollbar range.
+            """
+            if self.view is None or not self.files:
+                return 0
+            width = self.view.model.width
+            nfiles = len(self.files)
+            seg = self._seg_width_chars()
+            if self.layout_mode == "side-by-side":
+                base = OFFSET_LABEL_WIDTH + 2  # gutter + leading gap
+                if self.markers_mode == "single":
+                    base += (3 * width - 1) + 2  # inline marker strip + gap
+                return base + nfiles * seg + 3 * (nfiles - 1)
+            # Stacked: a file line is the widest (the marker line is shorter).
+            return OFFSET_LABEL_WIDTH + 2 + seg
+
+        def _content_width_px(self) -> int:
+            chars = self._content_width_chars()
+            if chars <= 0:
+                return 0
+            return chars * self._char_w + 2 * self._MARGIN
 
         def _page_rows(self) -> int:
             block = self._block_px()
@@ -604,6 +672,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
         # -- scrollbar wiring ----------------------------------------------- #
         def _sync_scrollbar(self) -> None:
+            self._sync_h_scrollbar()
             sb = self.verticalScrollBar()
             if self.view is None:
                 sb.setRange(0, 0)
@@ -616,10 +685,29 @@ if _PYSIDE6_IMPORT_ERROR is None:
             sb.setSingleStep(1)
             sb.setValue(self.view.top)
 
+        def _sync_h_scrollbar(self) -> None:
+            """Configure the horizontal bar from the content vs viewport width.
+
+            Range is the pixel overflow; a press of the bar moves one character,
+            a page moves a viewport. ``h_offset_px`` is re-clamped so a layout or
+            width change that shrinks the content cannot leave it scrolled past
+            the end.
+            """
+            sb = self.horizontalScrollBar()
+            viewport_w = self.viewport().width()
+            overflow = max(0, self._content_width_px() - viewport_w)
+            sb.setRange(0, overflow)
+            sb.setPageStep(max(1, viewport_w))
+            sb.setSingleStep(self._char_w)
+            self.h_offset_px = max(0, min(self.h_offset_px, overflow))
+            sb.setValue(self.h_offset_px)
+
         def scrollContentsBy(self, dx: int, dy: int) -> None:
-            # Custom paint: never bit-blt; just track the new top and repaint.
+            # Custom paint: never bit-blt; just track the new scroll positions and
+            # repaint. Both bars feed the painter (top row + horizontal pixels).
             if self.view is not None:
                 self.view.top = self.verticalScrollBar().value()
+            self.h_offset_px = self.horizontalScrollBar().value()
             self.viewport().update()
             self.viewChanged.emit()
 
@@ -640,6 +728,17 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
         def page_by(self, direction: int) -> None:
             self.scroll_rows(direction * self._page_rows())
+
+        def scroll_h(self, delta_chars: int) -> None:
+            """Scroll horizontally by ``delta_chars`` characters (left/right keys).
+
+            Moves the horizontal scrollbar (which drives the painter); a no-op
+            when the content fits, since the bar's range is then 0. Matches the
+            TUI's 8-characters-per-press step.
+            """
+            sb = self.horizontalScrollBar()
+            sb.setValue(sb.value() + delta_chars * self._char_w)
+            # setValue clamps to the bar range; scrollContentsBy tracks the result.
 
         def to_home(self) -> None:
             if self.view is None:
@@ -692,6 +791,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
         # -- display toggles ------------------------------------------------ #
         def set_ascii(self, on: bool) -> None:
             self.ascii_on = on
+            self._sync_scrollbar()  # segment (content) width changed
             self.viewport().update()
 
         def set_color_on(self, on: bool) -> None:
@@ -722,14 +822,27 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 self.search_current = None
             self.viewport().update()
 
-        def set_markers_on(self, on: bool) -> None:
-            self.markers_on = on
-            self._sync_scrollbar()  # block height changed -> page size changed
+        def set_markers_mode(self, mode: str) -> None:
+            self.markers_mode = mode
+            # Block height and content width both depend on the marker mode.
+            self._sync_scrollbar()
             self.viewport().update()
+
+        def set_layout(self, mode: str) -> None:
+            self.layout_mode = mode
+            self.h_offset_px = 0  # a fresh layout starts un-scrolled
+            self._sync_scrollbar()
+            self.viewport().update()
+
+        def cycle_layout(self) -> None:
+            self.set_layout(
+                "side-by-side" if self.layout_mode == "stacked" else "stacked"
+            )
 
         def set_name_mode(self, mode: str) -> None:
             self.name_mode = mode
             self.name_width = name_column_width(self.files, mode) if self.files else 0
+            self._sync_scrollbar()  # name column width changed -> content width
             self.viewport().update()
 
         def set_overlay(self, overlay: Optional[OverlayState]) -> None:
@@ -847,12 +960,14 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 painter.end()
                 return
 
-            painter.translate(self._MARGIN, self._MARGIN)
+            # Shift left by the horizontal scroll offset so a wide row (a large
+            # --width in stacked, or a side-by-side row) scrolls instead of
+            # clipping. h_offset_px is 0 (and the bar hidden) when content fits.
+            painter.translate(self._MARGIN - self.h_offset_px, self._MARGIN)
             view = self.view
             model = view.model
             count = view.visible_count
             block_px = self._block_px()
-            hex_start = OFFSET_LABEL_WIDTH + marker_prefix_width(self.name_width)
             # One extra block so a partially-visible bottom block still draws.
             nblocks = self._page_rows() + 1
             for b in range(nblocks):
@@ -860,15 +975,16 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 if pos >= count:
                     break
                 row = model.build_row(view.row_index_at(pos))
-                self._paint_block(painter, row, model, b * block_px, hex_start)
+                self._paint_block(painter, row, model, b * block_px)
             painter.end()
 
-        def _paint_block(self, painter, row, model, top: int, hex_start: int) -> None:
+        def _paint_block(self, painter, row, model, top: int) -> None:
             cw = self._char_w
             line_h = self._line_h
             ascent = self._ascent
             width = model.width
             text_color = self._text_color()
+            acc = self._accents()
 
             def draw(col: int, line: int, s: str, color) -> None:
                 painter.setPen(color)
@@ -880,28 +996,30 @@ if _PYSIDE6_IMPORT_ERROR is None:
                     int(ncols * cw), int(line_h), color,
                 )
 
-            # The offset rides the first file line as a fixed-width left gutter
-            # (col 0); the file/hex columns are shifted right by that width.
-            acc = self._accents()
-            draw(0, 0, offset_label(row.offset),
-                 acc.offset if self.color_on else text_color)
+            def paint_segment(line: int, name_col: int, fi: int, f, row_bytes) -> None:
+                """Paint one file's name + hex + optional ASCII at ``name_col``.
 
-            # one line per file
-            for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
-                line = fi
+                Layout-agnostic: stacked passes ``line=fi, name_col`` after the
+                gutter; side-by-side passes ``line=0`` and each segment's column.
+                Cell styling flows through _cell_bg / _cell_color, so diff /
+                search / overlay / byte-class priority is identical in both.
+                """
                 name = f.display_name(self.name_mode).ljust(self.name_width)
-                name_color = acc.ref if (self.color_on and model.ref == fi) else text_color
-                draw(OFFSET_LABEL_WIDTH + 2, line, name, name_color)
+                name_color = (
+                    acc.ref if (self.color_on and model.ref == fi) else text_color
+                )
+                draw(name_col, line, name, name_color)
+                hex_col = name_col + self.name_width + 2
                 for c in range(width):
                     marker = row.markers[c]
                     off = row.offset + c
                     bg = self._cell_bg(fi, off, marker)
                     if bg is not None:
-                        fill(hex_start + c * 3, line, 2, bg)
-                    draw(hex_start + c * 3, line, format_byte(row_bytes[c]),
+                        fill(hex_col + c * 3, line, 2, bg)
+                    draw(hex_col + c * 3, line, format_byte(row_bytes[c]),
                          self._cell_color(row_bytes[c], marker, off, fi))
                 if self.ascii_on:
-                    acol = hex_start + width * 3 + 1  # past hex + "  |"
+                    acol = hex_col + width * 3 + 1  # past hex + "  |"
                     draw(acol, line, "|", text_color)
                     for c in range(width):
                         marker = row.markers[c]
@@ -913,13 +1031,46 @@ if _PYSIDE6_IMPORT_ERROR is None:
                              self._cell_color(row_bytes[c], marker, off, fi))
                     draw(acol + 1 + width, line, "|", text_color)
 
-            # marker strip
-            if self.markers_on:
-                line = len(model.files)
+            def paint_strip(line: int, col: int) -> None:
                 for c in range(width):
                     marker = row.markers[c]
-                    draw(hex_start + c * 3, line, format_marker(marker),
+                    draw(col + c * 3, line, format_marker(marker),
                          self._marker_color(marker))
+
+            # The offset rides the first content line as a fixed-width left gutter.
+            draw(0, 0, offset_label(row.offset),
+                 acc.offset if self.color_on else text_color)
+
+            if self.layout_mode == "side-by-side":
+                # Geometry mirrors core.render_row_text(layout="side-by-side"):
+                # "single" draws one strip as a left prefix column on the content
+                # line; "repeat" repeats it under each segment's hex; "none" hides
+                # it. Segments join with a 3-space gap.
+                strip_col = OFFSET_LABEL_WIDTH + 2
+                seg_w = self._seg_width_chars()
+                first_col = strip_col + (
+                    (3 * width - 1) + 2 if self.markers_mode == "single" else 0
+                )
+                seg_cols = [
+                    first_col + i * (seg_w + 3) for i in range(len(model.files))
+                ]
+                if self.markers_mode == "single":
+                    paint_strip(0, strip_col)
+                for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
+                    paint_segment(0, seg_cols[fi], fi, f, row_bytes)
+                if self.markers_mode == "repeat":
+                    for fi in range(len(model.files)):
+                        paint_strip(1, seg_cols[fi] + self.name_width + 2)
+            else:
+                for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
+                    paint_segment(fi, OFFSET_LABEL_WIDTH + 2, fi, f, row_bytes)
+                # In stacked, "single" and "repeat" both draw the one strip
+                # (repeat == single when stacked); only "none" hides it.
+                if self.markers_mode != "none":
+                    paint_strip(
+                        len(model.files),
+                        OFFSET_LABEL_WIDTH + marker_prefix_width(self.name_width),
+                    )
 
     class MainWindow(QMainWindow):
         """Top-level window: menus, status bar, and the comparison view."""
@@ -933,7 +1084,8 @@ if _PYSIDE6_IMPORT_ERROR is None:
             name_mode: str = "basename",
             ascii_on: bool = True,
             only_diff: bool = False,
-            markers_on: bool = True,
+            markers: str = "single",
+            layout: str = "stacked",
         ) -> None:
             super().__init__()
             self.setWindowTitle("multihex-gui")
@@ -952,7 +1104,8 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
             self.view_widget = HexCompareView(self)
             self.view_widget.ascii_on = ascii_on
-            self.view_widget.markers_on = markers_on
+            self.view_widget.markers_mode = markers
+            self.view_widget.layout_mode = layout
             self.view_widget.name_mode = name_mode
             self.setCentralWidget(self.view_widget)
             self.view_widget.viewChanged.connect(self._update_status)
@@ -996,7 +1149,9 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 "toggle_diff": self.act_diff.toggle,
                 "toggle_color": self.act_color.toggle,
                 "toggle_byte_classes": self.act_byte_classes.toggle,
+                "cycle_layout": self._cycle_layout,
                 "cycle_markers": self._cycle_markers,
+                "scroll_horizontal": lambda: vw.scroll_h(self._h_dir * 8),
                 "load_overlay": self._overlay_load_dialog,
                 "view_overlay": self._overlay_view,
                 "open_settings": self._open_settings_dialog,
@@ -1006,6 +1161,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 "prev_match": self.search_prev,
                 "help": self._show_help_dialog,
             }
+            # Direction for the single ``scroll_horizontal`` action: the registry
+            # maps both Left and Right to it (one entry, like the TUI), so
+            # keyPressEvent sets this before dispatch. Default right.
+            self._h_dir = 1
             self._key_text_actions: dict = gui_text_map()
             self._key_code_actions: dict = {
                 getattr(Qt.Key, f"Key_{name}"): aid
@@ -1024,6 +1183,11 @@ if _PYSIDE6_IMPORT_ERROR is None:
             # Central single-key dispatch. Named keys (Down/PageUp/Home/End) have an
             # empty .text(), so resolve by key-code first, then by character. Modal
             # dialogs grab focus, so typing in a search box never reaches here.
+            # Left/Right share the one scroll_horizontal action; record direction.
+            if event.key() == Qt.Key.Key_Left:
+                self._h_dir = -1
+            elif event.key() == Qt.Key.Key_Right:
+                self._h_dir = 1
             aid = self._key_code_actions.get(event.key())
             if aid is None:
                 ch = event.text()
@@ -1064,13 +1228,31 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.act_diff.setChecked(self._start_only_diff)
             self.act_diff.toggled.connect(self._on_toggle_diff)
             viewm.addAction(self.act_diff)
-            self.act_markers = QAction(
-                "Show &markers" + _menu_key_hint("cycle_markers"), self
+            self.act_layout = QAction(
+                "Side-by-side &layout" + _menu_key_hint("cycle_layout"), self
             )
-            self.act_markers.setCheckable(True)
-            self.act_markers.setChecked(self.view_widget.markers_on)
-            self.act_markers.toggled.connect(self._on_toggle_markers)
-            viewm.addAction(self.act_markers)
+            self.act_layout.setCheckable(True)
+            self.act_layout.setChecked(self.view_widget.layout_mode == "side-by-side")
+            self.act_layout.toggled.connect(self._on_toggle_layout)
+            viewm.addAction(self.act_layout)
+            # Markers are tri-state (single / repeat / none), matching the TUI/CLI;
+            # the 'm' key cycles them and keeps this radio group in sync.
+            self.markers_menu = viewm.addMenu(
+                "&Markers" + _menu_key_hint("cycle_markers")
+            )
+            markerm = self.markers_menu
+            self.markers_group = QActionGroup(self)
+            self.markers_group.setExclusive(True)
+            for label, mode in (
+                ("Single", "single"), ("Repeat", "repeat"), ("None", "none"),
+            ):
+                a = QAction(label, self)
+                a.setCheckable(True)
+                a.setData(mode)
+                a.setChecked(self.view_widget.markers_mode == mode)
+                self.markers_group.addAction(a)
+                markerm.addAction(a)
+            self.markers_group.triggered.connect(self._on_markers_changed)
             self.act_color = QAction(
                 "&Color highlighting" + _menu_key_hint("toggle_color"), self
             )
@@ -1252,8 +1434,12 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.view_widget.set_only_diff(checked)
             self._update_status()
 
-        def _on_toggle_markers(self, checked: bool) -> None:
-            self.view_widget.set_markers_on(checked)
+        def _on_markers_changed(self, action) -> None:
+            self.view_widget.set_markers_mode(action.data())
+            self._update_status()
+
+        def _on_toggle_layout(self, checked: bool) -> None:
+            self.view_widget.set_layout("side-by-side" if checked else "stacked")
             self._update_status()
 
         def _on_toggle_color(self, checked: bool) -> None:
@@ -1265,9 +1451,22 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self._update_status()
 
         def _cycle_markers(self) -> None:
-            # The GUI has no side-by-side layout, so there is no "repeat" mode;
-            # the marker cycle is a strip on/off toggle (reuses the menu action).
-            self.act_markers.toggle()
+            """Rotate the marker mode single -> repeat -> none (the 'm' key).
+
+            Drives the Markers radio group so the menu and view stay in sync.
+            """
+            order = ("single", "repeat", "none")
+            cur = self.view_widget.markers_mode
+            nxt = order[(order.index(cur) + 1) % len(order)]
+            target = next(
+                (a for a in self.markers_group.actions() if a.data() == nxt), None
+            )
+            if target is not None:
+                target.trigger()  # checks it and fires _on_markers_changed
+
+        def _cycle_layout(self) -> None:
+            """Flip stacked <-> side-by-side (the 'v' key); keep the menu in sync."""
+            self.act_layout.toggle()
 
         def _on_names_changed(self, action) -> None:
             self.name_mode = action.data()
@@ -1616,9 +1815,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 ref_label=self._ref_label(),
                 ascii_on=self.view_widget.ascii_on,
                 only_diff=v.only_diff,
-                markers_on=self.view_widget.markers_on,
+                markers=self.view_widget.markers_mode,
                 color_on=self.view_widget.color_on,
                 byte_classes_on=self.view_widget.byte_classes_on,
+                layout=self.view_widget.layout_mode,
                 sizes=self._sizes(),
             )
             self.status_pos.setText(parts[0])
@@ -1802,7 +2002,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             for label, action in (
                 ("ASCII gutter", window.act_ascii),
                 ("Only differing rows", window.act_diff),
-                ("Marker strip", window.act_markers),
+                ("Side-by-side layout", window.act_layout),
                 ("Color highlighting", window.act_color),
                 ("Byte-class highlighting", window.act_byte_classes),
             ):
@@ -1814,6 +2014,17 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 action.toggled.connect(box.setChecked)
                 form.addRow(label, box)
                 self._checks[label] = box
+
+            self._markers = QComboBox(self)
+            for label, mode in (
+                ("Single", "single"), ("Repeat", "repeat"), ("None", "none"),
+            ):
+                self._markers.addItem(label, mode)
+            self._markers.setCurrentIndex(
+                ["single", "repeat", "none"].index(window.view_widget.markers_mode)
+            )
+            self._markers.currentIndexChanged.connect(self._on_markers)
+            form.addRow("Markers", self._markers)
 
             self._names = QComboBox(self)
             self._names.addItem("Basename", "basename")
@@ -1847,6 +2058,15 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 target.setChecked(True)
                 self._window._on_names_changed(target)
 
+        def _on_markers(self, index: int) -> None:
+            mode = self._markers.itemData(index)
+            target = next(
+                (a for a in self._window.markers_group.actions() if a.data() == mode),
+                None,
+            )
+            if target is not None and not target.isChecked():
+                target.trigger()  # checks it and fires _on_markers_changed
+
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)  # before the guard, so --help works without PySide6
@@ -1879,7 +2099,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         name_mode=args.names,
         ascii_on=not args.no_ascii,
         only_diff=args.only_diff,
-        markers_on=(args.markers != "none"),
+        markers=args.markers,
+        layout=args.layout,
     )
     if args.files:
         window.load_paths(args.files)
