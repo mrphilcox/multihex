@@ -20,13 +20,10 @@ _(nothing in flight — pick the next item from Near-term)_
       `build_startup_settings` (and likely a `--search-ignore-case` startup flag).
       Persist only the *preference* — never the search string, match index, or
       results.
-- [ ] **Repository housekeeping — set the canonical URL and add a remote.** The
-      repo currently has no git remote, so placeholder
-      `https://github.com/your-org/multihex` URLs are in use. Once the real URL is
-      known, replace the placeholder in `pyproject.toml` → `[project.urls]`
-      (`Homepage`, `Repository`, `Changelog`) and `CHANGELOG.md` (the
-      `[Unreleased]`/`[0.1.0]` link references), then `git remote add origin <url>`
-      and push.
+- [ ] **Public release publishing.** Ensure
+      `https://github.com/mrphilcox/multihex` exists, push the release branch and
+      tags there, and verify the package metadata links resolve before publishing
+      to PyPI.
 
 ## Medium-term
 
@@ -89,6 +86,9 @@ _(nothing in flight — pick the next item from Near-term)_
 
 ## Done or superseded
 
+- [x] **Release metadata canonical URLs.** Replaced placeholder public-project
+      links in package metadata and the changelog with
+      `https://github.com/mrphilcox/multihex`.
 - [x] **TUI Home/End + shared shortcut registry (TUI⇄GUI parity).** The TUI now
       binds `Home`/`End` (`action_home`/`action_end`): Home jumps to the start of
       the compared range (honouring `--offset`), End is the bottom-anchored final

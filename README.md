@@ -81,12 +81,13 @@ Installing provides three console scripts:
 | `multihex-tui` | `multihex.tui`     | Interactive terminal viewer      |
 | `multihex-gui` | `multihex.gui`     | Read-only desktop (Qt) viewer    |
 
-You can also run them without installing:
+From a checkout, you can also run them without installing by putting `src/` on
+`PYTHONPATH`:
 
 ```bash
-python3 -m multihex.cli FILE1 FILE2
-python3 -m multihex.tui FILE1 FILE2
-python3 -m multihex.gui FILE1 FILE2
+PYTHONPATH=src python3 -m multihex.cli FILE1 FILE2
+PYTHONPATH=src python3 -m multihex.tui FILE1 FILE2
+PYTHONPATH=src python3 -m multihex.gui FILE1 FILE2
 ```
 
 ## Quickstart

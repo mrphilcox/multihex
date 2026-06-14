@@ -26,9 +26,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/multihex"
-Repository = "https://github.com/your-org/multihex"
-Changelog = "https://github.com/your-org/multihex/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/mrphilcox/multihex"
+Repository = "https://github.com/mrphilcox/multihex"
+Changelog = "https://github.com/mrphilcox/multihex/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 tui = [
