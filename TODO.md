@@ -96,6 +96,42 @@ _(nothing in flight — pick the next item from Near-term)_
     values cost memory/time proportional to the value, not the file (the default
     render loop builds every row in `range(model.row_count)`). Consider a sanity
     cap or a streaming render. `--limit-rows` mitigates `--length` today.
+* [ ] **Document stress-suite verdict semantics.**
+  The stress suite intentionally distinguishes between correctness
+  failures, discovered defects, and characterization measurements.
+  Document these verdict categories in `scripts/stress/README.md`,
+  `CONTRIBUTING.md`, and future stress-test reports so contributors
+  interpret results consistently.
+
+  * **PASS** — The expected behavior occurred and the test contract was met.
+    Examples: bounded memory use, correct exit status, successful handling of
+    edge-case inputs.
+
+  * **FAIL** — The expected behavior did not occur. The test contract was
+    violated and should be investigated immediately.
+
+  * **FINDING** — The test successfully exposed a robustness issue, defect,
+    limitation, or undesirable behavior. The stress test itself succeeded
+    because it reproduced the condition it was designed to explore. Findings
+    should be triaged into:
+
+    * fix now
+    * document as a known limitation
+    * defer to a future release
+
+  * **CHAR** — Characterization result. Records current behavior,
+    performance, memory usage, scaling, or other observations without judging
+    them as correct or incorrect. These measurements provide a baseline for
+    future comparisons and regression detection.
+
+  * Future work:
+
+    * Add a short explanation of verdict categories to the stress-suite
+      summary output.
+    * Consider linking findings directly to TODO items or issue tracker
+      entries.
+    * Preserve characterization results that provide useful historical
+      baselines for future optimization work.
 
 ## Medium-term
 
