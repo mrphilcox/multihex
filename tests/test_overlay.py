@@ -54,6 +54,22 @@ def test_invalid_json_is_not_loaded(tmp_path):
     assert st.applicable is False
 
 
+def test_deeply_nested_json_is_not_loaded(tmp_path):
+    # Deeply nested overlay JSON makes the parser raise RecursionError. It must
+    # be reported as a load failure (like invalid JSON), not escape as a
+    # traceback. N is large enough to overflow the interpreter's recursion limit
+    # without touching sys.setrecursionlimit.
+    n = 200000
+    p = tmp_path / "deep.json"
+    p.write_text("[" * n + "]" * n)
+    st = OverlayState.load(str(p))
+    assert st.loaded is False
+    assert st.applicable is False
+    assert st.covers(0) is False
+    assert st.ranges_at(0) == []
+    assert "Could not load" in st.summary()
+
+
 # -- valid overlay ----------------------------------------------------------- #
 def test_valid_overlay_loads_and_highlights(tmp_path):
     doc = {

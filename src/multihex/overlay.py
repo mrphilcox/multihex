@@ -142,6 +142,12 @@ class OverlayState:
                 doc = json.load(fh)
         except (OSError, json.JSONDecodeError) as exc:
             return cls(path=path, load_error=str(exc))
+        except RecursionError:
+            # Deeply nested overlay JSON exhausts the parser's stack. Treat it
+            # as an unparseable overlay (reported, not applied) rather than
+            # letting the traceback escape. The stack is near its limit here, so
+            # keep the handler body trivial: a fixed message, no formatting.
+            return cls(path=path, load_error="overlay JSON nested too deeply to parse")
 
         structural = validate_structural(doc)
         file_results: List[Tuple[str, Result]] = []

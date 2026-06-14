@@ -134,6 +134,21 @@ def test_overlay_non_json_file_reported_not_applied(fixture_dir):
     assert OVERLAY not in r.stdout
 
 
+def test_overlay_deeply_nested_json_reported_not_applied(fixture_dir):
+    # Deeply nested JSON overflows the parser's stack; the CLI must report it
+    # cleanly (exit 0, message on stderr, no traceback) and still render.
+    n = 200000
+    with open(os.path.join(fixture_dir, "deep.json"), "w") as fh:
+        fh.write("[" * n + "]" * n)
+    r = _run(fixture_dir, ["--overlay", "deep.json", "--color", "always",
+                           "a.bin", "b.bin"])
+    assert r.returncode == 0
+    assert "Could not load" in r.stderr
+    assert "Traceback" not in r.stderr
+    assert OVERLAY not in r.stdout
+    assert "0x00000000" in r.stdout  # comparison output is intact
+
+
 # -- render priority: diff/missing must win over overlay --------------------- #
 @pytest.fixture(scope="module")
 def priority_dir(tmp_path_factory):
