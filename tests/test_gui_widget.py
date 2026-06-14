@@ -331,6 +331,87 @@ def test_every_keymap_entry_dispatches_its_action(app, tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# GUI dialog error paths and markers status
+# --------------------------------------------------------------------------- #
+
+
+def test_jump_dialog_invalid_offset_warns_and_keeps_position(app, tmp_path, monkeypatch):
+    data = bytes((i * 7) % 256 for i in range(1024))
+    a = _write(tmp_path, "a.bin", data)
+    b = _write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.show()
+    app.processEvents()
+    top0 = w.view_widget.view.top
+
+    monkeypatch.setattr(
+        gui.QInputDialog, "getText",
+        staticmethod(lambda *a, **k: ("not-a-number", True)),
+    )
+    warnings = []
+    monkeypatch.setattr(
+        gui.QMessageBox, "warning",
+        staticmethod(lambda *a, **k: warnings.append(a)),
+    )
+
+    w.trigger_action("jump")            # goes through the real slot + handler
+    assert len(warnings) == 1
+    assert w.view_widget.view.top == top0
+    w.close()
+
+
+def test_jump_dialog_valid_offset_navigates(app, tmp_path, monkeypatch):
+    data = bytes((i * 7) % 256 for i in range(1024))
+    a = _write(tmp_path, "a.bin", data)
+    b = _write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.show()
+    app.processEvents()
+
+    monkeypatch.setattr(
+        gui.QInputDialog, "getText",
+        staticmethod(lambda *a, **k: ("0x200", True)),
+    )
+    w.trigger_action("jump")
+    assert w.view_widget.view.offset_at(w.view_widget.view.top) == 0x200
+    w.close()
+
+
+def test_jump_and_ref_dialogs_are_noop_without_model(app, monkeypatch):
+    # An empty window has no model/files; the dialog slots must guard and return
+    # without ever prompting or crashing.
+    w = gui.MainWindow()
+    assert w.model is None
+
+    def _boom(*a, **k):  # would raise if a dialog were actually shown
+        raise AssertionError("dialog should not be shown without a model")
+
+    monkeypatch.setattr(gui.QInputDialog, "getText", staticmethod(_boom))
+    monkeypatch.setattr(gui.QInputDialog, "getItem", staticmethod(_boom))
+
+    w.trigger_action("jump")
+    w.trigger_action("choose_ref")
+    w.close()
+
+
+def test_markers_toggle_reflected_in_status(app, tmp_path):
+    a = _write(tmp_path, "a.bin", bytes(48))
+    b = _write(tmp_path, "b.bin", bytes(48))
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.show()
+    app.processEvents()
+
+    assert "markers:on" in w.statusBar().currentMessage()
+    w.trigger_action("cycle_markers")
+    assert w.view_widget.markers_on is False
+    assert "markers:off" in w.statusBar().currentMessage()
+    w.close()
+
+
+# --------------------------------------------------------------------------- #
 # GUI search (reuses the core engine; renders/navigates only)
 # --------------------------------------------------------------------------- #
 
