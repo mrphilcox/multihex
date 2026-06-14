@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """The characterization contract: (name, scenario, extra_args) cases.
 
 Shared by capture_goldens.py (writes goldens from the pre-refactor tool) and

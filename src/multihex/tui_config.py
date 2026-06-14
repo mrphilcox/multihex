@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """multihex.tui_config - TUI-only persistent preferences (config file I/O).
 
 This module is used **only** by the interactive ``multihex-tui`` frontend; the

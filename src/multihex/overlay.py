@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """multihex.overlay - load and consume bintools.layout-overlay v1 files.
 
 A layout overlay is a *resolved list of byte ranges* for one concrete binary --

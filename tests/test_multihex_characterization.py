@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Characterization: post-refactor multihex output must equal the goldens.
 
 Goldens were captured from the pre-refactor tool by tests/capture_goldens.py

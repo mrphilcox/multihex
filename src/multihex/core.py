@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """multihex.core - shared core for multihex frontends.
 
 Stdlib-only. This module owns all the *meaning* of a multi-file hex

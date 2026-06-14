@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Backend search tests: parser, exact search, multi-file, navigation.
 
 Search semantics live entirely in multihex.core, so these tests drive the core

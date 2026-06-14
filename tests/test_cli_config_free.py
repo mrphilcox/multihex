@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Regression: the batch CLI is config-free.
 
 `multihex` must never grow `--config`/`--no-config` or read the TUI config file;

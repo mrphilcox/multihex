@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """multihex.cli - side-by-side fixed-offset hex inspection of multiple binary files.
 
 Display the same offset range across several binary files so you can compare the

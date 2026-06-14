@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Parity tests: the core model is the single source of truth.
 
 1. HexModel.build_row must match an *independent* recomputation of cells and

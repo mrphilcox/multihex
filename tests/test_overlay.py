@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Unit tests for multihex.overlay.OverlayState (the frontend-agnostic seam).
 
 These target the helper directly -- no CLI/TUI/GUI -- covering: no overlay,

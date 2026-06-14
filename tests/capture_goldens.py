@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Capture byte-exact stdout goldens from the CURRENT multihex CLI.
 
 Run this BEFORE refactoring:  python tests/capture_goldens.py

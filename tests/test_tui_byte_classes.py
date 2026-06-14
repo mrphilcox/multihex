@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """TUI byte-class highlighting: default state, toggle, status/help, priority.
 
 Driven headless through Textual's test harness, mirroring test_tui_search.

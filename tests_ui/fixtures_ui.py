@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Tiny deterministic binary fixtures for the UI visual-regression suite.
 
 The shapes are intentionally varied so no single binary format becomes

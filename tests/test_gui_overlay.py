@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Headless GUI layout-overlay tests (offscreen Qt; skipped without PySide6).
 
 Exercises the overlay menu glue at the state level: load applies an applicable

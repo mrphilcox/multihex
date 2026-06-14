@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Pure byte-classification tests for multihex.core.classify_byte.
 
 Classification is display-only and stdlib-only; these drive the helper directly.

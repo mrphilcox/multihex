@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Precedence tests for multihex.tui.build_startup_settings.
 
 Exercises the chain *defaults -> config file -> CLI args* by parsing real argv

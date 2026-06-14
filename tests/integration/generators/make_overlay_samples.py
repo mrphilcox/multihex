@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Generate a binary sample and a set of layout-overlay-v1 JSON files.
 
 Usage:

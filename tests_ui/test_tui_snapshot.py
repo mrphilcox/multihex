@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Textual TUI visual-regression snapshots (opt-in).
 
 These complement -- they do not duplicate -- the fast headless TUI tests in

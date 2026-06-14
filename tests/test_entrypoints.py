@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Packaging metadata checks for console script entry points."""
 
 from pathlib import Path

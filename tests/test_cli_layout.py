@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """CLI --layout coverage: parsing, side-by-side rendering, and invariants.
 
 Like test_cli_search.py these run the real entry point as a subprocess and

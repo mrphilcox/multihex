@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Smoke tests for the TUI frontend.
 
 The TUI must import and parse args without crashing, and the lazy-import guard

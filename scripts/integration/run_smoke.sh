@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 # Smoke-test the multihex command-line entry points and a real comparison.
 #
 # Uses `python3 -m multihex.*` (resolves with or without an editable install).

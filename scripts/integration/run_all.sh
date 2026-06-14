@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 # Run every multihex integration script and aggregate the result.
 #
 #     scripts/integration/run_all.sh

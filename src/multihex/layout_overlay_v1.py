@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Validator for the bintools.layout-overlay v1 schema.
 
 Stdlib only. Two layers of checking:

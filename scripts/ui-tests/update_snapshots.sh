@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 # Regenerate the TUI SVG snapshot baselines under tests_ui/__snapshots__/.
 #
 # Run this after an INTENTIONAL TUI rendering change, then review the SVG diff

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 # Exercise the bintools.layout-overlay v1 validator end-to-end from the CLI.
 #
 # A generated, deliberately non-canonical corpus (sample.bin + overlay JSONs) is

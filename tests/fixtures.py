@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Deterministic fixture binaries for multihex characterization/parity tests.
 
 The byte content is fully deterministic so goldens captured from the current

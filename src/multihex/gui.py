@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """multihex.gui - read-only PySide6/Qt desktop frontend for fixed-offset compare.
 
 A viewer only: no editing, no inference, no resynchronization, no offset-changing

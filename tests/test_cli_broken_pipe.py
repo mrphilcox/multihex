@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Regression coverage for downstream pipe consumers closing stdout early."""
 
 import os

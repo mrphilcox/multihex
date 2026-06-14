@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """TUI layout-overlay: load/clear/view state, status line, and cell-style tier.
 
 Driven headless through Textual's test harness, mirroring test_tui_byte_classes.

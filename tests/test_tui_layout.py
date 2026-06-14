@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """TUI layout: default/start state, the 'v' cycle key, status/help, search
 preservation, and horizontal scrolling in side-by-side mode.
 

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Unit tests for multihex.tui_config: path discovery, load/validate, save.
 
 Pure-module tests (no Textual). They cover the documented loading rules

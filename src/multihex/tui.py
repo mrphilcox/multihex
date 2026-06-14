@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """multihex.tui - interactive TUI for fixed-offset multi-file hex compare.
 
 A viewer only: no editing, no inference, no resynchronization, no offset-

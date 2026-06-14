@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Shared setup for the opt-in UI visual-regression suite (``tests_ui/``).
 
 This directory is deliberately NOT collected by a bare ``pytest`` run: the

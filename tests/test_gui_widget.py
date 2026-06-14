@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Headless GUI widget glue tests (offscreen Qt; skipped without PySide6).
 
 These exercise the thin Qt layer -- loading files, the menu-action signal glue,

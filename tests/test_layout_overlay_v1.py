@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Smoke/regression tests for the layout-overlay-v1 validator contract.
 
 Dependency-free: run directly with `python3 test_layout_overlay_v1.py`

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """TUI --markers: default/start state, the 'm' cycle key, status/help, and the
 display-only guarantee (cycling never disturbs markers, search, or filtering).
 

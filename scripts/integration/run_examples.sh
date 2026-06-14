@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 # Structurally validate the committed example overlays under examples/layouts/.
 #
 # These examples are intentionally PARTIAL and not tied to any real file, so they

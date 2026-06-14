@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """Headless TUI Home/End navigation tests (state-level; skip without textual).
 
 Home jumps to the start of the compared range; End is the bottom-anchored final

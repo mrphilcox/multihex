@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """CLI --overlay coverage: highlight ANSI, diagnostics, JSON safety, no-op path.
 
 Runs the real entry point as a subprocess (like the other CLI tests) over tiny

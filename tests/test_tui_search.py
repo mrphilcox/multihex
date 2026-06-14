@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """TUI search behaviour, driven headless through Textual's test harness.
 
 These call the app's search entry points directly (the modal input is trivial

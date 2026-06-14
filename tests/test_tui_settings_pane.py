@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """TUI settings pane: open with 'o', view/change settings, save, save failure.
 
 Headless through Textual's test harness, mirroring test_tui_search. The modal is

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 # Run the opt-in UI visual-regression suite (tests_ui/).
 #
 # This is a SEPARATE, heavier validation lane from the default unit tests --

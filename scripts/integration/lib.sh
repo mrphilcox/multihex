@@ -1,4 +1,7 @@
 # shellcheck shell=bash
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 # Shared helpers for the multihex integration scripts.
 #
 # Source this file; do not execute it:

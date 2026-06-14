@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """CLI --markers coverage: parsing, both layouts, and display-only invariants.
 
 Like test_cli_layout.py these run the real entry point as a subprocess and assert

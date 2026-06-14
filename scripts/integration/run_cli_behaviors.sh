@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 # Exercise batch CLI behavior that is too end-to-end for unit tests but broader
 # than the smoke script: JSON shape, search contracts, and common failures.
 set -euo pipefail

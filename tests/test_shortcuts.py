@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """The shared shortcut registry is the single source of truth for both frontends.
 
 These tests pin the registry's shape and prove the TUI ``BINDINGS`` and the GUI

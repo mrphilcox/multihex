@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """multihex.shortcuts - the single source of truth for frontend keyboard shortcuts.
 
 Both interactive frontends (the Textual ``multihex-tui`` and the PySide6

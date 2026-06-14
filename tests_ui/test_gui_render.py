@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Philip Cox
+# SPDX-License-Identifier: Apache-2.0
+
 """PySide6 GUI visual-render smoke tests (opt-in, headless/offscreen).
 
 These complement -- they do not duplicate -- the fast headless GUI tests in
