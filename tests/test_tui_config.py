@@ -154,6 +154,37 @@ def test_parse_error_falls_back_with_warning(tmp_path):
     assert warnings and "parse" in warnings[0]
 
 
+def test_unreadable_config_warns_and_uses_base(tmp_path):
+    # A path that exists but cannot be read as a file (here, a directory) is an
+    # OSError on open; the config is ignored with a warning rather than crashing.
+    base = TuiSettings()
+    settings, warnings = load_settings(tmp_path, base)
+    assert settings == base
+    assert warnings and "could not read" in warnings[0]
+
+
+def test_non_table_sections_are_ignored(tmp_path):
+    # [display] / [view] given as scalars instead of tables are skipped with a
+    # warning each; the rest of the (here empty) config still loads cleanly.
+    p = tmp_path / "tui.toml"
+    p.write_text("config_version = 1\ndisplay = 123\nview = 456\n")
+    base = TuiSettings()
+    settings, warnings = load_settings(p, base)
+    assert settings == base
+    assert any("[display]: not a table" in w for w in warnings)
+    assert any("[view]: not a table" in w for w in warnings)
+
+
+def test_width_zero_rejected_as_non_positive(tmp_path):
+    # The off-by-one boundary: 0 is an int but not a positive width, so it is
+    # dropped in favour of the base value.
+    p = tmp_path / "tui.toml"
+    p.write_text("config_version = 1\n[view]\nwidth = 0\n")
+    settings, warnings = load_settings(p, TuiSettings())
+    assert settings.width == TuiSettings().width
+    assert warnings
+
+
 # -- saving ----------------------------------------------------------------- #
 def test_save_is_complete_and_versioned(tmp_path):
     p = tmp_path / "tui.toml"
@@ -191,3 +222,20 @@ def test_save_failure_propagates(tmp_path):
     blocker.write_text("x")
     with pytest.raises(OSError):
         save_settings(TuiSettings(), blocker / "tui.toml")
+
+
+def test_save_failure_after_temp_write_cleans_up(tmp_path, monkeypatch):
+    # If the atomic replace fails after the temp file has been written, the
+    # error propagates and the temp file is removed rather than left behind.
+    import multihex.tui_config as tc
+
+    def boom(*a, **k):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(tc.os, "replace", boom)
+    p = tmp_path / "tui.toml"
+    with pytest.raises(OSError):
+        save_settings(TuiSettings(), p)
+    assert not p.exists()
+    leftovers = list(tmp_path.glob(".tui-*.toml.tmp"))
+    assert leftovers == []
