@@ -5,3 +5,11 @@ __pycache__/
 tests_ui/_artifacts/
 # pytest-textual-snapshot's HTML report (written to the repo root on a UI run).
 snapshot_report.html
+
+# Editor, agent, and tool caches (kept self-contained so a fresh clone does not
+# rely on a contributor's global gitignore).
+/.idea/
+/.claude/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
