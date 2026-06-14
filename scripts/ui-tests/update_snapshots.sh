@@ -14,6 +14,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
+# Keep snapshot regeneration in the same colour environment as normal compares.
+unset NO_COLOR
 export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 
 exec python3 -m pytest tests_ui --snapshot-update "$@"

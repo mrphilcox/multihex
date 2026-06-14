@@ -10,6 +10,7 @@ written under ``_artifacts/`` for human inspection only.
 Skips cleanly when PySide6 is missing.
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -72,6 +73,18 @@ def test_construct_and_load_single(app, tmp_path):
     w.close()
 
 
+def test_empty_window_render_png(app):
+    """The no-file startup window renders a painted empty-state view."""
+    w = gui.MainWindow()
+    w.resize(800, 360)
+    w.show()
+    app.processEvents()
+
+    image = _grab_image(w, "gui_empty.png")
+    assert _is_painted(image), "empty window render is a single uniform colour"
+    w.close()
+
+
 def test_diff_render_png(app, tmp_path):
     """Two differing files render to a non-empty, actually-painted image."""
     a_data, b_data = fx.diff_pair()
@@ -85,6 +98,26 @@ def test_diff_render_png(app, tmp_path):
 
     image = _grab_image(w, "gui_diff.png")
     assert _is_painted(image), "rendered image is a single uniform colour"
+    w.close()
+
+
+def test_toggled_view_render_png(app, tmp_path):
+    """Hiding ASCII and markers still produces a painted comparison view."""
+    a_data, b_data = fx.diff_pair()
+    a = fx.write(tmp_path, "a.bin", a_data)
+    b = fx.write(tmp_path, "b.bin", b_data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.resize(900, 420)
+    w.show()
+    app.processEvents()
+
+    w.act_ascii.setChecked(False)
+    w.act_markers.setChecked(False)
+    app.processEvents()
+
+    image = _grab_image(w, "gui_toggled.png")
+    assert _is_painted(image)
     w.close()
 
 
@@ -110,6 +143,43 @@ def test_overlay_highlight_smoke(app, tmp_path):
 
     image = _grab_image(w, "gui_overlay.png")
     assert _is_painted(image)
+    w.close()
+
+
+def test_overlay_diff_render_after_navigation(app, tmp_path):
+    """A long overlay/diff view remains painted after end/home navigation."""
+    base = bytes((i * 7) % 256 for i in range(1024))
+    other = bytearray(base)
+    other[700] ^= 0xFF
+    a = fx.write(tmp_path, "a.bin", base)
+    b = fx.write(tmp_path, "b.bin", bytes(other))
+    overlay_path = tmp_path / "ov.json"
+    overlay_path.write_text(
+        json.dumps({
+            "schema": {"name": "bintools.layout-overlay", "version": 1},
+            "name": "long-render",
+            "ranges": [{"path": "head", "offset": 0, "length": 128}],
+        }),
+        encoding="utf-8",
+    )
+
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    st = w.load_overlay(str(overlay_path))
+    assert st.applicable is True
+    w.resize(900, 420)
+    w.show()
+    app.processEvents()
+
+    w.view_widget.to_end()
+    app.processEvents()
+    end_image = _grab_image(w, "gui_overlay_scrolled_end.png")
+    assert _is_painted(end_image)
+
+    w.view_widget.to_home()
+    app.processEvents()
+    home_image = _grab_image(w, "gui_overlay_scrolled_home.png")
+    assert _is_painted(home_image)
     w.close()
 
 

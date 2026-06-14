@@ -16,6 +16,9 @@ cd "$REPO_ROOT"
 
 # Render Qt headlessly (conftest also sets this; export here for safety).
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
+# Textual/Rich snapshots include colour state. A caller's NO_COLOR would switch
+# the app into no-colour mode and make committed SVG baselines mismatch.
+unset NO_COLOR
 # Allow `import multihex` without an editable install.
 export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 

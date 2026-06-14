@@ -9,7 +9,7 @@
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-SCRIPTS=(run_smoke.sh run_layout_overlay.sh run_examples.sh)
+SCRIPTS=(run_smoke.sh run_cli_behaviors.sh run_layout_overlay.sh run_examples.sh)
 failed=0
 
 for s in "${SCRIPTS[@]}"; do

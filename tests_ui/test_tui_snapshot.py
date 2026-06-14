@@ -64,6 +64,23 @@ def _overlay_app() -> "tui.MultiHexApp":
     )
 
 
+def _side_by_side_app() -> "tui.MultiHexApp":
+    files = [
+        fx.hexfile("left.bin", bytes(range(16))),
+        fx.hexfile("middle.bin", bytes(range(16, 32))),
+        fx.hexfile("right.bin", bytes(range(32, 48))),
+    ]
+    return tui.MultiHexApp(
+        HexModel(files, width=16),
+        ascii_on=True,
+        only_diff=False,
+        color_on=True,
+        name_mode="basename",
+        layout="side-by-side",
+        markers="repeat",
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Thin launch smoke (no snapshot plugin required)
 # --------------------------------------------------------------------------- #
@@ -109,3 +126,23 @@ def test_snapshot_diff_view(snap_compare):
 @requires_snapshot
 def test_snapshot_overlay_view(snap_compare):
     assert snap_compare(_overlay_app(), terminal_size=TERM)
+
+
+@requires_snapshot
+def test_snapshot_side_by_side_repeat_markers(snap_compare):
+    assert snap_compare(_side_by_side_app(), terminal_size=TERM)
+
+
+@requires_snapshot
+def test_snapshot_text_search_panel(snap_compare):
+    assert snap_compare(_diff_app(), press=["slash"], terminal_size=TERM)
+
+
+@requires_snapshot
+def test_snapshot_settings_panel(snap_compare):
+    assert snap_compare(_diff_app(), press=["o"], terminal_size=TERM)
+
+
+@requires_snapshot
+def test_snapshot_overlay_details_panel(snap_compare):
+    assert snap_compare(_overlay_app(), press=["L"], terminal_size=TERM)
