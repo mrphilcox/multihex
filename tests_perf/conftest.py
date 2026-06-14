@@ -4,7 +4,8 @@
 """Performance-test local configuration.
 
 Allow ``python3 -m pytest tests_perf`` to run from a checkout before an editable
-install by putting ``src/`` on ``sys.path``.
+install by putting ``src/`` on ``sys.path``, and make the lane's shared
+``perflib`` helpers importable regardless of how pytest is invoked.
 """
 
 from __future__ import annotations
@@ -12,7 +13,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
 SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+for entry in (SRC, HERE):
+    if str(entry) not in sys.path:
+        sys.path.insert(0, str(entry))

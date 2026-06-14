@@ -102,6 +102,13 @@ scripts/performance/run_all.sh
 python3 -m pytest tests_perf
 ```
 
+To stay meaningful without flaking, the lane separates its signal: deterministic
+operation-count gates (the only hard assertions - e.g. a render reads each byte
+once, an overlay lookup scans at most `nranges` ranges) plus advisory timing
+envelopes that assert only under `PERF_STRICT=1`. `run_all.sh` also runs
+subprocess CLI characterizations (wall-clock + peak RSS) that are reported, never
+pass/fail. See [`tests_perf/README.md`](../tests_perf/README.md).
+
 Keep stress and performance separate: stress tests are correctness gates for hard
 or hostile cases; performance tests are environment-sensitive measurements.
 

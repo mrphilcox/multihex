@@ -199,8 +199,11 @@ scripts/performance/run_all.sh
 python3 -m pytest tests_perf
 ```
 
-The initial scaffold is only a smoke test for the harness: it records elapsed
-time and asserts structural validity, with no timing threshold or baseline. See
+The lane has two tiers: deterministic operation-count gates (the only hard
+assertions, so they cannot flake) and advisory timing envelopes that compare
+runtime at N/2N/4N and only assert under `PERF_STRICT=1`. `run_all.sh` then adds
+subprocess CLI characterizations (wall-clock + peak RSS via
+`scripts/stress/measure.py`) that are reported, never pass/fail. See
 [`tests_perf/README.md`](tests_perf/README.md) and
 [`scripts/performance/README.md`](scripts/performance/README.md).
 

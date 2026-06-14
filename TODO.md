@@ -12,32 +12,6 @@ _(nothing in flight — pick the next item from Near-term)_
 
 ## Near-term
 
-- [ ] **Expand the performance-test scaffold into useful coverage.**
-      `tests_perf/` currently contains only a harness smoke test, not a real
-      performance suite. Add representative opt-in measurements for core render
-      scaling, CLI output over bounded large windows, exact search behavior, and
-      overlay display/query paths. Keep inputs deterministic and generated at
-      runtime, avoid committed baselines or machine-specific thresholds, and keep
-      correctness/stress probes in `scripts/stress/`.
-- [ ] **Add meaningful performance smoke tests.**
-      The initial performance layer exists, but it only proves the harness works.
-      Future tests should catch catastrophic regressions while remaining stable
-      across developer machines. 
-  - Candidate tests:
-      - core hex row rendering over a deterministic 256 KiB-1 MiB buffer
-      - search over deterministic data with known sparse matches
-      - overlay lookup/navigation over many small ranges
-      - side-by-side diff rendering over moderately sized inputs
-      
-  - Guidelines:
-    - no strict microbenchmark thresholds
-    - use loose “atrocious regression” thresholds only
-    - avoid GUI/TUI timing where possible
-    - keep each test under a few seconds
-    - print timing and input size
-    - prefer deterministic generated data
-    - performance tests remain opt-in via scripts/performance/run_all.sh
-
 - [ ] **Persist the TUI text-search case-insensitive preference (optional).** The
       `multihex-tui` text-search panel has a "Case-insensitive (ASCII)" checkbox
       whose state is remembered for the running session only. If desired, promote
@@ -234,15 +208,30 @@ Guidelines:
       renders stacked only; its side-by-side renderer remains a separate Phase 2
       item (see "GUI Phase 2 — usability"). Goldens and TUI SVG snapshots were
       regenerated and visually verified.
-- [x] **Opt-in performance-test scaffold.** Added `tests_perf/` and
-      `scripts/performance/run_all.sh` as a separate performance-measurement lane
-      that is not collected by default pytest and is not wired into integration,
-      UI, or stress runners. The initial smoke test generates deterministic
-      binaries, exercises the core render path, records elapsed time with
-      `time.perf_counter()`, and asserts only structural validity with no timing
-      threshold or baseline. Docs in `tests_perf/README.md`,
-      `scripts/performance/README.md`, and `CONTRIBUTING.md` explain why the
-      layer is opt-in and how future real benchmarks should be added.
+- [x] **Real performance lane (replaces the smoke scaffold).** Expanded
+      `tests_perf/` from a single harness smoke test into a two-tier suite over
+      the perf-critical paths (render loop, exact search, overlay range lookup,
+      JSON row building). Tier 1 is deterministic operation-count gates - the
+      only hard assertions, so they cannot flake: `build_row` reads each in-bounds
+      byte exactly once (never a missing byte), planted-needle corpora yield exact
+      match counts, and a single overlay `covers`/`ranges_at` lookup invokes
+      `OverlayRange.covers` at most `nranges` times (locking O(nranges), catching
+      an O(nranges**2) regression). Instrumentation is entirely test-side (a
+      counting buffer; a `monkeypatch` of `OverlayRange.covers`); `core.py` and
+      `overlay.py` are untouched and stdlib-only. Tier 2 is advisory timing
+      envelopes: each op is run at N/2N/4N (best-of-N minimum) and the doubling
+      ratios are printed; they assert only under `PERF_STRICT=1`, against a
+      generous self-normalising ceiling. `scripts/performance/run_all.sh` now also
+      drives the real CLI under `scripts/stress/measure.py` for subprocess
+      wall-clock + peak-RSS characterizations (`--json` whole-file memory,
+      big-file case-insensitive search) - informational only, RSS-capped for host
+      safety, and SKIP-clean where procfs is absent. `classify_byte` (O(1)) and
+      whole-file JSON in-process memory are deliberately left out as unstable
+      micro-signals; the latter is the subprocess RSS characterization instead.
+      Inputs are seeded and generated at runtime (`perflib.py`,
+      `make_input.py`) - no committed blobs. Still opt-in (sibling dir, excluded
+      by `testpaths`; gated behind `run-full-test-suite.sh --include-performance`).
+      Docs in `tests_perf/README.md` and `scripts/performance/README.md`.
 - [x] **Release metadata canonical URLs.** Replaced placeholder public-project
       links in package metadata and the changelog with
       `https://github.com/mrphilcox/multihex`.
