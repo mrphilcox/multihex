@@ -23,8 +23,13 @@ if ! need_free_bytes "$WORK" $((128 * 1024 * 1024)); then finish; exit; fi
 
 HUGE="$WORK/huge.bin"
 truncate -s "${gib}G" "$HUGE"
-# Plant a known pattern at offset 0 for the early-match test.
-"$PYTHON" -c 'import sys; f=open(sys.argv[1],"r+b"); f.write(bytes.fromhex("DEADBEEF")); f.close()' "$HUGE"
+# Plant the known pattern twice, back to back, at offset 0 for the early-match
+# test. Two adjacent copies matter: bounded search probes for one match beyond
+# the requested cap to detect truncation, so --search-max-results 1 looks for a
+# second match. A single planted copy would force that probe to scan the whole
+# file (faulting every page) before giving up; two copies let the cap+1 probe
+# satisfy itself within the first eight bytes and stop.
+"$PYTHON" -c 'import sys; f=open(sys.argv[1],"r+b"); f.write(bytes.fromhex("DEADBEEFDEADBEEF")); f.close()' "$HUGE"
 file_bytes=$((gib * 1024 * 1024 * 1024))
 
 # --- open + navigate a window near EOF: bounded (mmap demand paging) ----------
@@ -55,8 +60,9 @@ else
 fi
 
 # --- early match + --search-max-results 1: scan stops, RSS stays bounded ------
-# The planted DEADBEEF is at offset 0, so the first match returns immediately and
-# almost none of the file is faulted. Capture stdout to confirm the early hit.
+# The planted DEADBEEF copies sit at offsets 0 and 4, so the cap+1 probe finds
+# both within the first eight bytes and stops; almost none of the file is
+# faulted. Capture stdout to confirm the early hit at offset 0.
 CO="$WORK/early.out"; CE="$WORK/early.err"
 run_measure --timeout 20 --rss-cap-kb "$(mib_kb 128)" --out "$CO" --err "$CE" \
   -- "$PYTHON" -m multihex.cli --search-hex "DE AD BE EF" --search-max-results 1 "$HUGE"
