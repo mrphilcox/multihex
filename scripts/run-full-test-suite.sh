@@ -24,7 +24,7 @@ keep_going=0
 
 usage() {
   cat <<EOF
-Usage: scripts/run-full-test-suite.sh [--include-performance] [--include-mutation] [--keep-going]
+Usage: scripts/run-full-test-suite.sh [--include-performance] [--include-mutation] [--keep-going] [--all]
 
 Runs lint, default pytest tests, coverage, integration tests, UI/visual tests,
 and stress tests. Stress tests are correctness/robustness tests for edge cases
@@ -37,6 +37,9 @@ scripts/performance/run_all.sh.
 Mutation testing is a targeted, manual quality audit and is slow (it reruns the
 whole pytest suite once per mutant). It is skipped by default; pass
 --include-mutation to run scripts/run_mutation.sh.
+
+--all runs every layer, including the opt-in performance and mutation lanes,
+and implies --keep-going so the run does not stop on the first failure.
 EOF
 }
 
@@ -49,6 +52,11 @@ while [ "$#" -gt 0 ]; do
       include_mutation=1
       ;;
     --keep-going)
+      keep_going=1
+      ;;
+    --all)
+      include_performance=1
+      include_mutation=1
       keep_going=1
       ;;
     -h|--help)
