@@ -33,7 +33,6 @@ import sys
 from typing import List, Optional, Sequence, Union
 
 from multihex_core import (
-    HexFile,
     HexModel,
     Marker,
     Row,
