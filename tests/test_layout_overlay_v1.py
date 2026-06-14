@@ -14,9 +14,12 @@ unsafe-integer, malformed-hex, range-out-of-bounds, source-* mismatches)
 are warnings and leave ok == True.
 """
 
+import hashlib
 import sys
 
-from multihex.layout_overlay_v1 import validate
+from multihex.layout_overlay_v1 import Diagnostic, validate
+
+NAME = "bintools.layout-overlay"
 
 
 def ok_codes(doc, data=None):
@@ -161,6 +164,104 @@ def run():
     sevs = severities(_sch([{"offset": 0, "length": 1, "path": "a"},
                             {"offset": 1, "length": 1, "path": "a"}]))
     check("duplicate-path is an error", sevs.get("duplicate-path"), "error")
+
+    # --- malformed top-level document shape ---
+    # A non-object root is fatal and short-circuits every other check, so the
+    # validator never trusts e.g. a bare array or string as an overlay.
+    for label, root in (("array", []), ("string", "x"), ("null", None),
+                        ("number", 5), ("bool", True)):
+        check(f"non-object root: {label}", ok_codes(root),
+              (False, ["not-an-object"]))
+    # `diagnostics`, when present, must be an array; a scalar is an error.
+    check("non-array diagnostics", ok_codes(_sch([], diagnostics="nope")),
+          (False, ["bad-diagnostics"]))
+
+    # --- schema block shape ---
+    check("missing schema block", ok_codes({"ranges": []}),
+          (False, ["missing-schema"]))
+    check("non-object schema block", ok_codes({"schema": [], "ranges": []}),
+          (False, ["missing-schema"]))
+    # Right name but a non-integer version is rejected; bool is not an int here.
+    for label, ver in (("string", "1"), ("float", 1.0), ("bool", True),
+                       ("missing", None)):
+        check(f"non-integer schema.version: {label}",
+              ok_codes(_sch([], schema={"name": NAME, "version": ver})),
+              (False, ["missing-schema-version"]))
+
+    # --- top-level field types ---
+    check("ranges not an array",
+          ok_codes({"schema": {"name": NAME, "version": 1}, "ranges": "nope"}),
+          (False, ["bad-ranges"]))
+    check("name wrong type", ok_codes(_sch([], name=123)), (False, ["bad-field"]))
+    check("source_file wrong type", ok_codes(_sch([], source_file=[])),
+          (False, ["bad-field"]))
+    check("source_size negative", ok_codes(_sch([], source_size=-1)),
+          (False, ["bad-field"]))
+    check("source_size bool rejected", ok_codes(_sch([], source_size=True)),
+          (False, ["bad-field"]))
+    check("source_sha256 not 64 hex", ok_codes(_sch([], source_sha256="zz")),
+          (False, ["bad-field"]))
+    check("source_sha256 uppercase rejected",
+          ok_codes(_sch([], source_sha256="A" * 64)), (False, ["bad-field"]))
+
+    # --- per-range shape ---
+    check("range not an object", ok_codes(_sch([5])), (False, ["bad-range"]))
+    check("type not a string",
+          ok_codes(_sch([{"offset": 0, "length": 1, "type": 123}])),
+          (False, ["bad-type"]))
+    check("decoded wrong type",
+          ok_codes(_sch([{"offset": 0, "length": 4, "decoded": [1, 2]}])),
+          (False, ["bad-decoded"]))
+
+    # --- offset/length boundary behaviour (file-aware) ---
+    # A range ending exactly at EOF is in bounds; one byte past is not.
+    check("range ends exactly at EOF",
+          ok_codes(_sch([{"offset": 0, "length": 4}]), b"\x00\x00\x00\x00"),
+          (True, []))
+    check("range one past EOF",
+          ok_codes(_sch([{"offset": 0, "length": 5}]), b"\x00\x00\x00\x00"),
+          (True, ["range-out-of-bounds"]))
+    check("range-out-of-bounds is a warning",
+          severities(_sch([{"offset": 0, "length": 5}]),
+                     b"\x00\x00\x00\x00").get("range-out-of-bounds"),
+          "warning")
+    # File-aware checks must not crash on documents the structural layer already
+    # rejected: non-list ranges, non-dict entries, and invalid offsets are all
+    # skipped rather than indexed into the binary.
+    check("file-aware tolerates non-list ranges",
+          ok_codes({"schema": {"name": NAME, "version": 1}, "ranges": "x"},
+                   b"\x00\x00"),
+          (False, ["bad-ranges"]))
+    check("file-aware skips non-dict range",
+          ok_codes(_sch([5]), b"\x00\x00"), (False, ["bad-range"]))
+    check("file-aware skips invalid offset",
+          ok_codes(_sch([{"offset": -1, "length": 1}]), b"\x00\x00"),
+          (False, ["bad-offset"]))
+
+    # A correct source_sha256 produces no mismatch (the matching branch).
+    check("matching source_sha256 is clean",
+          ok_codes(_sch([], source_sha256=hashlib.sha256(b"\x00\x00")
+                         .hexdigest()), b"\x00\x00"),
+          (True, []))
+    # A zero-length range with a non-scalar type and no bytes is fine: the
+    # zero-length-scalar rule must not fire for `bytes`.
+    check("zero-length non-scalar range is clean",
+          ok_codes(_sch([{"offset": 4, "length": 0, "type": "bytes"}])),
+          (True, []))
+    # The `warnings` accessor mirrors the warning-severity diagnostics.
+    check("warnings accessor lists only warnings",
+          [d.code for d in
+           validate(_sch([{"offset": 0, "length": 4, "type": "f32le"}])).warnings],
+          ["unknown-type"])
+
+    # --- diagnostic serialization (the CLI/JSON output shape) ---
+    check("to_dict drops absent optional fields",
+          Diagnostic("info", "c", "m").to_dict(),
+          {"severity": "info", "code": "c", "message": "m"})
+    check("to_dict keeps present optional fields",
+          Diagnostic("error", "c", "m", path="p", offset=1, length=2).to_dict(),
+          {"severity": "error", "code": "c", "message": "m",
+           "path": "p", "offset": 1, "length": 2})
 
     print()
     print("ALL PASS" if _fails == 0 else f"{_fails} FAILED")
