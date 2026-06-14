@@ -1,0 +1,59 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_udp_header",
+  "source_file": "udp_datagram.bin",
+  "source_size": 12,
+  "source_sha256": "a0050362820750989e03de33751ebc0f66756f2b195b8646d959218ae19b085c",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 2,
+      "path": "source_port",
+      "label": "source port",
+      "type": "u16be",
+      "decoded": "53 (dns)",
+      "raw_hex_preview": "0035"
+    },
+    {
+      "offset": 2,
+      "length": 2,
+      "path": "dest_port",
+      "label": "destination port",
+      "type": "u16be",
+      "decoded": 40000,
+      "raw_hex_preview": "9c40"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "length",
+      "label": "length (header + data)",
+      "kind": "length",
+      "type": "u16be",
+      "decoded": 12,
+      "raw_hex_preview": "000c"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "checksum",
+      "label": "checksum (0 = none, IPv4)",
+      "kind": "checksum",
+      "type": "u16be",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "payload",
+      "label": "payload",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

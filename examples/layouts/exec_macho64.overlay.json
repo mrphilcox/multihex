@@ -1,0 +1,141 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_macho64",
+  "source_file": "program",
+  "source_size": 104,
+  "source_sha256": "39b63da297dab50bb14c5e906b8b93b04a1a5dca5fe774c4283e546479c6b4da",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "header.magic",
+      "label": "Mach-O magic (64-bit)",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0xfeedfacf (MH_MAGIC_64)",
+      "raw_hex_preview": "cffaedfe",
+      "expected_hex": "cffaedfe",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "header.cputype",
+      "label": "CPU type",
+      "type": "u32le",
+      "decoded": "0x01000007 (x86_64)",
+      "raw_hex_preview": "07000001"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "header.cpusubtype",
+      "label": "CPU subtype",
+      "type": "u32le",
+      "decoded": "0x80000003",
+      "raw_hex_preview": "03000080"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "header.filetype",
+      "label": "file type",
+      "type": "u32le",
+      "decoded": "2 (MH_EXECUTE)",
+      "raw_hex_preview": "02000000"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "header.ncmds",
+      "label": "number of load commands",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 15,
+      "raw_hex_preview": "0f000000"
+    },
+    {
+      "offset": 20,
+      "length": 4,
+      "path": "header.sizeofcmds",
+      "label": "total size of load commands",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 2048,
+      "raw_hex_preview": "00080000"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "header.flags",
+      "label": "flags",
+      "kind": "flags",
+      "type": "u32le",
+      "decoded": "0x00200085",
+      "raw_hex_preview": "85002000"
+    },
+    {
+      "offset": 28,
+      "length": 4,
+      "path": "header.reserved",
+      "label": "reserved",
+      "kind": "reserved",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 32,
+      "length": 4,
+      "path": "cmd[0].cmd",
+      "label": "load command type",
+      "type": "u32le",
+      "decoded": "0x19 (LC_SEGMENT_64)",
+      "raw_hex_preview": "19000000"
+    },
+    {
+      "offset": 36,
+      "length": 4,
+      "path": "cmd[0].cmdsize",
+      "label": "command size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 72,
+      "raw_hex_preview": "48000000"
+    },
+    {
+      "offset": 40,
+      "length": 16,
+      "path": "cmd[0].segname",
+      "label": "segment name",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "__PAGEZERO",
+      "raw_hex_preview": "5f5f504147455a45524f000000000000"
+    },
+    {
+      "offset": 56,
+      "length": 8,
+      "path": "cmd[0].vmaddr",
+      "label": "VM address",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 0,
+      "raw_hex_preview": "0000000000000000"
+    },
+    {
+      "offset": 64,
+      "length": 8,
+      "path": "cmd[0].vmsize",
+      "label": "VM size",
+      "kind": "length",
+      "type": "u64le",
+      "decoded": 4294967296,
+      "raw_hex_preview": "0000000001000000"
+    }
+  ],
+  "diagnostics": []
+}

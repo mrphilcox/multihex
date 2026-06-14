@@ -1,0 +1,198 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "png",
+  "source_file": "image.png",
+  "source_size": 69,
+  "source_sha256": "c81ed749ae7bfc27f851aa8074a73e0b27148330d913d9cfabb75091896b60f9",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 8,
+      "path": "signature",
+      "label": "PNG signature",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "\\x89PNG\\r\\n\\x1a\\n",
+      "raw_hex_preview": "89504e470d0a1a0a",
+      "expected_hex": "89504e470d0a1a0a",
+      "status": "ok"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "ihdr.length",
+      "label": "IHDR chunk data length",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 13,
+      "raw_hex_preview": "0000000d"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "ihdr.type",
+      "label": "chunk type",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "IHDR",
+      "raw_hex_preview": "49484452",
+      "expected_hex": "49484452",
+      "status": "ok"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "ihdr.width",
+      "label": "image width",
+      "type": "u32be",
+      "decoded": 16,
+      "raw_hex_preview": "00000010"
+    },
+    {
+      "offset": 20,
+      "length": 4,
+      "path": "ihdr.height",
+      "label": "image height",
+      "type": "u32be",
+      "decoded": 16,
+      "raw_hex_preview": "00000010"
+    },
+    {
+      "offset": 24,
+      "length": 1,
+      "path": "ihdr.bit_depth",
+      "label": "bit depth",
+      "type": "u8",
+      "decoded": 8,
+      "raw_hex_preview": "08"
+    },
+    {
+      "offset": 25,
+      "length": 1,
+      "path": "ihdr.color_type",
+      "label": "color type",
+      "type": "u8",
+      "decoded": "6 (truecolor + alpha)",
+      "raw_hex_preview": "06"
+    },
+    {
+      "offset": 26,
+      "length": 1,
+      "path": "ihdr.compression_method",
+      "label": "compression method",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 27,
+      "length": 1,
+      "path": "ihdr.filter_method",
+      "label": "filter method",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 28,
+      "length": 1,
+      "path": "ihdr.interlace_method",
+      "label": "interlace method",
+      "type": "u8",
+      "decoded": "0 (none)",
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 29,
+      "length": 4,
+      "path": "ihdr.crc",
+      "label": "IHDR CRC-32",
+      "kind": "checksum",
+      "type": "u32be",
+      "decoded": 536084321,
+      "raw_hex_preview": "1ff3ff61",
+      "expected_hex": "1ff3ff61",
+      "status": "ok"
+    },
+    {
+      "offset": 33,
+      "length": 4,
+      "path": "idat.length",
+      "label": "IDAT chunk data length",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 12,
+      "raw_hex_preview": "0000000c"
+    },
+    {
+      "offset": 37,
+      "length": 4,
+      "path": "idat.type",
+      "label": "chunk type",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "IDAT",
+      "raw_hex_preview": "49444154",
+      "expected_hex": "49444154",
+      "status": "ok"
+    },
+    {
+      "offset": 41,
+      "length": 12,
+      "path": "idat.data",
+      "label": "zlib-compressed image data",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 53,
+      "length": 4,
+      "path": "idat.crc",
+      "label": "IDAT CRC-32",
+      "kind": "checksum",
+      "type": "u32be",
+      "decoded": 3917532557,
+      "raw_hex_preview": "e980cd8d",
+      "expected_hex": "e980cd8d",
+      "status": "ok"
+    },
+    {
+      "offset": 57,
+      "length": 4,
+      "path": "iend.length",
+      "label": "IEND chunk data length",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 61,
+      "length": 4,
+      "path": "iend.type",
+      "label": "chunk type",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "IEND",
+      "raw_hex_preview": "49454e44",
+      "expected_hex": "49454e44",
+      "status": "ok"
+    },
+    {
+      "offset": 65,
+      "length": 4,
+      "path": "iend.crc",
+      "label": "IEND CRC-32",
+      "kind": "checksum",
+      "type": "u32be",
+      "decoded": 2923585666,
+      "raw_hex_preview": "ae426082",
+      "expected_hex": "ae426082",
+      "status": "ok"
+    }
+  ],
+  "diagnostics": []
+}

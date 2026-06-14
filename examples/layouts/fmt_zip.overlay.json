@@ -1,0 +1,217 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "fmt_zip",
+  "source_file": "archive.zip",
+  "source_size": 118,
+  "source_sha256": "4e63bfc73aee8d2a30ffc5230bb3209e76e858f78d75eedfca8ed189024d2600",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "local[0].signature",
+      "label": "local file header signature",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0x04034b50 (PK\\x03\\x04)",
+      "raw_hex_preview": "504b0304",
+      "expected_hex": "504b0304",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "local[0].version_needed",
+      "label": "version needed to extract",
+      "type": "u16le",
+      "decoded": 20,
+      "raw_hex_preview": "1400"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "local[0].flags",
+      "label": "general purpose bit flag",
+      "kind": "flags",
+      "type": "u16le",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 8,
+      "length": 2,
+      "path": "local[0].method",
+      "label": "compression method",
+      "type": "u16le",
+      "decoded": "0 (stored)",
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 10,
+      "length": 2,
+      "path": "local[0].mod_time",
+      "label": "last mod file time (DOS)",
+      "type": "u16le",
+      "decoded": "0x6c00",
+      "raw_hex_preview": "006c"
+    },
+    {
+      "offset": 12,
+      "length": 2,
+      "path": "local[0].mod_date",
+      "label": "last mod file date (DOS)",
+      "type": "u16le",
+      "decoded": "0x5921",
+      "raw_hex_preview": "2159"
+    },
+    {
+      "offset": 14,
+      "length": 4,
+      "path": "local[0].crc32",
+      "label": "CRC-32 of uncompressed data",
+      "kind": "checksum",
+      "type": "u32le",
+      "decoded": 1293356558,
+      "raw_hex_preview": "0e0e174d",
+      "expected_hex": "0e0e174d",
+      "status": "ok"
+    },
+    {
+      "offset": 18,
+      "length": 4,
+      "path": "local[0].compressed_size",
+      "label": "compressed size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 2,
+      "raw_hex_preview": "02000000"
+    },
+    {
+      "offset": 22,
+      "length": 4,
+      "path": "local[0].uncompressed_size",
+      "label": "uncompressed size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 2,
+      "raw_hex_preview": "02000000"
+    },
+    {
+      "offset": 26,
+      "length": 2,
+      "path": "local[0].filename_length",
+      "label": "file name length",
+      "kind": "length",
+      "type": "u16le",
+      "decoded": 9,
+      "raw_hex_preview": "0900"
+    },
+    {
+      "offset": 28,
+      "length": 2,
+      "path": "local[0].extra_length",
+      "label": "extra field length",
+      "kind": "length",
+      "type": "u16le",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 30,
+      "length": 9,
+      "path": "local[0].filename",
+      "label": "file name",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "hello.txt",
+      "raw_hex_preview": "68656c6c6f2e747874"
+    },
+    {
+      "offset": 39,
+      "length": 2,
+      "path": "local[0].data",
+      "label": "file data (stored)",
+      "kind": "payload",
+      "type": "ascii",
+      "decoded": "Hi",
+      "raw_hex_preview": "4869"
+    },
+    {
+      "offset": 41,
+      "length": 4,
+      "path": "central[0].signature",
+      "label": "central directory header signature",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0x02014b50 (PK\\x01\\x02)",
+      "raw_hex_preview": "504b0102",
+      "expected_hex": "504b0102",
+      "status": "ok"
+    },
+    {
+      "offset": 83,
+      "length": 4,
+      "path": "central[0].local_header_offset",
+      "label": "offset of local header",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 96,
+      "length": 4,
+      "path": "eocd.signature",
+      "label": "end of central directory signature",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0x06054b50 (PK\\x05\\x06)",
+      "raw_hex_preview": "504b0506",
+      "expected_hex": "504b0506",
+      "status": "ok"
+    },
+    {
+      "offset": 104,
+      "length": 2,
+      "path": "eocd.cd_records",
+      "label": "CD records on this disk",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 1,
+      "raw_hex_preview": "0100"
+    },
+    {
+      "offset": 106,
+      "length": 2,
+      "path": "eocd.total_records",
+      "label": "total CD records",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 1,
+      "raw_hex_preview": "0100"
+    },
+    {
+      "offset": 108,
+      "length": 4,
+      "path": "eocd.cd_size",
+      "label": "size of central directory",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 55,
+      "raw_hex_preview": "37000000"
+    },
+    {
+      "offset": 112,
+      "length": 4,
+      "path": "eocd.cd_offset",
+      "label": "offset of central directory",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 41,
+      "raw_hex_preview": "29000000"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,136 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_dtb_fdt",
+  "source_file": "device.dtb",
+  "source_size": 256,
+  "source_sha256": "fca6af2e5e4ee88a4c6eefe18df5628ff6ab6d5db06132c8f3654147934cb5eb",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "header.magic",
+      "label": "FDT magic (big-endian)",
+      "kind": "identifier",
+      "type": "u32be",
+      "decoded": "0xd00dfeed",
+      "raw_hex_preview": "d00dfeed",
+      "expected_hex": "d00dfeed",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "header.totalsize",
+      "label": "total size of blob",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 256,
+      "raw_hex_preview": "00000100"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "header.off_dt_struct",
+      "label": "offset to structure block",
+      "kind": "offset",
+      "type": "u32be",
+      "decoded": 56,
+      "raw_hex_preview": "00000038"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "header.off_dt_strings",
+      "label": "offset to strings block",
+      "kind": "offset",
+      "type": "u32be",
+      "decoded": 224,
+      "raw_hex_preview": "000000e0"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "header.off_mem_rsvmap",
+      "label": "offset to memory reservation map",
+      "kind": "offset",
+      "type": "u32be",
+      "decoded": 40,
+      "raw_hex_preview": "00000028"
+    },
+    {
+      "offset": 20,
+      "length": 4,
+      "path": "header.version",
+      "label": "format version",
+      "type": "u32be",
+      "decoded": 17,
+      "raw_hex_preview": "00000011"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "header.last_comp_version",
+      "label": "last compatible version",
+      "type": "u32be",
+      "decoded": 16,
+      "raw_hex_preview": "00000010"
+    },
+    {
+      "offset": 28,
+      "length": 4,
+      "path": "header.boot_cpuid_phys",
+      "label": "boot CPU physical ID",
+      "type": "u32be",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 32,
+      "length": 4,
+      "path": "header.size_dt_strings",
+      "label": "size of strings block",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 32,
+      "raw_hex_preview": "00000020"
+    },
+    {
+      "offset": 36,
+      "length": 4,
+      "path": "header.size_dt_struct",
+      "label": "size of structure block",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 168,
+      "raw_hex_preview": "000000a8"
+    },
+    {
+      "offset": 40,
+      "length": 16,
+      "path": "mem_rsvmap",
+      "label": "memory reservation map (addr/size pairs)",
+      "kind": "reserved",
+      "type": "bytes"
+    },
+    {
+      "offset": 56,
+      "length": 168,
+      "path": "dt_struct",
+      "label": "device-tree structure block (FDT tokens)",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 224,
+      "length": 32,
+      "path": "dt_strings",
+      "label": "strings block (NUL-separated property names)",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

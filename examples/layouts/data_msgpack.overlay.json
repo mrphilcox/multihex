@@ -1,0 +1,50 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "data_msgpack",
+  "source_file": "doc.msgpack",
+  "source_size": 5,
+  "source_sha256": "4282748af7d67d596b24df5bc86d403c48d668e7fface0d1ad821281a4fbbf4a",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "root",
+      "label": "fixmap with 1 pair (0x80 | 1)",
+      "kind": "count",
+      "type": "u8",
+      "decoded": "map, 1 pair",
+      "raw_hex_preview": "81"
+    },
+    {
+      "offset": 1,
+      "length": 1,
+      "path": "pair[0].key.head",
+      "label": "fixstr length 2 (0xa0 | 2)",
+      "type": "u8",
+      "decoded": "fixstr(2)",
+      "raw_hex_preview": "a2"
+    },
+    {
+      "offset": 2,
+      "length": 2,
+      "path": "pair[0].key.text",
+      "label": "key text",
+      "type": "utf8",
+      "decoded": "id",
+      "raw_hex_preview": "6964"
+    },
+    {
+      "offset": 4,
+      "length": 1,
+      "path": "pair[0].value",
+      "label": "positive fixint",
+      "type": "u8",
+      "decoded": 42,
+      "raw_hex_preview": "2a"
+    }
+  ],
+  "diagnostics": []
+}

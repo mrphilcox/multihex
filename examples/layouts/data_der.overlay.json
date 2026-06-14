@@ -1,0 +1,149 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "data_asn1_der",
+  "source_file": "structure.der",
+  "source_size": 21,
+  "source_sha256": "adcfda407f52333e39a0025f412dcb3bfa22d45de3a84887df576dc50d8cd42d",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "seq.tag",
+      "label": "tag: SEQUENCE (0x30 = constructed)",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": "0x30 (SEQUENCE)",
+      "raw_hex_preview": "30"
+    },
+    {
+      "offset": 1,
+      "length": 1,
+      "path": "seq.length",
+      "label": "length of contents",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 19,
+      "raw_hex_preview": "13"
+    },
+    {
+      "offset": 2,
+      "length": 1,
+      "path": "seq.version.tag",
+      "label": "tag: INTEGER",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": "0x02 (INTEGER)",
+      "raw_hex_preview": "02"
+    },
+    {
+      "offset": 3,
+      "length": 1,
+      "path": "seq.version.length",
+      "label": "length",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 1,
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 4,
+      "length": 1,
+      "path": "seq.version.value",
+      "label": "value",
+      "type": "u8",
+      "decoded": 2,
+      "raw_hex_preview": "02"
+    },
+    {
+      "offset": 5,
+      "length": 1,
+      "path": "seq.exponent.tag",
+      "label": "tag: INTEGER",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": "0x02 (INTEGER)",
+      "raw_hex_preview": "02"
+    },
+    {
+      "offset": 6,
+      "length": 1,
+      "path": "seq.exponent.length",
+      "label": "length",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 3,
+      "raw_hex_preview": "03"
+    },
+    {
+      "offset": 7,
+      "length": 3,
+      "path": "seq.exponent.value",
+      "label": "value (big-endian)",
+      "type": "bytes",
+      "decoded": 65537,
+      "raw_hex_preview": "010001"
+    },
+    {
+      "offset": 10,
+      "length": 1,
+      "path": "seq.oid.tag",
+      "label": "tag: OBJECT IDENTIFIER",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": "0x06 (OID)",
+      "raw_hex_preview": "06"
+    },
+    {
+      "offset": 11,
+      "length": 1,
+      "path": "seq.oid.length",
+      "label": "length",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 3,
+      "raw_hex_preview": "03"
+    },
+    {
+      "offset": 12,
+      "length": 3,
+      "path": "seq.oid.value",
+      "label": "OID value",
+      "type": "bytes",
+      "decoded": "2.5.4.3 (commonName)",
+      "raw_hex_preview": "550403"
+    },
+    {
+      "offset": 15,
+      "length": 1,
+      "path": "seq.cn.tag",
+      "label": "tag: UTF8String",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": "0x0c (UTF8String)",
+      "raw_hex_preview": "0c"
+    },
+    {
+      "offset": 16,
+      "length": 1,
+      "path": "seq.cn.length",
+      "label": "length",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 4,
+      "raw_hex_preview": "04"
+    },
+    {
+      "offset": 17,
+      "length": 4,
+      "path": "seq.cn.value",
+      "label": "string value",
+      "type": "utf8",
+      "decoded": "Test",
+      "raw_hex_preview": "54657374"
+    }
+  ],
+  "diagnostics": []
+}

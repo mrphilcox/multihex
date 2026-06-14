@@ -1,0 +1,69 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "data_pgp_pubkey",
+  "source_file": "key.pgp",
+  "source_size": 17,
+  "source_sha256": "5be2b912e78c5a83950321098c0d3889c249dec22507b140a68d77bb3f63aea2",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "packet.tag",
+      "label": "packet tag byte (old format, tag 6, 2-byte length)",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": "tag 6 (public key)",
+      "raw_hex_preview": "99"
+    },
+    {
+      "offset": 1,
+      "length": 2,
+      "path": "packet.length",
+      "label": "packet body length",
+      "kind": "length",
+      "type": "u16be",
+      "decoded": 14,
+      "raw_hex_preview": "000e"
+    },
+    {
+      "offset": 3,
+      "length": 1,
+      "path": "packet.version",
+      "label": "key version",
+      "type": "u8",
+      "decoded": 4,
+      "raw_hex_preview": "04"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "packet.creation_time",
+      "label": "key creation time",
+      "kind": "timestamp",
+      "type": "u32be",
+      "decoded": 1700000000,
+      "raw_hex_preview": "6553f100"
+    },
+    {
+      "offset": 8,
+      "length": 1,
+      "path": "packet.algorithm",
+      "label": "public-key algorithm",
+      "type": "u8",
+      "decoded": "1 (RSA)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 9,
+      "length": 8,
+      "path": "packet.key_material",
+      "label": "key material (MPIs)",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

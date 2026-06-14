@@ -1,0 +1,132 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "disk_ntfs_boot",
+  "source_file": "ntfs.img",
+  "source_size": 512,
+  "source_sha256": "5a3ab0bb6f99caa3c5bb160d4074734f7ae2db5abd8cd4e0a86f0305ffb74e3e",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 3,
+      "path": "jump",
+      "label": "jump instruction",
+      "type": "bytes",
+      "raw_hex_preview": "eb5290"
+    },
+    {
+      "offset": 3,
+      "length": 8,
+      "path": "oem_id",
+      "label": "OEM ID",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "NTFS",
+      "raw_hex_preview": "4e54465320202020",
+      "expected_hex": "4e54465320202020",
+      "status": "ok"
+    },
+    {
+      "offset": 11,
+      "length": 2,
+      "path": "bpb.bytes_per_sector",
+      "label": "bytes per sector",
+      "kind": "length",
+      "type": "u16le",
+      "decoded": 512,
+      "raw_hex_preview": "0002"
+    },
+    {
+      "offset": 13,
+      "length": 1,
+      "path": "bpb.sectors_per_cluster",
+      "label": "sectors per cluster",
+      "kind": "count",
+      "type": "u8",
+      "decoded": 8,
+      "raw_hex_preview": "08"
+    },
+    {
+      "offset": 21,
+      "length": 1,
+      "path": "bpb.media_descriptor",
+      "label": "media descriptor",
+      "type": "u8",
+      "decoded": "0xf8",
+      "raw_hex_preview": "f8"
+    },
+    {
+      "offset": 40,
+      "length": 8,
+      "path": "bpb.total_sectors",
+      "label": "total sectors",
+      "kind": "count",
+      "type": "u64le",
+      "decoded": 2097152,
+      "raw_hex_preview": "0000200000000000"
+    },
+    {
+      "offset": 48,
+      "length": 8,
+      "path": "bpb.mft_cluster",
+      "label": "MFT first cluster",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 786432,
+      "raw_hex_preview": "00000c0000000000"
+    },
+    {
+      "offset": 56,
+      "length": 8,
+      "path": "bpb.mft_mirror_cluster",
+      "label": "MFT mirror first cluster",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 2,
+      "raw_hex_preview": "0200000000000000"
+    },
+    {
+      "offset": 64,
+      "length": 1,
+      "path": "bpb.clusters_per_mft_record",
+      "label": "clusters per MFT record (signed; -10 = 1024 bytes)",
+      "type": "u8",
+      "decoded": "-10 (1024-byte records)",
+      "raw_hex_preview": "f6"
+    },
+    {
+      "offset": 68,
+      "length": 1,
+      "path": "bpb.clusters_per_index",
+      "label": "clusters per index buffer",
+      "type": "u8",
+      "decoded": 1,
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 72,
+      "length": 8,
+      "path": "volume_serial",
+      "label": "volume serial number",
+      "kind": "identifier",
+      "type": "u64le",
+      "decoded": "0x1122334455667788",
+      "raw_hex_preview": "8877665544332211"
+    },
+    {
+      "offset": 510,
+      "length": 2,
+      "path": "boot_signature",
+      "label": "boot signature",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0x55aa",
+      "raw_hex_preview": "55aa",
+      "expected_hex": "55aa",
+      "status": "ok"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,170 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "disk_fat32_boot",
+  "source_file": "fat32.img",
+  "source_size": 512,
+  "source_sha256": "858c35122e73e31247d5e3b3325a7a6dc411c09083b240a4b80bf75718c040a7",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 3,
+      "path": "jump",
+      "label": "jump instruction",
+      "type": "bytes",
+      "raw_hex_preview": "eb5890"
+    },
+    {
+      "offset": 3,
+      "length": 8,
+      "path": "oem_name",
+      "label": "OEM name",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "mkfs.fat",
+      "raw_hex_preview": "6d6b66732e666174"
+    },
+    {
+      "offset": 11,
+      "length": 2,
+      "path": "bpb.bytes_per_sector",
+      "label": "bytes per sector",
+      "kind": "length",
+      "type": "u16le",
+      "decoded": 512,
+      "raw_hex_preview": "0002"
+    },
+    {
+      "offset": 13,
+      "length": 1,
+      "path": "bpb.sectors_per_cluster",
+      "label": "sectors per cluster",
+      "kind": "count",
+      "type": "u8",
+      "decoded": 8,
+      "raw_hex_preview": "08"
+    },
+    {
+      "offset": 14,
+      "length": 2,
+      "path": "bpb.reserved_sectors",
+      "label": "reserved sectors",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 32,
+      "raw_hex_preview": "2000"
+    },
+    {
+      "offset": 16,
+      "length": 1,
+      "path": "bpb.num_fats",
+      "label": "number of FATs",
+      "kind": "count",
+      "type": "u8",
+      "decoded": 2,
+      "raw_hex_preview": "02"
+    },
+    {
+      "offset": 21,
+      "length": 1,
+      "path": "bpb.media_descriptor",
+      "label": "media descriptor",
+      "type": "u8",
+      "decoded": "0xf8 (fixed disk)",
+      "raw_hex_preview": "f8"
+    },
+    {
+      "offset": 32,
+      "length": 4,
+      "path": "bpb.total_sectors_32",
+      "label": "total sectors (32-bit)",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 1048576,
+      "raw_hex_preview": "00001000"
+    },
+    {
+      "offset": 36,
+      "length": 4,
+      "path": "fat32.sectors_per_fat",
+      "label": "sectors per FAT (32-bit)",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 2048,
+      "raw_hex_preview": "00080000"
+    },
+    {
+      "offset": 44,
+      "length": 4,
+      "path": "fat32.root_cluster",
+      "label": "root directory first cluster",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 2,
+      "raw_hex_preview": "02000000"
+    },
+    {
+      "offset": 48,
+      "length": 2,
+      "path": "fat32.fsinfo_sector",
+      "label": "FSInfo sector number",
+      "kind": "offset",
+      "type": "u16le",
+      "decoded": 1,
+      "raw_hex_preview": "0100"
+    },
+    {
+      "offset": 66,
+      "length": 1,
+      "path": "fat32.ext_boot_signature",
+      "label": "extended boot signature",
+      "type": "u8",
+      "decoded": "0x29",
+      "raw_hex_preview": "29"
+    },
+    {
+      "offset": 67,
+      "length": 4,
+      "path": "fat32.volume_id",
+      "label": "volume serial number",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": 305419896,
+      "raw_hex_preview": "78563412"
+    },
+    {
+      "offset": 71,
+      "length": 11,
+      "path": "fat32.volume_label",
+      "label": "volume label",
+      "type": "ascii",
+      "decoded": "NO NAME",
+      "raw_hex_preview": "4e4f204e414d4520202020"
+    },
+    {
+      "offset": 82,
+      "length": 8,
+      "path": "fat32.fs_type",
+      "label": "file system type string",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "FAT32",
+      "raw_hex_preview": "4641543332202020"
+    },
+    {
+      "offset": 510,
+      "length": 2,
+      "path": "boot_signature",
+      "label": "boot signature",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0x55aa",
+      "raw_hex_preview": "55aa",
+      "expected_hex": "55aa",
+      "status": "ok"
+    }
+  ],
+  "diagnostics": []
+}

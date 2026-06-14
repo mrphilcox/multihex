@@ -1,0 +1,119 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_ipv4_header",
+  "source_file": "ipv4_packet.bin",
+  "source_size": 32,
+  "source_sha256": "2a8924e18d227916d1de79870df4f47694d55bcff52a1cb84bbd5c94e196f4ef",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "version_ihl",
+      "label": "version + IHL",
+      "type": "u8",
+      "decoded": "version 4, IHL 5 (20 bytes)",
+      "raw_hex_preview": "45"
+    },
+    {
+      "offset": 1,
+      "length": 1,
+      "path": "dscp_ecn",
+      "label": "DSCP + ECN",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 2,
+      "length": 2,
+      "path": "total_length",
+      "label": "total length",
+      "kind": "length",
+      "type": "u16be",
+      "decoded": 52,
+      "raw_hex_preview": "0034"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "identification",
+      "label": "identification",
+      "type": "u16be",
+      "decoded": 7238,
+      "raw_hex_preview": "1c46"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "flags_fragment",
+      "label": "flags + fragment offset",
+      "kind": "flags",
+      "type": "u16be",
+      "decoded": "DF (don't fragment)",
+      "raw_hex_preview": "4000"
+    },
+    {
+      "offset": 8,
+      "length": 1,
+      "path": "ttl",
+      "label": "time to live",
+      "type": "u8",
+      "decoded": 64,
+      "raw_hex_preview": "40"
+    },
+    {
+      "offset": 9,
+      "length": 1,
+      "path": "protocol",
+      "label": "protocol",
+      "type": "u8",
+      "decoded": "6 (TCP)",
+      "raw_hex_preview": "06"
+    },
+    {
+      "offset": 10,
+      "length": 2,
+      "path": "header_checksum",
+      "label": "header checksum",
+      "kind": "checksum",
+      "type": "u16be",
+      "decoded": 10225,
+      "raw_hex_preview": "27f1",
+      "expected_hex": "27f1",
+      "status": "ok"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "source_address",
+      "label": "source IP",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "192.168.0.10",
+      "raw_hex_preview": "c0a8000a"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "dest_address",
+      "label": "destination IP",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "93.184.216.34",
+      "raw_hex_preview": "5db8d822"
+    },
+    {
+      "offset": 20,
+      "length": 12,
+      "path": "payload",
+      "label": "payload (e.g. TCP segment)",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

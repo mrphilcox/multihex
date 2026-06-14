@@ -1,0 +1,127 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_pcap",
+  "source_file": "capture.pcap",
+  "source_size": 54,
+  "source_sha256": "a6696afb74c6994237f8aae285cc1bbd62aa6ca2c51674482ded5eb666276bc2",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "header.magic",
+      "label": "magic number (also encodes byte order)",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0xa1b2c3d4 (microsecond, little-endian)",
+      "raw_hex_preview": "d4c3b2a1",
+      "expected_hex": "d4c3b2a1",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "header.version_major",
+      "label": "version major",
+      "type": "u16le",
+      "decoded": 2,
+      "raw_hex_preview": "0200"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "header.version_minor",
+      "label": "version minor",
+      "type": "u16le",
+      "decoded": 4,
+      "raw_hex_preview": "0400"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "header.thiszone",
+      "label": "GMT to local correction",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "header.sigfigs",
+      "label": "timestamp accuracy",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "header.snaplen",
+      "label": "max captured length",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 65535,
+      "raw_hex_preview": "ffff0000"
+    },
+    {
+      "offset": 20,
+      "length": 4,
+      "path": "header.network",
+      "label": "link-layer type",
+      "type": "u32le",
+      "decoded": "1 (Ethernet)",
+      "raw_hex_preview": "01000000"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "record[0].ts_sec",
+      "label": "timestamp seconds",
+      "kind": "timestamp",
+      "type": "u32le",
+      "decoded": 1700000000,
+      "raw_hex_preview": "00f15365"
+    },
+    {
+      "offset": 28,
+      "length": 4,
+      "path": "record[0].ts_usec",
+      "label": "timestamp microseconds",
+      "type": "u32le",
+      "decoded": 123456,
+      "raw_hex_preview": "40e20100"
+    },
+    {
+      "offset": 32,
+      "length": 4,
+      "path": "record[0].incl_len",
+      "label": "captured length",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 14,
+      "raw_hex_preview": "0e000000"
+    },
+    {
+      "offset": 36,
+      "length": 4,
+      "path": "record[0].orig_len",
+      "label": "original length",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 14,
+      "raw_hex_preview": "0e000000"
+    },
+    {
+      "offset": 40,
+      "length": 14,
+      "path": "record[0].data",
+      "label": "packet data",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

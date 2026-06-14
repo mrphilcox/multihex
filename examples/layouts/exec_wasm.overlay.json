@@ -1,0 +1,62 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_wasm",
+  "source_file": "module.wasm",
+  "source_size": 17,
+  "source_sha256": "f81439dacb2cd3600b5ee73f8d6e3e3ca89ecb8cb921bcb28890ed30af26fe95",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "magic",
+      "label": "WASM magic",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "\\x00asm",
+      "raw_hex_preview": "0061736d",
+      "expected_hex": "0061736d",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "version",
+      "label": "version",
+      "type": "u32le",
+      "decoded": 1,
+      "raw_hex_preview": "01000000"
+    },
+    {
+      "offset": 8,
+      "length": 1,
+      "path": "section[0].id",
+      "label": "section ID",
+      "type": "u8",
+      "decoded": "1 (Type)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 9,
+      "length": 1,
+      "path": "section[0].size",
+      "label": "section size (LEB128; 7 bytes)",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 7,
+      "raw_hex_preview": "07"
+    },
+    {
+      "offset": 10,
+      "length": 7,
+      "path": "section[0].content",
+      "label": "type section: 1 functype (i32,i32)->i32",
+      "kind": "payload",
+      "type": "bytes",
+      "raw_hex_preview": "0160027f7f017f"
+    }
+  ],
+  "diagnostics": []
+}

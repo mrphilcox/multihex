@@ -1,0 +1,86 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_tls_clienthello",
+  "source_file": "tls_clienthello.bin",
+  "source_size": 44,
+  "source_sha256": "52cdf4f5c073f052b3567bef03aef4ec735505485afff93c1af14a3059772b68",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "record.content_type",
+      "label": "content type",
+      "type": "u8",
+      "decoded": "22 (handshake)",
+      "raw_hex_preview": "16"
+    },
+    {
+      "offset": 1,
+      "length": 2,
+      "path": "record.version",
+      "label": "record-layer version",
+      "type": "u16be",
+      "decoded": "0x0301 (TLS 1.0)",
+      "raw_hex_preview": "0301"
+    },
+    {
+      "offset": 3,
+      "length": 2,
+      "path": "record.length",
+      "label": "record length",
+      "kind": "length",
+      "type": "u16be",
+      "decoded": 48,
+      "raw_hex_preview": "0030"
+    },
+    {
+      "offset": 5,
+      "length": 1,
+      "path": "handshake.type",
+      "label": "handshake type",
+      "type": "u8",
+      "decoded": "1 (ClientHello)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 6,
+      "length": 3,
+      "path": "handshake.length",
+      "label": "handshake length (u24be)",
+      "kind": "length",
+      "type": "bytes",
+      "decoded": 44,
+      "raw_hex_preview": "00002c"
+    },
+    {
+      "offset": 9,
+      "length": 2,
+      "path": "handshake.client_version",
+      "label": "client version",
+      "type": "u16be",
+      "decoded": "0x0303 (TLS 1.2)",
+      "raw_hex_preview": "0303"
+    },
+    {
+      "offset": 11,
+      "length": 32,
+      "path": "handshake.random",
+      "label": "client random (32 bytes)",
+      "type": "bytes"
+    },
+    {
+      "offset": 43,
+      "length": 1,
+      "path": "handshake.session_id_length",
+      "label": "session ID length",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    }
+  ],
+  "diagnostics": []
+}

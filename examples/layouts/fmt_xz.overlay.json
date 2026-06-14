@@ -1,0 +1,107 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "fmt_xz",
+  "source_file": "data.xz",
+  "source_size": 56,
+  "source_sha256": "3b852e7f4b022d6cda47b73973b19519e30c09ab171ed688bc848c02d30a39db",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 6,
+      "path": "header.magic",
+      "label": "xz magic",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "\\xfd7zXZ\\x00",
+      "raw_hex_preview": "fd377a585a00",
+      "expected_hex": "fd377a585a00",
+      "status": "ok"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "header.stream_flags",
+      "label": "stream flags (check = CRC64)",
+      "kind": "flags",
+      "type": "bytes",
+      "decoded": "CRC64",
+      "raw_hex_preview": "0004"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "header.crc32",
+      "label": "CRC-32 of stream flags",
+      "kind": "checksum",
+      "type": "u32le",
+      "decoded": 1186256614,
+      "raw_hex_preview": "e6d6b446",
+      "expected_hex": "e6d6b446",
+      "status": "ok"
+    },
+    {
+      "offset": 12,
+      "length": 24,
+      "path": "block",
+      "label": "compressed block (LZMA2)",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 36,
+      "length": 8,
+      "path": "index",
+      "label": "index",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 44,
+      "length": 4,
+      "path": "footer.crc32",
+      "label": "CRC-32 of footer",
+      "kind": "checksum",
+      "type": "u32le",
+      "decoded": 4217881777,
+      "raw_hex_preview": "b1c467fb",
+      "expected_hex": "b1c467fb",
+      "status": "ok"
+    },
+    {
+      "offset": 48,
+      "length": 4,
+      "path": "footer.backward_size",
+      "label": "backward size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 2,
+      "raw_hex_preview": "02000000"
+    },
+    {
+      "offset": 52,
+      "length": 2,
+      "path": "footer.stream_flags",
+      "label": "stream flags (repeated)",
+      "kind": "flags",
+      "type": "bytes",
+      "decoded": "CRC64",
+      "raw_hex_preview": "0004"
+    },
+    {
+      "offset": 54,
+      "length": 2,
+      "path": "footer.magic",
+      "label": "footer magic",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "YZ",
+      "raw_hex_preview": "595a",
+      "expected_hex": "595a",
+      "status": "ok"
+    }
+  ],
+  "diagnostics": []
+}

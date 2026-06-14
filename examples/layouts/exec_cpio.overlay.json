@@ -1,0 +1,120 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_cpio_newc",
+  "source_file": "initramfs.cpio",
+  "source_size": 136,
+  "source_sha256": "5a557ec13e58794ee80e553cf0985d4003c808a70b80c5523dd61f4164f07a2a",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 6,
+      "path": "header.magic",
+      "label": "cpio magic (newc)",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "070701",
+      "raw_hex_preview": "303730373031",
+      "expected_hex": "303730373031",
+      "status": "ok"
+    },
+    {
+      "offset": 6,
+      "length": 8,
+      "path": "header.ino",
+      "label": "inode (hex ASCII)",
+      "type": "ascii",
+      "decoded": 1,
+      "raw_hex_preview": "3030303030303031"
+    },
+    {
+      "offset": 14,
+      "length": 8,
+      "path": "header.mode",
+      "label": "mode (hex ASCII)",
+      "type": "ascii",
+      "decoded": "0x81ed (regular, 0755)",
+      "raw_hex_preview": "3030303038316564"
+    },
+    {
+      "offset": 22,
+      "length": 8,
+      "path": "header.uid",
+      "label": "uid (hex ASCII)",
+      "type": "ascii",
+      "decoded": 1000,
+      "raw_hex_preview": "3030303030336538"
+    },
+    {
+      "offset": 30,
+      "length": 8,
+      "path": "header.gid",
+      "label": "gid (hex ASCII)",
+      "type": "ascii",
+      "decoded": 1000,
+      "raw_hex_preview": "3030303030336538"
+    },
+    {
+      "offset": 38,
+      "length": 8,
+      "path": "header.nlink",
+      "label": "link count (hex ASCII)",
+      "kind": "count",
+      "type": "ascii",
+      "decoded": 1,
+      "raw_hex_preview": "3030303030303031"
+    },
+    {
+      "offset": 46,
+      "length": 8,
+      "path": "header.mtime",
+      "label": "mtime (hex ASCII)",
+      "kind": "timestamp",
+      "type": "ascii",
+      "decoded": 1699741696,
+      "raw_hex_preview": "3635353030303030"
+    },
+    {
+      "offset": 54,
+      "length": 8,
+      "path": "header.filesize",
+      "label": "file size (hex ASCII)",
+      "kind": "length",
+      "type": "ascii",
+      "decoded": 14,
+      "raw_hex_preview": "3030303030303065"
+    },
+    {
+      "offset": 102,
+      "length": 8,
+      "path": "header.namesize",
+      "label": "name size incl. NUL (hex ASCII)",
+      "kind": "length",
+      "type": "ascii",
+      "decoded": 11,
+      "raw_hex_preview": "3030303030303030"
+    },
+    {
+      "offset": 110,
+      "length": 11,
+      "path": "name",
+      "label": "path name (NUL-terminated)",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "usr/bin/sh"
+    },
+    {
+      "offset": 124,
+      "length": 10,
+      "path": "data",
+      "label": "file contents",
+      "kind": "payload",
+      "type": "ascii",
+      "decoded": "#!/bin/sh\\n",
+      "raw_hex_preview": "23212f62696e2f73680a"
+    }
+  ],
+  "diagnostics": []
+}

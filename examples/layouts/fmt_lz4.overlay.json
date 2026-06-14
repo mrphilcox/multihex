@@ -1,0 +1,82 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "fmt_lz4",
+  "source_file": "data.lz4",
+  "source_size": 31,
+  "source_sha256": "14397bab0e26ccc93da95b032465c2f0dc8712fc03917393a22ad09cb76b8688",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "magic",
+      "label": "lz4 frame magic",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0x184d2204",
+      "raw_hex_preview": "04224d18",
+      "expected_hex": "04224d18",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 1,
+      "path": "frame.flg",
+      "label": "FLG: version + flags",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": "version 01, block independence",
+      "raw_hex_preview": "60"
+    },
+    {
+      "offset": 5,
+      "length": 1,
+      "path": "frame.bd",
+      "label": "BD: block descriptor",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": "max block size 4 MiB",
+      "raw_hex_preview": "70"
+    },
+    {
+      "offset": 6,
+      "length": 1,
+      "path": "frame.header_checksum",
+      "label": "header checksum (xxh32)",
+      "kind": "checksum",
+      "type": "u8",
+      "decoded": "0x73",
+      "raw_hex_preview": "73"
+    },
+    {
+      "offset": 7,
+      "length": 4,
+      "path": "block[0].size",
+      "label": "block size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 16,
+      "raw_hex_preview": "10000000"
+    },
+    {
+      "offset": 11,
+      "length": 16,
+      "path": "block[0].data",
+      "label": "block data",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 27,
+      "length": 4,
+      "path": "end_mark",
+      "label": "end mark (size 0)",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,84 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_pcapng_shb",
+  "source_file": "capture.pcapng",
+  "source_size": 28,
+  "source_sha256": "4be0e39adfcb63f0796c8a77b7c61f325ba2bad764f64b975ff3d8ae33185f70",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "shb.block_type",
+      "label": "block type (Section Header Block)",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0x0a0d0d0a",
+      "raw_hex_preview": "0a0d0d0a",
+      "expected_hex": "0a0d0d0a",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "shb.block_total_length",
+      "label": "block total length",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 28,
+      "raw_hex_preview": "1c000000"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "shb.byte_order_magic",
+      "label": "byte-order magic (selects endianness)",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0x1a2b3c4d (little-endian)",
+      "raw_hex_preview": "4d3c2b1a",
+      "expected_hex": "4d3c2b1a",
+      "status": "ok"
+    },
+    {
+      "offset": 12,
+      "length": 2,
+      "path": "shb.version_major",
+      "label": "version major",
+      "type": "u16le",
+      "decoded": 1,
+      "raw_hex_preview": "0100"
+    },
+    {
+      "offset": 14,
+      "length": 2,
+      "path": "shb.version_minor",
+      "label": "version minor",
+      "type": "u16le",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 16,
+      "length": 8,
+      "path": "shb.section_length",
+      "label": "section length (u64; 0xffffffffffffffff = unknown)",
+      "type": "u64le",
+      "decoded": "-1 (unknown)",
+      "raw_hex_preview": "ffffffffffffffff"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "shb.block_total_length_trailer",
+      "label": "block total length (repeated)",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 28,
+      "raw_hex_preview": "1c000000"
+    }
+  ],
+  "diagnostics": []
+}

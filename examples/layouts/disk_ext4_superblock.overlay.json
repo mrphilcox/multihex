@@ -1,0 +1,143 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "disk_ext4_superblock",
+  "source_file": "rootfs.img",
+  "source_size": 2048,
+  "source_sha256": "e6f1d9ac5295ec653e6c6149a5a8da78e6a7e9f12a90d7677b428968cabf5ed3",
+  "ranges": [
+    {
+      "offset": 1024,
+      "length": 4,
+      "path": "s_inodes_count",
+      "label": "total inodes",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 65536,
+      "raw_hex_preview": "00000100"
+    },
+    {
+      "offset": 1028,
+      "length": 4,
+      "path": "s_blocks_count_lo",
+      "label": "total blocks (low 32 bits)",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 262144,
+      "raw_hex_preview": "00000400"
+    },
+    {
+      "offset": 1036,
+      "length": 4,
+      "path": "s_free_blocks_count_lo",
+      "label": "free blocks (low 32 bits)",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 200000,
+      "raw_hex_preview": "400d0300"
+    },
+    {
+      "offset": 1040,
+      "length": 4,
+      "path": "s_free_inodes_count",
+      "label": "free inodes",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 65000,
+      "raw_hex_preview": "e8fd0000"
+    },
+    {
+      "offset": 1044,
+      "length": 4,
+      "path": "s_first_data_block",
+      "label": "first data block",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 1048,
+      "length": 4,
+      "path": "s_log_block_size",
+      "label": "block size = 1024 << this (=4096)",
+      "type": "u32le",
+      "decoded": 2,
+      "raw_hex_preview": "02000000"
+    },
+    {
+      "offset": 1056,
+      "length": 4,
+      "path": "s_blocks_per_group",
+      "label": "blocks per group",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 32768,
+      "raw_hex_preview": "00800000"
+    },
+    {
+      "offset": 1068,
+      "length": 4,
+      "path": "s_mtime",
+      "label": "mount time",
+      "kind": "timestamp",
+      "type": "u32le",
+      "decoded": 1700000000,
+      "raw_hex_preview": "00f15365"
+    },
+    {
+      "offset": 1072,
+      "length": 4,
+      "path": "s_wtime",
+      "label": "write time",
+      "kind": "timestamp",
+      "type": "u32le",
+      "decoded": 1700000100,
+      "raw_hex_preview": "64f15365"
+    },
+    {
+      "offset": 1080,
+      "length": 2,
+      "path": "s_magic",
+      "label": "magic signature",
+      "kind": "identifier",
+      "type": "u16le",
+      "decoded": "0xef53",
+      "raw_hex_preview": "53ef",
+      "expected_hex": "53ef",
+      "status": "ok"
+    },
+    {
+      "offset": 1082,
+      "length": 2,
+      "path": "s_state",
+      "label": "filesystem state",
+      "kind": "flags",
+      "type": "u16le",
+      "decoded": "1 (cleanly unmounted)",
+      "raw_hex_preview": "0100"
+    },
+    {
+      "offset": 1128,
+      "length": 16,
+      "path": "s_uuid",
+      "label": "filesystem UUID",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0123456789ab-cdef-...-...",
+      "raw_hex_preview": "0123456789abcdef0011223344556677"
+    },
+    {
+      "offset": 1144,
+      "length": 16,
+      "path": "s_volume_name",
+      "label": "volume label",
+      "type": "ascii",
+      "decoded": "rootfs",
+      "raw_hex_preview": "726f6f74667300000000000000000000"
+    }
+  ],
+  "diagnostics": []
+}

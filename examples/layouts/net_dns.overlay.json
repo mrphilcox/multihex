@@ -1,0 +1,99 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_dns_query",
+  "source_file": "dns_query.bin",
+  "source_size": 29,
+  "source_sha256": "19c174bf10a140c0faa8dc3d0a5a24b1bfe372fce722d3642f8b85b025954f65",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 2,
+      "path": "transaction_id",
+      "label": "transaction ID",
+      "type": "u16be",
+      "decoded": 6699,
+      "raw_hex_preview": "1a2b"
+    },
+    {
+      "offset": 2,
+      "length": 2,
+      "path": "flags",
+      "label": "flags",
+      "kind": "flags",
+      "type": "u16be",
+      "decoded": "standard query, recursion desired",
+      "raw_hex_preview": "0100"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "qdcount",
+      "label": "question count",
+      "kind": "count",
+      "type": "u16be",
+      "decoded": 1,
+      "raw_hex_preview": "0001"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "ancount",
+      "label": "answer RR count",
+      "kind": "count",
+      "type": "u16be",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 8,
+      "length": 2,
+      "path": "nscount",
+      "label": "authority RR count",
+      "kind": "count",
+      "type": "u16be",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 10,
+      "length": 2,
+      "path": "arcount",
+      "label": "additional RR count",
+      "kind": "count",
+      "type": "u16be",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 12,
+      "length": 13,
+      "path": "question.qname",
+      "label": "QNAME (length-prefixed labels)",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "example.com"
+    },
+    {
+      "offset": 25,
+      "length": 2,
+      "path": "question.qtype",
+      "label": "QTYPE",
+      "type": "u16be",
+      "decoded": "1 (A)",
+      "raw_hex_preview": "0001"
+    },
+    {
+      "offset": 27,
+      "length": 2,
+      "path": "question.qclass",
+      "label": "QCLASS",
+      "type": "u16be",
+      "decoded": "1 (IN)",
+      "raw_hex_preview": "0001"
+    }
+  ],
+  "diagnostics": []
+}

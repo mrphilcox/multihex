@@ -1,0 +1,100 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_arp",
+  "source_file": "arp_request.bin",
+  "source_size": 28,
+  "source_sha256": "fea05fd183849e219c4a1064c39fb52d0086350665b9a5a6966a3f6732dcaf41",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 2,
+      "path": "htype",
+      "label": "hardware type",
+      "type": "u16be",
+      "decoded": "1 (Ethernet)",
+      "raw_hex_preview": "0001"
+    },
+    {
+      "offset": 2,
+      "length": 2,
+      "path": "ptype",
+      "label": "protocol type",
+      "type": "u16be",
+      "decoded": "0x0800 (IPv4)",
+      "raw_hex_preview": "0800"
+    },
+    {
+      "offset": 4,
+      "length": 1,
+      "path": "hlen",
+      "label": "hardware address length",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 6,
+      "raw_hex_preview": "06"
+    },
+    {
+      "offset": 5,
+      "length": 1,
+      "path": "plen",
+      "label": "protocol address length",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 4,
+      "raw_hex_preview": "04"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "operation",
+      "label": "operation",
+      "type": "u16be",
+      "decoded": "1 (request)",
+      "raw_hex_preview": "0001"
+    },
+    {
+      "offset": 8,
+      "length": 6,
+      "path": "sender_hw",
+      "label": "sender MAC",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "00:11:22:33:44:55",
+      "raw_hex_preview": "001122334455"
+    },
+    {
+      "offset": 14,
+      "length": 4,
+      "path": "sender_ip",
+      "label": "sender IP",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "192.168.0.10",
+      "raw_hex_preview": "c0a8000a"
+    },
+    {
+      "offset": 18,
+      "length": 6,
+      "path": "target_hw",
+      "label": "target MAC (zero in request)",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "00:00:00:00:00:00",
+      "raw_hex_preview": "000000000000"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "target_ip",
+      "label": "target IP",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "192.168.0.1",
+      "raw_hex_preview": "c0a80001"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,95 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "data_cbor",
+  "source_file": "doc.cbor",
+  "source_size": 16,
+  "source_sha256": "7307ea35024c740d444b92e078acb89adffffb1197b44e0383c1b1fd702f8adf",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "root",
+      "label": "initial byte: major type 5 (map), 2 pairs",
+      "kind": "count",
+      "type": "u8",
+      "decoded": "map, 2 pairs",
+      "raw_hex_preview": "a2"
+    },
+    {
+      "offset": 1,
+      "length": 1,
+      "path": "pair[0].key.head",
+      "label": "major type 3 (text), length 4",
+      "type": "u8",
+      "decoded": "text(4)",
+      "raw_hex_preview": "64"
+    },
+    {
+      "offset": 2,
+      "length": 4,
+      "path": "pair[0].key.text",
+      "label": "key text",
+      "type": "utf8",
+      "decoded": "name",
+      "raw_hex_preview": "6e616d65"
+    },
+    {
+      "offset": 6,
+      "length": 1,
+      "path": "pair[0].value.head",
+      "label": "major type 3 (text), length 4",
+      "type": "u8",
+      "decoded": "text(4)",
+      "raw_hex_preview": "64"
+    },
+    {
+      "offset": 7,
+      "length": 4,
+      "path": "pair[0].value.text",
+      "label": "value text",
+      "type": "utf8",
+      "decoded": "phil",
+      "raw_hex_preview": "7068696c"
+    },
+    {
+      "offset": 11,
+      "length": 1,
+      "path": "pair[1].key.head",
+      "label": "major type 3 (text), length 2",
+      "type": "u8",
+      "decoded": "text(2)",
+      "raw_hex_preview": "62"
+    },
+    {
+      "offset": 12,
+      "length": 2,
+      "path": "pair[1].key.text",
+      "label": "key text",
+      "type": "utf8",
+      "decoded": "id",
+      "raw_hex_preview": "6964"
+    },
+    {
+      "offset": 14,
+      "length": 1,
+      "path": "pair[1].value.head",
+      "label": "major type 0 (uint), 1-byte follows",
+      "type": "u8",
+      "decoded": "uint, 1-byte arg",
+      "raw_hex_preview": "18"
+    },
+    {
+      "offset": 15,
+      "length": 1,
+      "path": "pair[1].value.arg",
+      "label": "value",
+      "type": "u8",
+      "decoded": 42,
+      "raw_hex_preview": "2a"
+    }
+  ],
+  "diagnostics": []
+}

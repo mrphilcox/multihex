@@ -1,0 +1,115 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "fmt_mp4_isobmff",
+  "source_file": "video.mp4",
+  "source_size": 56,
+  "source_sha256": "8a936d3226e6a50a65d36d4df2e3c36f68c46765c12106deda24fd34a19ebdfe",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "ftyp.size",
+      "label": "box size",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 24,
+      "raw_hex_preview": "00000018"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "ftyp.type",
+      "label": "box type",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "ftyp",
+      "raw_hex_preview": "66747970",
+      "expected_hex": "66747970",
+      "status": "ok"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "ftyp.major_brand",
+      "label": "major brand",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "isom",
+      "raw_hex_preview": "69736f6d"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "ftyp.minor_version",
+      "label": "minor version",
+      "type": "u32be",
+      "decoded": "0x200",
+      "raw_hex_preview": "00000200"
+    },
+    {
+      "offset": 16,
+      "length": 8,
+      "path": "ftyp.compatible_brands",
+      "label": "compatible brands",
+      "type": "ascii",
+      "decoded": "isom, mp41",
+      "raw_hex_preview": "69736f6d6d703431"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "moov.size",
+      "label": "box size",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 16,
+      "raw_hex_preview": "00000010"
+    },
+    {
+      "offset": 28,
+      "length": 4,
+      "path": "moov.type",
+      "label": "box type (movie metadata)",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "moov",
+      "raw_hex_preview": "6d6f6f76",
+      "expected_hex": "6d6f6f76",
+      "status": "ok"
+    },
+    {
+      "offset": 40,
+      "length": 4,
+      "path": "mdat.size",
+      "label": "box size",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 16,
+      "raw_hex_preview": "00000010"
+    },
+    {
+      "offset": 44,
+      "length": 4,
+      "path": "mdat.type",
+      "label": "box type (media data)",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "mdat",
+      "raw_hex_preview": "6d646174",
+      "expected_hex": "6d646174",
+      "status": "ok"
+    },
+    {
+      "offset": 48,
+      "length": 8,
+      "path": "mdat.data",
+      "label": "media payload",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

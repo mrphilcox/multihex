@@ -1,0 +1,78 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_ipv6_header",
+  "source_file": "ipv6_packet.bin",
+  "source_size": 48,
+  "source_sha256": "42f22df28d98ee15754776212a36066b04ca130402ec95ccd31d73fa0365001e",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "version_class_flow",
+      "label": "version + traffic class + flow label",
+      "type": "u32be",
+      "decoded": "version 6",
+      "raw_hex_preview": "60000000"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "payload_length",
+      "label": "payload length",
+      "kind": "length",
+      "type": "u16be",
+      "decoded": 8,
+      "raw_hex_preview": "0008"
+    },
+    {
+      "offset": 6,
+      "length": 1,
+      "path": "next_header",
+      "label": "next header",
+      "type": "u8",
+      "decoded": "6 (TCP)",
+      "raw_hex_preview": "06"
+    },
+    {
+      "offset": 7,
+      "length": 1,
+      "path": "hop_limit",
+      "label": "hop limit",
+      "type": "u8",
+      "decoded": 64,
+      "raw_hex_preview": "40"
+    },
+    {
+      "offset": 8,
+      "length": 16,
+      "path": "source_address",
+      "label": "source address",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "2001:db8::1",
+      "raw_hex_preview": "20010db8000000000000000000000001"
+    },
+    {
+      "offset": 24,
+      "length": 16,
+      "path": "dest_address",
+      "label": "destination address",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "2001:db8::2",
+      "raw_hex_preview": "20010db8000000000000000000000002"
+    },
+    {
+      "offset": 40,
+      "length": 8,
+      "path": "payload",
+      "label": "payload",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

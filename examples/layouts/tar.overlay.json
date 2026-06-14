@@ -1,0 +1,183 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "tar_ustar",
+  "source_file": "archive.tar",
+  "source_size": 2048,
+  "source_sha256": "dabfd35f433dd3ddde234aab838f459c4381b5b9752924183c8058bec92cbf06",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 100,
+      "path": "header.name",
+      "label": "file name",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "hello.txt"
+    },
+    {
+      "offset": 100,
+      "length": 8,
+      "path": "header.mode",
+      "label": "file mode (octal ASCII)",
+      "type": "ascii",
+      "decoded": 420,
+      "raw_hex_preview": "3030303036343400"
+    },
+    {
+      "offset": 108,
+      "length": 8,
+      "path": "header.uid",
+      "label": "owner uid (octal ASCII)",
+      "type": "ascii",
+      "decoded": 1000,
+      "raw_hex_preview": "3030303137353000"
+    },
+    {
+      "offset": 116,
+      "length": 8,
+      "path": "header.gid",
+      "label": "group gid (octal ASCII)",
+      "type": "ascii",
+      "decoded": 1000,
+      "raw_hex_preview": "3030303137353000"
+    },
+    {
+      "offset": 124,
+      "length": 12,
+      "path": "header.size",
+      "label": "size in bytes (octal ASCII)",
+      "kind": "length",
+      "type": "ascii",
+      "decoded": 14,
+      "raw_hex_preview": "303030303030303030313600"
+    },
+    {
+      "offset": 136,
+      "length": 12,
+      "path": "header.mtime",
+      "label": "mtime, seconds since epoch (octal ASCII)",
+      "kind": "timestamp",
+      "type": "ascii",
+      "decoded": 1700000000,
+      "raw_hex_preview": "313435323437373034303000"
+    },
+    {
+      "offset": 148,
+      "length": 8,
+      "path": "header.chksum",
+      "label": "header checksum (octal ASCII)",
+      "kind": "checksum",
+      "type": "ascii",
+      "decoded": 4892,
+      "raw_hex_preview": "3031313433340020",
+      "expected_hex": "3031313433340020",
+      "status": "ok"
+    },
+    {
+      "offset": 156,
+      "length": 1,
+      "path": "header.typeflag",
+      "label": "type flag ('0' = regular file)",
+      "type": "ascii",
+      "decoded": "0",
+      "raw_hex_preview": "30"
+    },
+    {
+      "offset": 157,
+      "length": 100,
+      "path": "header.linkname",
+      "label": "link target name",
+      "type": "ascii"
+    },
+    {
+      "offset": 257,
+      "length": 6,
+      "path": "header.magic",
+      "label": "ustar magic",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "ustar",
+      "raw_hex_preview": "757374617200",
+      "expected_hex": "757374617200",
+      "status": "ok"
+    },
+    {
+      "offset": 263,
+      "length": 2,
+      "path": "header.version",
+      "label": "ustar version",
+      "type": "ascii",
+      "decoded": "00",
+      "raw_hex_preview": "3030"
+    },
+    {
+      "offset": 265,
+      "length": 32,
+      "path": "header.uname",
+      "label": "owner user name",
+      "type": "ascii",
+      "decoded": "phil"
+    },
+    {
+      "offset": 297,
+      "length": 32,
+      "path": "header.gname",
+      "label": "owner group name",
+      "type": "ascii",
+      "decoded": "phil"
+    },
+    {
+      "offset": 329,
+      "length": 8,
+      "path": "header.devmajor",
+      "label": "device major (octal ASCII)",
+      "type": "ascii",
+      "raw_hex_preview": "0000000000000000"
+    },
+    {
+      "offset": 337,
+      "length": 8,
+      "path": "header.devminor",
+      "label": "device minor (octal ASCII)",
+      "type": "ascii",
+      "raw_hex_preview": "0000000000000000"
+    },
+    {
+      "offset": 345,
+      "length": 155,
+      "path": "header.prefix",
+      "label": "path name prefix",
+      "type": "ascii"
+    },
+    {
+      "offset": 512,
+      "length": 14,
+      "path": "data",
+      "label": "file contents",
+      "kind": "payload",
+      "type": "ascii",
+      "decoded": "Hello, world!\\n",
+      "raw_hex_preview": "48656c6c6f2c20776f726c64210a"
+    },
+    {
+      "offset": 526,
+      "length": 498,
+      "path": "data_padding",
+      "label": "block padding to 512",
+      "kind": "padding",
+      "type": "bytes"
+    },
+    {
+      "offset": 1024,
+      "length": 1024,
+      "path": "end_of_archive",
+      "label": "two zero blocks (end-of-archive marker)",
+      "kind": "padding",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

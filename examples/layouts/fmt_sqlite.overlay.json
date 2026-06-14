@@ -1,0 +1,165 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "fmt_sqlite",
+  "source_file": "data.db",
+  "source_size": 4096,
+  "source_sha256": "9dc0da42770d51b66382282ca2d09a372ad19ca5c0cc8c7fc7eabcc2ef86a66a",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 16,
+      "path": "header_string",
+      "label": "header magic string",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "SQLite format 3",
+      "raw_hex_preview": "53514c69746520666f726d6174203300",
+      "expected_hex": "53514c69746520666f726d6174203300",
+      "status": "ok"
+    },
+    {
+      "offset": 16,
+      "length": 2,
+      "path": "page_size",
+      "label": "database page size (bytes)",
+      "kind": "length",
+      "type": "u16be",
+      "decoded": 4096,
+      "raw_hex_preview": "1000"
+    },
+    {
+      "offset": 18,
+      "length": 1,
+      "path": "write_version",
+      "label": "file format write version",
+      "type": "u8",
+      "decoded": "1 (legacy)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 19,
+      "length": 1,
+      "path": "read_version",
+      "label": "file format read version",
+      "type": "u8",
+      "decoded": "1 (legacy)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 20,
+      "length": 1,
+      "path": "reserved_space",
+      "label": "reserved bytes per page",
+      "kind": "reserved",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 21,
+      "length": 1,
+      "path": "max_payload_fraction",
+      "label": "max embedded payload fraction",
+      "type": "u8",
+      "decoded": 64,
+      "raw_hex_preview": "40"
+    },
+    {
+      "offset": 22,
+      "length": 1,
+      "path": "min_payload_fraction",
+      "label": "min embedded payload fraction",
+      "type": "u8",
+      "decoded": 32,
+      "raw_hex_preview": "20"
+    },
+    {
+      "offset": 23,
+      "length": 1,
+      "path": "leaf_payload_fraction",
+      "label": "leaf payload fraction",
+      "type": "u8",
+      "decoded": 32,
+      "raw_hex_preview": "20"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "file_change_counter",
+      "label": "file change counter",
+      "kind": "count",
+      "type": "u32be",
+      "decoded": 3,
+      "raw_hex_preview": "00000003"
+    },
+    {
+      "offset": 28,
+      "length": 4,
+      "path": "database_size_pages",
+      "label": "database size in pages",
+      "kind": "count",
+      "type": "u32be",
+      "decoded": 2,
+      "raw_hex_preview": "00000002"
+    },
+    {
+      "offset": 44,
+      "length": 4,
+      "path": "schema_format",
+      "label": "schema format number",
+      "type": "u32be",
+      "decoded": 4,
+      "raw_hex_preview": "00000004"
+    },
+    {
+      "offset": 56,
+      "length": 4,
+      "path": "text_encoding",
+      "label": "text encoding",
+      "type": "u32be",
+      "decoded": "1 (UTF-8)",
+      "raw_hex_preview": "00000001"
+    },
+    {
+      "offset": 60,
+      "length": 4,
+      "path": "user_version",
+      "label": "user version (PRAGMA user_version)",
+      "type": "u32be",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 68,
+      "length": 4,
+      "path": "application_id",
+      "label": "application ID (PRAGMA application_id)",
+      "kind": "identifier",
+      "type": "u32be",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 92,
+      "length": 4,
+      "path": "version_valid_for",
+      "label": "version-valid-for number",
+      "type": "u32be",
+      "decoded": 3,
+      "raw_hex_preview": "00000003"
+    },
+    {
+      "offset": 96,
+      "length": 4,
+      "path": "sqlite_version",
+      "label": "SQLITE_VERSION_NUMBER",
+      "type": "u32be",
+      "decoded": 3045000,
+      "raw_hex_preview": "002e7688"
+    }
+  ],
+  "diagnostics": []
+}

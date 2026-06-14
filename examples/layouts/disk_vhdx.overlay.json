@@ -1,0 +1,113 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "disk_vhdx",
+  "source_file": "disk.vhdx",
+  "source_size": 65792,
+  "source_sha256": "721f4cf2a68c1aad4d0af9d45d6b9142d172f5dbd292a09dba8291d2809449cc",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 8,
+      "path": "file_id.signature",
+      "label": "VHDX file identifier",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "vhdxfile",
+      "raw_hex_preview": "7668647866696c65",
+      "expected_hex": "7668647866696c65",
+      "status": "ok"
+    },
+    {
+      "offset": 8,
+      "length": 512,
+      "path": "file_id.creator",
+      "label": "creator (UTF-16LE)",
+      "type": "utf8",
+      "decoded": "Microsoft Windows 10.0"
+    },
+    {
+      "offset": 65536,
+      "length": 4,
+      "path": "header.signature",
+      "label": "header signature",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "head",
+      "raw_hex_preview": "68656164",
+      "expected_hex": "68656164",
+      "status": "ok"
+    },
+    {
+      "offset": 65540,
+      "length": 4,
+      "path": "header.checksum",
+      "label": "CRC-32C checksum",
+      "kind": "checksum",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 65544,
+      "length": 8,
+      "path": "header.sequence_number",
+      "label": "sequence number",
+      "type": "u64le",
+      "decoded": 1,
+      "raw_hex_preview": "0100000000000000"
+    },
+    {
+      "offset": 65552,
+      "length": 16,
+      "path": "header.file_write_guid",
+      "label": "file write GUID",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "33221100-5544-7766-8899-AABBCCDDEEFF",
+      "raw_hex_preview": "00112233445566778899aabbccddeeff"
+    },
+    {
+      "offset": 65568,
+      "length": 16,
+      "path": "header.data_write_guid",
+      "label": "data write GUID",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "CCDDEEFF-AABB-8899-7766-554433221100",
+      "raw_hex_preview": "ffeeddccbbaa99887766554433221100"
+    },
+    {
+      "offset": 65602,
+      "length": 2,
+      "path": "header.version",
+      "label": "format version",
+      "type": "u16le",
+      "decoded": 1,
+      "raw_hex_preview": "0100"
+    },
+    {
+      "offset": 65604,
+      "length": 4,
+      "path": "header.log_length",
+      "label": "log length",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 1048576,
+      "raw_hex_preview": "00001000"
+    },
+    {
+      "offset": 65608,
+      "length": 8,
+      "path": "header.log_offset",
+      "label": "log offset",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 1048576,
+      "raw_hex_preview": "0000100000000000"
+    }
+  ],
+  "diagnostics": []
+}

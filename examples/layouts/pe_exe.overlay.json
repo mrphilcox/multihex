@@ -1,0 +1,290 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "pe32plus_x86_64",
+  "source_file": "program.exe",
+  "source_size": 2048,
+  "source_sha256": "74596852ee9bdd8b970a2ac4fe3223094c3900f44b24dc23360303a9b20474ed",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 2,
+      "path": "dos.e_magic",
+      "label": "DOS magic 'MZ'",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "MZ",
+      "raw_hex_preview": "4d5a",
+      "expected_hex": "4d5a",
+      "status": "ok"
+    },
+    {
+      "offset": 60,
+      "length": 4,
+      "path": "dos.e_lfanew",
+      "label": "offset to PE header",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 128,
+      "raw_hex_preview": "80000000"
+    },
+    {
+      "offset": 64,
+      "length": 64,
+      "path": "dos.stub",
+      "label": "DOS stub program",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 128,
+      "length": 4,
+      "path": "pe.signature",
+      "label": "PE signature",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "PE\\0\\0",
+      "raw_hex_preview": "50450000",
+      "expected_hex": "50450000",
+      "status": "ok"
+    },
+    {
+      "offset": 132,
+      "length": 2,
+      "path": "coff.machine",
+      "label": "target machine",
+      "type": "u16le",
+      "decoded": "0x8664 (x86-64)",
+      "raw_hex_preview": "6486"
+    },
+    {
+      "offset": 134,
+      "length": 2,
+      "path": "coff.number_of_sections",
+      "label": "number of sections",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 6,
+      "raw_hex_preview": "0600"
+    },
+    {
+      "offset": 136,
+      "length": 4,
+      "path": "coff.time_date_stamp",
+      "label": "link time",
+      "kind": "timestamp",
+      "type": "u32le",
+      "decoded": 1700000000,
+      "raw_hex_preview": "00f15365"
+    },
+    {
+      "offset": 140,
+      "length": 4,
+      "path": "coff.pointer_to_symbol_table",
+      "label": "COFF symbol table offset (0 = none)",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 144,
+      "length": 4,
+      "path": "coff.number_of_symbols",
+      "label": "number of COFF symbols",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 148,
+      "length": 2,
+      "path": "coff.size_of_optional_header",
+      "label": "optional header size",
+      "kind": "length",
+      "type": "u16le",
+      "decoded": 240,
+      "raw_hex_preview": "f000"
+    },
+    {
+      "offset": 150,
+      "length": 2,
+      "path": "coff.characteristics",
+      "label": "image characteristics",
+      "kind": "flags",
+      "type": "u16le",
+      "decoded": "EXECUTABLE_IMAGE | LARGE_ADDRESS_AWARE",
+      "raw_hex_preview": "2200"
+    },
+    {
+      "offset": 152,
+      "length": 2,
+      "path": "opt.magic",
+      "label": "optional header magic",
+      "kind": "identifier",
+      "type": "u16le",
+      "decoded": "0x020b (PE32+)",
+      "raw_hex_preview": "0b02",
+      "expected_hex": "0b02",
+      "status": "ok"
+    },
+    {
+      "offset": 168,
+      "length": 4,
+      "path": "opt.address_of_entry_point",
+      "label": "entry point RVA",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 4096,
+      "raw_hex_preview": "00100000"
+    },
+    {
+      "offset": 176,
+      "length": 8,
+      "path": "opt.image_base",
+      "label": "preferred image base",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 5368709120,
+      "raw_hex_preview": "0000004001000000"
+    },
+    {
+      "offset": 184,
+      "length": 4,
+      "path": "opt.section_alignment",
+      "label": "section alignment",
+      "type": "u32le",
+      "decoded": 4096,
+      "raw_hex_preview": "00100000"
+    },
+    {
+      "offset": 188,
+      "length": 4,
+      "path": "opt.file_alignment",
+      "label": "file alignment",
+      "type": "u32le",
+      "decoded": 512,
+      "raw_hex_preview": "00020000"
+    },
+    {
+      "offset": 208,
+      "length": 4,
+      "path": "opt.size_of_image",
+      "label": "size of image (memory)",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 16384,
+      "raw_hex_preview": "00400000"
+    },
+    {
+      "offset": 212,
+      "length": 4,
+      "path": "opt.size_of_headers",
+      "label": "size of headers",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 1024,
+      "raw_hex_preview": "00040000"
+    },
+    {
+      "offset": 220,
+      "length": 2,
+      "path": "opt.subsystem",
+      "label": "subsystem",
+      "type": "u16le",
+      "decoded": "3 (Windows console)",
+      "raw_hex_preview": "0300"
+    },
+    {
+      "offset": 222,
+      "length": 2,
+      "path": "opt.dll_characteristics",
+      "label": "DLL characteristics",
+      "kind": "flags",
+      "type": "u16le",
+      "decoded": 33120,
+      "raw_hex_preview": "6081"
+    },
+    {
+      "offset": 260,
+      "length": 4,
+      "path": "opt.number_of_rva_and_sizes",
+      "label": "data directory entries",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 16,
+      "raw_hex_preview": "10000000"
+    },
+    {
+      "offset": 264,
+      "length": 128,
+      "path": "opt.data_directory",
+      "label": "data directory (16 x {RVA,size})",
+      "kind": "reserved",
+      "type": "bytes"
+    },
+    {
+      "offset": 392,
+      "length": 8,
+      "path": "section[0].name",
+      "label": "section name",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": ".text"
+    },
+    {
+      "offset": 400,
+      "length": 4,
+      "path": "section[0].virtual_size",
+      "label": "virtual size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 384,
+      "raw_hex_preview": "80010000"
+    },
+    {
+      "offset": 404,
+      "length": 4,
+      "path": "section[0].virtual_address",
+      "label": "virtual address (RVA)",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 4096,
+      "raw_hex_preview": "00100000"
+    },
+    {
+      "offset": 408,
+      "length": 4,
+      "path": "section[0].size_of_raw_data",
+      "label": "size of raw data",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 512,
+      "raw_hex_preview": "00020000"
+    },
+    {
+      "offset": 412,
+      "length": 4,
+      "path": "section[0].pointer_to_raw_data",
+      "label": "file offset of raw data",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 1024,
+      "raw_hex_preview": "00040000"
+    },
+    {
+      "offset": 428,
+      "length": 4,
+      "path": "section[0].characteristics",
+      "label": "section characteristics",
+      "kind": "flags",
+      "type": "u32le",
+      "decoded": "CODE | EXECUTE | READ",
+      "raw_hex_preview": "20000060"
+    }
+  ],
+  "diagnostics": []
+}

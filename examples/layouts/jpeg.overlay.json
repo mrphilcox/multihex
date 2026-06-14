@@ -1,0 +1,209 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "jpeg_jfif",
+  "source_file": "photo.jpg",
+  "source_size": 94,
+  "source_sha256": "8709c04506d265b7bcd3f50ecff186faa7e71857f227e61cc9cf1a3dba304470",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 2,
+      "path": "soi",
+      "label": "Start Of Image",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "FFD8",
+      "raw_hex_preview": "ffd8",
+      "expected_hex": "ffd8",
+      "status": "ok"
+    },
+    {
+      "offset": 2,
+      "length": 2,
+      "path": "app0.marker",
+      "label": "APP0 marker",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "FFE0",
+      "raw_hex_preview": "ffe0",
+      "expected_hex": "ffe0",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "app0.length",
+      "label": "APP0 segment length",
+      "kind": "length",
+      "type": "u16be",
+      "decoded": 16,
+      "raw_hex_preview": "0010"
+    },
+    {
+      "offset": 6,
+      "length": 5,
+      "path": "app0.identifier",
+      "label": "JFIF identifier",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "JFIF",
+      "raw_hex_preview": "4a46494600",
+      "expected_hex": "4a46494600",
+      "status": "ok"
+    },
+    {
+      "offset": 11,
+      "length": 2,
+      "path": "app0.version",
+      "label": "JFIF version",
+      "type": "bytes",
+      "decoded": "1.1",
+      "raw_hex_preview": "0101"
+    },
+    {
+      "offset": 13,
+      "length": 1,
+      "path": "app0.density_units",
+      "label": "density units (1 = dpi)",
+      "type": "u8",
+      "decoded": 1,
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 14,
+      "length": 2,
+      "path": "app0.x_density",
+      "label": "X density",
+      "type": "u16be",
+      "decoded": 72,
+      "raw_hex_preview": "0048"
+    },
+    {
+      "offset": 16,
+      "length": 2,
+      "path": "app0.y_density",
+      "label": "Y density",
+      "type": "u16be",
+      "decoded": 72,
+      "raw_hex_preview": "0048"
+    },
+    {
+      "offset": 18,
+      "length": 2,
+      "path": "app0.thumbnail_size",
+      "label": "thumbnail width x height (0x0)",
+      "type": "bytes",
+      "decoded": "0x0",
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 20,
+      "length": 2,
+      "path": "sof0.marker",
+      "label": "SOF0 marker (baseline DCT)",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "FFC0",
+      "raw_hex_preview": "ffc0",
+      "expected_hex": "ffc0",
+      "status": "ok"
+    },
+    {
+      "offset": 22,
+      "length": 2,
+      "path": "sof0.length",
+      "label": "SOF0 segment length",
+      "kind": "length",
+      "type": "u16be",
+      "decoded": 17,
+      "raw_hex_preview": "0011"
+    },
+    {
+      "offset": 24,
+      "length": 1,
+      "path": "sof0.precision",
+      "label": "sample precision (bits)",
+      "type": "u8",
+      "decoded": 8,
+      "raw_hex_preview": "08"
+    },
+    {
+      "offset": 25,
+      "length": 2,
+      "path": "sof0.height",
+      "label": "image height",
+      "type": "u16be",
+      "decoded": 128,
+      "raw_hex_preview": "0080"
+    },
+    {
+      "offset": 27,
+      "length": 2,
+      "path": "sof0.width",
+      "label": "image width",
+      "type": "u16be",
+      "decoded": 128,
+      "raw_hex_preview": "0080"
+    },
+    {
+      "offset": 29,
+      "length": 1,
+      "path": "sof0.num_components",
+      "label": "number of components",
+      "kind": "count",
+      "type": "u8",
+      "decoded": 3,
+      "raw_hex_preview": "03"
+    },
+    {
+      "offset": 30,
+      "length": 9,
+      "path": "sof0.components",
+      "label": "component specs (id, sampling, qtable)",
+      "type": "bytes"
+    },
+    {
+      "offset": 39,
+      "length": 2,
+      "path": "sos.marker",
+      "label": "SOS marker (Start Of Scan)",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "FFDA",
+      "raw_hex_preview": "ffda",
+      "expected_hex": "ffda",
+      "status": "ok"
+    },
+    {
+      "offset": 41,
+      "length": 12,
+      "path": "sos.header",
+      "label": "SOS header",
+      "type": "bytes"
+    },
+    {
+      "offset": 53,
+      "length": 39,
+      "path": "scan_data",
+      "label": "entropy-coded scan data",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 92,
+      "length": 2,
+      "path": "eoi",
+      "label": "End Of Image",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "FFD9",
+      "raw_hex_preview": "ffd9",
+      "expected_hex": "ffd9",
+      "status": "ok"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,50 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_ethernet_ii",
+  "source_file": "frame.bin",
+  "source_size": 28,
+  "source_sha256": "1b1c7982bb880e09c5ab3bfe8257d4559092ba8f904506a630321afc952e96c8",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 6,
+      "path": "dst_mac",
+      "label": "destination MAC",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "ff:ff:ff:ff:ff:ff",
+      "raw_hex_preview": "ffffffffffff"
+    },
+    {
+      "offset": 6,
+      "length": 6,
+      "path": "src_mac",
+      "label": "source MAC",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "00:11:22:33:44:55",
+      "raw_hex_preview": "001122334455"
+    },
+    {
+      "offset": 12,
+      "length": 2,
+      "path": "ethertype",
+      "label": "EtherType",
+      "type": "u16be",
+      "decoded": "0x0800 (IPv4)",
+      "raw_hex_preview": "0800"
+    },
+    {
+      "offset": 14,
+      "length": 14,
+      "path": "payload",
+      "label": "frame payload",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

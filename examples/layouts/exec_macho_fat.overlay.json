@@ -1,0 +1,129 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_macho_fat",
+  "source_file": "universal_binary",
+  "source_size": 48,
+  "source_sha256": "ce430bdfdb92ae4b64f83fc77b41f5363a2ddcb13ecb176a6d71c96f02a1a6fe",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "magic",
+      "label": "fat magic (big-endian; note 0xCAFEBABE also = Java class)",
+      "kind": "identifier",
+      "type": "u32be",
+      "decoded": "0xcafebabe (FAT_MAGIC)",
+      "raw_hex_preview": "cafebabe",
+      "expected_hex": "cafebabe",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "nfat_arch",
+      "label": "number of architectures",
+      "kind": "count",
+      "type": "u32be",
+      "decoded": 2,
+      "raw_hex_preview": "00000002"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "arch[0].cputype",
+      "label": "CPU type",
+      "type": "u32be",
+      "decoded": "0x01000007 (x86_64)",
+      "raw_hex_preview": "01000007"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "arch[0].cpusubtype",
+      "label": "CPU subtype",
+      "type": "u32be",
+      "decoded": 3,
+      "raw_hex_preview": "00000003"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "arch[0].offset",
+      "label": "slice file offset",
+      "kind": "offset",
+      "type": "u32be",
+      "decoded": 16384,
+      "raw_hex_preview": "00004000"
+    },
+    {
+      "offset": 20,
+      "length": 4,
+      "path": "arch[0].size",
+      "label": "slice size",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 32768,
+      "raw_hex_preview": "00008000"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "arch[0].align",
+      "label": "alignment (2^n)",
+      "type": "u32be",
+      "decoded": 14,
+      "raw_hex_preview": "0000000e"
+    },
+    {
+      "offset": 28,
+      "length": 4,
+      "path": "arch[1].cputype",
+      "label": "CPU type",
+      "type": "u32be",
+      "decoded": "0x0100000c (arm64)",
+      "raw_hex_preview": "0100000c"
+    },
+    {
+      "offset": 32,
+      "length": 4,
+      "path": "arch[1].cpusubtype",
+      "label": "CPU subtype",
+      "type": "u32be",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 36,
+      "length": 4,
+      "path": "arch[1].offset",
+      "label": "slice file offset",
+      "kind": "offset",
+      "type": "u32be",
+      "decoded": 49152,
+      "raw_hex_preview": "0000c000"
+    },
+    {
+      "offset": 40,
+      "length": 4,
+      "path": "arch[1].size",
+      "label": "slice size",
+      "kind": "length",
+      "type": "u32be",
+      "decoded": 32768,
+      "raw_hex_preview": "00008000"
+    },
+    {
+      "offset": 44,
+      "length": 4,
+      "path": "arch[1].align",
+      "label": "alignment (2^n)",
+      "type": "u32be",
+      "decoded": 14,
+      "raw_hex_preview": "0000000e"
+    }
+  ],
+  "diagnostics": []
+}

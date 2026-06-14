@@ -1,0 +1,61 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_java_class",
+  "source_file": "Main.class",
+  "source_size": 50,
+  "source_sha256": "c41f08edf9e32c07c4bbb5de85bb5c4717b7f4795d4dd2b79c2a0d8195d7ad25",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "magic",
+      "label": "class file magic",
+      "kind": "identifier",
+      "type": "u32be",
+      "decoded": "0xcafebabe",
+      "raw_hex_preview": "cafebabe",
+      "expected_hex": "cafebabe",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "minor_version",
+      "label": "minor version",
+      "type": "u16be",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "major_version",
+      "label": "major version",
+      "type": "u16be",
+      "decoded": "61 (Java SE 17)",
+      "raw_hex_preview": "003d"
+    },
+    {
+      "offset": 8,
+      "length": 2,
+      "path": "constant_pool_count",
+      "label": "constant pool count (entries + 1)",
+      "kind": "count",
+      "type": "u16be",
+      "decoded": 20,
+      "raw_hex_preview": "0014"
+    },
+    {
+      "offset": 10,
+      "length": 40,
+      "path": "constant_pool",
+      "label": "constant pool entries (variable-length)",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,132 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "disk_mbr",
+  "source_file": "disk.img",
+  "source_size": 512,
+  "source_sha256": "3fc72dba8d27148a7e35befb75f90dd839c0b25ac9d171f63e49d83ea30d3042",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 440,
+      "path": "bootstrap_code",
+      "label": "bootstrap code",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 440,
+      "length": 4,
+      "path": "disk_signature",
+      "label": "disk signature",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": 439041101,
+      "raw_hex_preview": "4d3c2b1a"
+    },
+    {
+      "offset": 444,
+      "length": 2,
+      "path": "reserved",
+      "label": "reserved",
+      "kind": "reserved",
+      "type": "bytes",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 446,
+      "length": 1,
+      "path": "partition[0].status",
+      "label": "status (0x80 = bootable)",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": "0x80 (bootable)",
+      "raw_hex_preview": "80"
+    },
+    {
+      "offset": 447,
+      "length": 3,
+      "path": "partition[0].chs_first",
+      "label": "CHS address of first sector",
+      "type": "bytes",
+      "raw_hex_preview": "000200"
+    },
+    {
+      "offset": 450,
+      "length": 1,
+      "path": "partition[0].type",
+      "label": "partition type",
+      "type": "u8",
+      "decoded": "0x83 (Linux)",
+      "raw_hex_preview": "83"
+    },
+    {
+      "offset": 451,
+      "length": 3,
+      "path": "partition[0].chs_last",
+      "label": "CHS address of last sector",
+      "type": "bytes",
+      "raw_hex_preview": "feffff"
+    },
+    {
+      "offset": 454,
+      "length": 4,
+      "path": "partition[0].lba_first",
+      "label": "first sector (LBA)",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 2048,
+      "raw_hex_preview": "00080000"
+    },
+    {
+      "offset": 458,
+      "length": 4,
+      "path": "partition[0].sectors",
+      "label": "number of sectors",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 1048576,
+      "raw_hex_preview": "00001000"
+    },
+    {
+      "offset": 462,
+      "length": 16,
+      "path": "partition[1]",
+      "label": "partition entry 2 (empty)",
+      "kind": "reserved",
+      "type": "bytes"
+    },
+    {
+      "offset": 478,
+      "length": 16,
+      "path": "partition[2]",
+      "label": "partition entry 3 (empty)",
+      "kind": "reserved",
+      "type": "bytes"
+    },
+    {
+      "offset": 494,
+      "length": 16,
+      "path": "partition[3]",
+      "label": "partition entry 4 (empty)",
+      "kind": "reserved",
+      "type": "bytes"
+    },
+    {
+      "offset": 510,
+      "length": 2,
+      "path": "boot_signature",
+      "label": "boot signature",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0x55aa",
+      "raw_hex_preview": "55aa",
+      "expected_hex": "55aa",
+      "status": "ok"
+    }
+  ],
+  "diagnostics": []
+}

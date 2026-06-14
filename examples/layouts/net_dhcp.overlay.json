@@ -1,0 +1,163 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_dhcp",
+  "source_file": "dhcp_discover.bin",
+  "source_size": 244,
+  "source_sha256": "8bbfca9047d30eb638964703a752f6386b4ddc7721810cf4f076ff1c34c38b5e",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "op",
+      "label": "message op code",
+      "type": "u8",
+      "decoded": "1 (BOOTREQUEST)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 1,
+      "length": 1,
+      "path": "htype",
+      "label": "hardware type",
+      "type": "u8",
+      "decoded": "1 (Ethernet)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 2,
+      "length": 1,
+      "path": "hlen",
+      "label": "hardware address length",
+      "kind": "length",
+      "type": "u8",
+      "decoded": 6,
+      "raw_hex_preview": "06"
+    },
+    {
+      "offset": 3,
+      "length": 1,
+      "path": "hops",
+      "label": "hops",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "xid",
+      "label": "transaction ID",
+      "type": "u32be",
+      "decoded": 956560166,
+      "raw_hex_preview": "3903f326"
+    },
+    {
+      "offset": 8,
+      "length": 2,
+      "path": "secs",
+      "label": "seconds elapsed",
+      "type": "u16be",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 10,
+      "length": 2,
+      "path": "flags",
+      "label": "flags",
+      "kind": "flags",
+      "type": "u16be",
+      "decoded": "broadcast",
+      "raw_hex_preview": "8000"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "ciaddr",
+      "label": "client IP address",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0.0.0.0",
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "yiaddr",
+      "label": "'your' (assigned) IP",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0.0.0.0",
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 20,
+      "length": 4,
+      "path": "siaddr",
+      "label": "next server IP",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0.0.0.0",
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "giaddr",
+      "label": "relay agent IP",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0.0.0.0",
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 28,
+      "length": 16,
+      "path": "chaddr",
+      "label": "client hardware address",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "00:11:22:33:44:55",
+      "raw_hex_preview": "00112233445500000000000000000000"
+    },
+    {
+      "offset": 44,
+      "length": 64,
+      "path": "sname",
+      "label": "server host name",
+      "type": "ascii"
+    },
+    {
+      "offset": 108,
+      "length": 128,
+      "path": "file",
+      "label": "boot file name",
+      "type": "ascii"
+    },
+    {
+      "offset": 236,
+      "length": 4,
+      "path": "magic_cookie",
+      "label": "DHCP magic cookie",
+      "kind": "identifier",
+      "type": "u32be",
+      "decoded": "0x63825363",
+      "raw_hex_preview": "63825363",
+      "expected_hex": "63825363",
+      "status": "ok"
+    },
+    {
+      "offset": 240,
+      "length": 3,
+      "path": "options",
+      "label": "DHCP options (53: message type = Discover)",
+      "type": "bytes",
+      "decoded": "option 53 = 1 (DHCPDISCOVER)",
+      "raw_hex_preview": "350101"
+    }
+  ],
+  "diagnostics": []
+}

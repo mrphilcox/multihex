@@ -1,0 +1,256 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "elf64_core_x86_64",
+  "source_file": "core.1234",
+  "source_size": 16384,
+  "source_sha256": "6e5f8d2f02fc1658208a908cd2be0d450b32ca709fe5302b1164c75700c28a15",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "ehdr.ident.magic",
+      "label": "ELF magic",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "\\x7fELF",
+      "raw_hex_preview": "7f454c46",
+      "expected_hex": "7f454c46",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 1,
+      "path": "ehdr.ident.class",
+      "label": "EI_CLASS",
+      "type": "u8",
+      "decoded": "ELFCLASS64",
+      "raw_hex_preview": "02"
+    },
+    {
+      "offset": 5,
+      "length": 1,
+      "path": "ehdr.ident.data",
+      "label": "EI_DATA",
+      "type": "u8",
+      "decoded": "ELFDATA2LSB (little-endian)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 16,
+      "length": 2,
+      "path": "ehdr.type",
+      "label": "e_type",
+      "type": "u16le",
+      "decoded": "ET_CORE (core dump)",
+      "raw_hex_preview": "0400"
+    },
+    {
+      "offset": 18,
+      "length": 2,
+      "path": "ehdr.machine",
+      "label": "e_machine",
+      "type": "u16le",
+      "decoded": "EM_X86_64",
+      "raw_hex_preview": "3e00"
+    },
+    {
+      "offset": 24,
+      "length": 8,
+      "path": "ehdr.entry",
+      "label": "e_entry (0 in core)",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 0,
+      "raw_hex_preview": "0000000000000000"
+    },
+    {
+      "offset": 32,
+      "length": 8,
+      "path": "ehdr.phoff",
+      "label": "e_phoff",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 64,
+      "raw_hex_preview": "4000000000000000"
+    },
+    {
+      "offset": 40,
+      "length": 8,
+      "path": "ehdr.shoff",
+      "label": "e_shoff (0: cores carry no sections)",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 0,
+      "raw_hex_preview": "0000000000000000"
+    },
+    {
+      "offset": 56,
+      "length": 2,
+      "path": "ehdr.phnum",
+      "label": "e_phnum (program headers)",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 16,
+      "raw_hex_preview": "1000"
+    },
+    {
+      "offset": 60,
+      "length": 2,
+      "path": "ehdr.shnum",
+      "label": "e_shnum",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 64,
+      "length": 4,
+      "path": "phdr[0].p_type",
+      "label": "p_type",
+      "type": "u32le",
+      "decoded": "PT_NOTE",
+      "raw_hex_preview": "04000000"
+    },
+    {
+      "offset": 68,
+      "length": 4,
+      "path": "phdr[0].p_flags",
+      "label": "p_flags",
+      "kind": "flags",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 72,
+      "length": 8,
+      "path": "phdr[0].p_offset",
+      "label": "p_offset (note segment)",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 1280,
+      "raw_hex_preview": "0005000000000000"
+    },
+    {
+      "offset": 96,
+      "length": 8,
+      "path": "phdr[0].p_filesz",
+      "label": "p_filesz",
+      "kind": "length",
+      "type": "u64le",
+      "decoded": 2048,
+      "raw_hex_preview": "0008000000000000"
+    },
+    {
+      "offset": 120,
+      "length": 4,
+      "path": "phdr[1].p_type",
+      "label": "p_type",
+      "type": "u32le",
+      "decoded": "PT_LOAD",
+      "raw_hex_preview": "01000000"
+    },
+    {
+      "offset": 124,
+      "length": 4,
+      "path": "phdr[1].p_flags",
+      "label": "p_flags",
+      "kind": "flags",
+      "type": "u32le",
+      "decoded": "PF_R | PF_X",
+      "raw_hex_preview": "05000000"
+    },
+    {
+      "offset": 128,
+      "length": 8,
+      "path": "phdr[1].p_offset",
+      "label": "p_offset",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 4096,
+      "raw_hex_preview": "0010000000000000"
+    },
+    {
+      "offset": 136,
+      "length": 8,
+      "path": "phdr[1].p_vaddr",
+      "label": "p_vaddr (mapped region)",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 4194304,
+      "raw_hex_preview": "0000400000000000"
+    },
+    {
+      "offset": 152,
+      "length": 8,
+      "path": "phdr[1].p_filesz",
+      "label": "p_filesz",
+      "kind": "length",
+      "type": "u64le",
+      "decoded": 8192,
+      "raw_hex_preview": "0020000000000000"
+    },
+    {
+      "offset": 160,
+      "length": 8,
+      "path": "phdr[1].p_memsz",
+      "label": "p_memsz",
+      "kind": "length",
+      "type": "u64le",
+      "decoded": 8192,
+      "raw_hex_preview": "0020000000000000"
+    },
+    {
+      "offset": 1280,
+      "length": 4,
+      "path": "notes.note[0].n_namesz",
+      "label": "n_namesz",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 5,
+      "raw_hex_preview": "05000000"
+    },
+    {
+      "offset": 1284,
+      "length": 4,
+      "path": "notes.note[0].n_descsz",
+      "label": "n_descsz",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 336,
+      "raw_hex_preview": "50010000"
+    },
+    {
+      "offset": 1288,
+      "length": 4,
+      "path": "notes.note[0].n_type",
+      "label": "n_type",
+      "type": "u32le",
+      "decoded": "NT_PRSTATUS",
+      "raw_hex_preview": "01000000"
+    },
+    {
+      "offset": 1292,
+      "length": 5,
+      "path": "notes.note[0].name",
+      "label": "note owner name",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "CORE",
+      "raw_hex_preview": "434f524500"
+    },
+    {
+      "offset": 1300,
+      "length": 336,
+      "path": "notes.note[0].desc",
+      "label": "NT_PRSTATUS payload (registers, signal, pid)",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

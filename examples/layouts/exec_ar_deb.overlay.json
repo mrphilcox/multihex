@@ -1,0 +1,121 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_ar_deb",
+  "source_file": "package.deb",
+  "source_size": 132,
+  "source_sha256": "d017e121f7319908085fb2345bf88e6177d92f8fbacb7143ab88cf44fae90140",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 8,
+      "path": "magic",
+      "label": "ar archive magic",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "!<arch>\\n",
+      "raw_hex_preview": "213c617263683e0a",
+      "expected_hex": "213c617263683e0a",
+      "status": "ok"
+    },
+    {
+      "offset": 8,
+      "length": 16,
+      "path": "member[0].name",
+      "label": "member name",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "debian-binary"
+    },
+    {
+      "offset": 24,
+      "length": 12,
+      "path": "member[0].mtime",
+      "label": "modification time (decimal ASCII)",
+      "kind": "timestamp",
+      "type": "ascii",
+      "decoded": 1700000000,
+      "raw_hex_preview": "313730303030303030302020"
+    },
+    {
+      "offset": 36,
+      "length": 6,
+      "path": "member[0].uid",
+      "label": "owner UID",
+      "type": "ascii",
+      "decoded": 0,
+      "raw_hex_preview": "302020202020"
+    },
+    {
+      "offset": 42,
+      "length": 6,
+      "path": "member[0].gid",
+      "label": "group GID",
+      "type": "ascii",
+      "decoded": 0,
+      "raw_hex_preview": "302020202020"
+    },
+    {
+      "offset": 48,
+      "length": 8,
+      "path": "member[0].mode",
+      "label": "file mode (octal ASCII)",
+      "type": "ascii",
+      "decoded": 33188,
+      "raw_hex_preview": "3130303634342020"
+    },
+    {
+      "offset": 56,
+      "length": 10,
+      "path": "member[0].size",
+      "label": "size in bytes (decimal ASCII)",
+      "kind": "length",
+      "type": "ascii",
+      "decoded": 4,
+      "raw_hex_preview": "34202020202020202020"
+    },
+    {
+      "offset": 66,
+      "length": 2,
+      "path": "member[0].end",
+      "label": "header terminator",
+      "type": "bytes",
+      "decoded": "`\\n",
+      "raw_hex_preview": "600a",
+      "expected_hex": "600a",
+      "status": "ok"
+    },
+    {
+      "offset": 68,
+      "length": 4,
+      "path": "member[0].data",
+      "label": "member contents",
+      "kind": "payload",
+      "type": "ascii",
+      "decoded": "2.0\\n",
+      "raw_hex_preview": "322e300a"
+    },
+    {
+      "offset": 72,
+      "length": 16,
+      "path": "member[1].name",
+      "label": "member name",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "control.tar.gz"
+    },
+    {
+      "offset": 120,
+      "length": 10,
+      "path": "member[1].size",
+      "label": "size in bytes",
+      "kind": "length",
+      "type": "ascii",
+      "decoded": 0,
+      "raw_hex_preview": "30202020202020202020"
+    }
+  ],
+  "diagnostics": []
+}

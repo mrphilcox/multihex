@@ -1,0 +1,175 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "gif89a",
+  "source_file": "image.gif",
+  "source_size": 797,
+  "source_sha256": "255e57a9ab0956105817b84bac238c2ee759cef61b9d14b051b0c5e14f1f644a",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 3,
+      "path": "header.signature",
+      "label": "GIF signature",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "GIF",
+      "raw_hex_preview": "474946",
+      "expected_hex": "474946",
+      "status": "ok"
+    },
+    {
+      "offset": 3,
+      "length": 3,
+      "path": "header.version",
+      "label": "version",
+      "type": "ascii",
+      "decoded": "89a",
+      "raw_hex_preview": "383961"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "lsd.width",
+      "label": "logical screen width",
+      "type": "u16le",
+      "decoded": 16,
+      "raw_hex_preview": "1000"
+    },
+    {
+      "offset": 8,
+      "length": 2,
+      "path": "lsd.height",
+      "label": "logical screen height",
+      "type": "u16le",
+      "decoded": 16,
+      "raw_hex_preview": "1000"
+    },
+    {
+      "offset": 10,
+      "length": 1,
+      "path": "lsd.packed",
+      "label": "packed fields",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": "GCT present, 256 entries, 8 bpp",
+      "raw_hex_preview": "f7"
+    },
+    {
+      "offset": 11,
+      "length": 1,
+      "path": "lsd.background_color_index",
+      "label": "background color index",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 12,
+      "length": 1,
+      "path": "lsd.pixel_aspect_ratio",
+      "label": "pixel aspect ratio",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 13,
+      "length": 768,
+      "path": "global_color_table",
+      "label": "global color table (256 x RGB)",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 781,
+      "length": 1,
+      "path": "image[0].separator",
+      "label": "image separator",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": 44,
+      "raw_hex_preview": "2c",
+      "expected_hex": "2c",
+      "status": "ok"
+    },
+    {
+      "offset": 782,
+      "length": 2,
+      "path": "image[0].left",
+      "label": "image left position",
+      "type": "u16le",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 784,
+      "length": 2,
+      "path": "image[0].top",
+      "label": "image top position",
+      "type": "u16le",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    },
+    {
+      "offset": 786,
+      "length": 2,
+      "path": "image[0].width",
+      "label": "image width",
+      "type": "u16le",
+      "decoded": 16,
+      "raw_hex_preview": "1000"
+    },
+    {
+      "offset": 788,
+      "length": 2,
+      "path": "image[0].height",
+      "label": "image height",
+      "type": "u16le",
+      "decoded": 16,
+      "raw_hex_preview": "1000"
+    },
+    {
+      "offset": 790,
+      "length": 1,
+      "path": "image[0].packed",
+      "label": "packed fields (no local color table)",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 791,
+      "length": 1,
+      "path": "image[0].lzw_min_code_size",
+      "label": "LZW minimum code size",
+      "type": "u8",
+      "decoded": 8,
+      "raw_hex_preview": "08"
+    },
+    {
+      "offset": 792,
+      "length": 4,
+      "path": "image[0].data",
+      "label": "LZW image data sub-blocks",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 796,
+      "length": 1,
+      "path": "trailer",
+      "label": "GIF trailer",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": 59,
+      "raw_hex_preview": "3b",
+      "expected_hex": "3b",
+      "status": "ok"
+    }
+  ],
+  "diagnostics": []
+}

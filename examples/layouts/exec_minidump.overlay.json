@@ -1,0 +1,142 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_minidump",
+  "source_file": "crash.dmp",
+  "source_size": 56,
+  "source_sha256": "6333b4576f81aaa6a29d8db8e6d3162bbbe7177b1a2490a2e13816360a89fa4f",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "header.signature",
+      "label": "minidump signature 'MDMP'",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0x504d444d (MDMP)",
+      "raw_hex_preview": "4d444d50",
+      "expected_hex": "4d444d50",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "header.version",
+      "label": "version",
+      "type": "u32le",
+      "decoded": "0xa793",
+      "raw_hex_preview": "93a70000"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "header.number_of_streams",
+      "label": "number of streams",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 2,
+      "raw_hex_preview": "02000000"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "header.stream_directory_rva",
+      "label": "stream directory RVA",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 32,
+      "raw_hex_preview": "20000000"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "header.checksum",
+      "label": "checksum",
+      "kind": "checksum",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 20,
+      "length": 4,
+      "path": "header.time_date_stamp",
+      "label": "time/date stamp",
+      "kind": "timestamp",
+      "type": "u32le",
+      "decoded": 1700000000,
+      "raw_hex_preview": "00f15365"
+    },
+    {
+      "offset": 24,
+      "length": 8,
+      "path": "header.flags",
+      "label": "flags",
+      "kind": "flags",
+      "type": "u64le",
+      "decoded": "0x00040000",
+      "raw_hex_preview": "0000040000000000"
+    },
+    {
+      "offset": 32,
+      "length": 4,
+      "path": "directory[0].stream_type",
+      "label": "stream type",
+      "type": "u32le",
+      "decoded": "3 (ThreadListStream)",
+      "raw_hex_preview": "03000000"
+    },
+    {
+      "offset": 36,
+      "length": 4,
+      "path": "directory[0].data_size",
+      "label": "data size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 64,
+      "raw_hex_preview": "40000000"
+    },
+    {
+      "offset": 40,
+      "length": 4,
+      "path": "directory[0].rva",
+      "label": "data RVA",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 256,
+      "raw_hex_preview": "00010000"
+    },
+    {
+      "offset": 44,
+      "length": 4,
+      "path": "directory[1].stream_type",
+      "label": "stream type",
+      "type": "u32le",
+      "decoded": "7 (SystemInfoStream)",
+      "raw_hex_preview": "07000000"
+    },
+    {
+      "offset": 48,
+      "length": 4,
+      "path": "directory[1].data_size",
+      "label": "data size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 56,
+      "raw_hex_preview": "38000000"
+    },
+    {
+      "offset": 52,
+      "length": 4,
+      "path": "directory[1].rva",
+      "label": "data RVA",
+      "kind": "offset",
+      "type": "u32le",
+      "decoded": 512,
+      "raw_hex_preview": "00020000"
+    }
+  ],
+  "diagnostics": []
+}

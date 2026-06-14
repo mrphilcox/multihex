@@ -1,0 +1,96 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_tcp_header",
+  "source_file": "tcp_segment.bin",
+  "source_size": 20,
+  "source_sha256": "f73a74d2c8d3e3ad540612813eca7e0bfb165a288bc4d156307bc9a0bdd2c015",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 2,
+      "path": "source_port",
+      "label": "source port",
+      "type": "u16be",
+      "decoded": 49152,
+      "raw_hex_preview": "c000"
+    },
+    {
+      "offset": 2,
+      "length": 2,
+      "path": "dest_port",
+      "label": "destination port",
+      "type": "u16be",
+      "decoded": "443 (https)",
+      "raw_hex_preview": "01bb"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "sequence_number",
+      "label": "sequence number",
+      "type": "u32be",
+      "decoded": 4096,
+      "raw_hex_preview": "00001000"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "ack_number",
+      "label": "acknowledgment number",
+      "type": "u32be",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 12,
+      "length": 1,
+      "path": "data_offset",
+      "label": "data offset + reserved + NS",
+      "type": "u8",
+      "decoded": "data offset 5 (20 bytes)",
+      "raw_hex_preview": "50"
+    },
+    {
+      "offset": 13,
+      "length": 1,
+      "path": "flags",
+      "label": "control flags",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": "SYN",
+      "raw_hex_preview": "02"
+    },
+    {
+      "offset": 14,
+      "length": 2,
+      "path": "window_size",
+      "label": "window size",
+      "type": "u16be",
+      "decoded": 64240,
+      "raw_hex_preview": "faf0"
+    },
+    {
+      "offset": 16,
+      "length": 2,
+      "path": "checksum",
+      "label": "checksum",
+      "kind": "checksum",
+      "type": "u16be",
+      "decoded": 41394,
+      "raw_hex_preview": "a1b2"
+    },
+    {
+      "offset": 18,
+      "length": 2,
+      "path": "urgent_pointer",
+      "label": "urgent pointer",
+      "type": "u16be",
+      "decoded": 0,
+      "raw_hex_preview": "0000"
+    }
+  ],
+  "diagnostics": []
+}

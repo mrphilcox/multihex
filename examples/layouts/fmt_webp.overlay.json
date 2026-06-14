@@ -1,0 +1,75 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "fmt_webp",
+  "source_file": "image.webp",
+  "source_size": 36,
+  "source_sha256": "101a99e98f818bcacf45d7d050d831eb17503a0ac7a15a4e0d5b94c585133d60",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "riff.id",
+      "label": "RIFF chunk ID",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "RIFF",
+      "raw_hex_preview": "52494646",
+      "expected_hex": "52494646",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "riff.size",
+      "label": "file size - 8",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 28,
+      "raw_hex_preview": "1c000000"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "riff.format",
+      "label": "form type",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "WEBP",
+      "raw_hex_preview": "57454250",
+      "expected_hex": "57454250",
+      "status": "ok"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "vp8l.id",
+      "label": "chunk fourCC",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "VP8L (lossless)",
+      "raw_hex_preview": "5650384c"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "vp8l.size",
+      "label": "chunk payload size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 16,
+      "raw_hex_preview": "10000000"
+    },
+    {
+      "offset": 20,
+      "length": 16,
+      "path": "vp8l.bitstream",
+      "label": "VP8L bitstream",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

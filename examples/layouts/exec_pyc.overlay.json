@@ -1,0 +1,63 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "exec_python_pyc",
+  "source_file": "module.pyc",
+  "source_size": 32,
+  "source_sha256": "e447ec6dc6936011d65e39ffa7e03349a698742242a07ba7dd8698ac30adde94",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "magic",
+      "label": "pyc magic (selects interpreter version)",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0x0d0d0da7 (Python 3.11)",
+      "raw_hex_preview": "a70d0d0a",
+      "expected_hex": "a70d0d0a",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "bit_field",
+      "label": "bit field (0 = timestamp-based invalidation)",
+      "kind": "flags",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "source_mtime",
+      "label": "source file mtime",
+      "kind": "timestamp",
+      "type": "u32le",
+      "decoded": 1700000000,
+      "raw_hex_preview": "00f15365"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "source_size",
+      "label": "source file size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 1234,
+      "raw_hex_preview": "d2040000"
+    },
+    {
+      "offset": 16,
+      "length": 16,
+      "path": "code_object",
+      "label": "marshalled code object",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,60 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "data_bson",
+  "source_file": "doc.bson",
+  "source_size": 12,
+  "source_sha256": "71266eda69e353651a7a4a6340e32c8bd245154d7b921b0331200b7536acdae6",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "document_length",
+      "label": "total document length",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 12,
+      "raw_hex_preview": "0c000000"
+    },
+    {
+      "offset": 4,
+      "length": 1,
+      "path": "element[0].type",
+      "label": "element type",
+      "type": "u8",
+      "decoded": "0x10 (int32)",
+      "raw_hex_preview": "10"
+    },
+    {
+      "offset": 5,
+      "length": 2,
+      "path": "element[0].name",
+      "label": "element name (NUL-terminated)",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "a",
+      "raw_hex_preview": "6100"
+    },
+    {
+      "offset": 7,
+      "length": 4,
+      "path": "element[0].value",
+      "label": "int32 value",
+      "type": "u32le",
+      "decoded": 1,
+      "raw_hex_preview": "01000000"
+    },
+    {
+      "offset": 11,
+      "length": 1,
+      "path": "terminator",
+      "label": "document terminator",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    }
+  ],
+  "diagnostics": []
+}

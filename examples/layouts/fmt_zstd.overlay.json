@@ -1,0 +1,62 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "fmt_zstd",
+  "source_file": "data.zst",
+  "source_size": 26,
+  "source_sha256": "a4f57a7a0ad2296c084a69732f656906e86160bc073e5a29ca78ab6fc58e0f49",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "magic",
+      "label": "zstd magic",
+      "kind": "identifier",
+      "type": "u32le",
+      "decoded": "0xfd2fb528",
+      "raw_hex_preview": "28b52ffd",
+      "expected_hex": "28b52ffd",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 1,
+      "path": "frame_header.descriptor",
+      "label": "frame header descriptor",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 5,
+      "length": 1,
+      "path": "frame_header.window_descriptor",
+      "label": "window descriptor",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 6,
+      "length": 16,
+      "path": "blocks",
+      "label": "compressed blocks",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 22,
+      "length": 4,
+      "path": "content_checksum",
+      "label": "content checksum (xxhash64 low 32 bits)",
+      "kind": "checksum",
+      "type": "u32le",
+      "decoded": 305419896,
+      "raw_hex_preview": "78563412"
+    }
+  ],
+  "diagnostics": []
+}

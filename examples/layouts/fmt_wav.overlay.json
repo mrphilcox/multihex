@@ -1,0 +1,154 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "fmt_wav",
+  "source_file": "audio.wav",
+  "source_size": 76,
+  "source_sha256": "a8883abd5a2fff6a2abead79a4279b903ee0dab2c833c76c9686df7c1e5c32e0",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "riff.id",
+      "label": "RIFF chunk ID",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "RIFF",
+      "raw_hex_preview": "52494646",
+      "expected_hex": "52494646",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "riff.size",
+      "label": "chunk size (file size - 8)",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 68,
+      "raw_hex_preview": "44000000"
+    },
+    {
+      "offset": 8,
+      "length": 4,
+      "path": "riff.format",
+      "label": "RIFF form type",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "WAVE",
+      "raw_hex_preview": "57415645",
+      "expected_hex": "57415645",
+      "status": "ok"
+    },
+    {
+      "offset": 12,
+      "length": 4,
+      "path": "fmt.id",
+      "label": "subchunk ID",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "fmt ",
+      "raw_hex_preview": "666d7420",
+      "expected_hex": "666d7420",
+      "status": "ok"
+    },
+    {
+      "offset": 16,
+      "length": 4,
+      "path": "fmt.size",
+      "label": "fmt subchunk size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 16,
+      "raw_hex_preview": "10000000"
+    },
+    {
+      "offset": 20,
+      "length": 2,
+      "path": "fmt.audio_format",
+      "label": "audio format",
+      "type": "u16le",
+      "decoded": "1 (PCM)",
+      "raw_hex_preview": "0100"
+    },
+    {
+      "offset": 22,
+      "length": 2,
+      "path": "fmt.channels",
+      "label": "number of channels",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 2,
+      "raw_hex_preview": "0200"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "path": "fmt.sample_rate",
+      "label": "sample rate (Hz)",
+      "type": "u32le",
+      "decoded": 44100,
+      "raw_hex_preview": "44ac0000"
+    },
+    {
+      "offset": 28,
+      "length": 4,
+      "path": "fmt.byte_rate",
+      "label": "byte rate",
+      "type": "u32le",
+      "decoded": 176400,
+      "raw_hex_preview": "10b10200"
+    },
+    {
+      "offset": 32,
+      "length": 2,
+      "path": "fmt.block_align",
+      "label": "block align",
+      "type": "u16le",
+      "decoded": 4,
+      "raw_hex_preview": "0400"
+    },
+    {
+      "offset": 34,
+      "length": 2,
+      "path": "fmt.bits_per_sample",
+      "label": "bits per sample",
+      "type": "u16le",
+      "decoded": 16,
+      "raw_hex_preview": "1000"
+    },
+    {
+      "offset": 36,
+      "length": 4,
+      "path": "data.id",
+      "label": "subchunk ID",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "data",
+      "raw_hex_preview": "64617461",
+      "expected_hex": "64617461",
+      "status": "ok"
+    },
+    {
+      "offset": 40,
+      "length": 4,
+      "path": "data.size",
+      "label": "data subchunk size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 32,
+      "raw_hex_preview": "20000000"
+    },
+    {
+      "offset": 44,
+      "length": 32,
+      "path": "data.samples",
+      "label": "PCM samples",
+      "kind": "payload",
+      "type": "bytes"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,284 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "elf64_executable_x86_64",
+  "source_file": "a.out",
+  "source_size": 16384,
+  "source_sha256": "47b42b901307014337e7a14de7d23559f793ee2c1ba143c4f880d439ef805835",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "ehdr.ident.magic",
+      "label": "ELF magic",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "\\x7fELF",
+      "raw_hex_preview": "7f454c46",
+      "expected_hex": "7f454c46",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 1,
+      "path": "ehdr.ident.class",
+      "label": "EI_CLASS",
+      "type": "u8",
+      "decoded": "ELFCLASS64",
+      "raw_hex_preview": "02"
+    },
+    {
+      "offset": 5,
+      "length": 1,
+      "path": "ehdr.ident.data",
+      "label": "EI_DATA",
+      "type": "u8",
+      "decoded": "ELFDATA2LSB (little-endian)",
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 6,
+      "length": 1,
+      "path": "ehdr.ident.version",
+      "label": "EI_VERSION",
+      "type": "u8",
+      "decoded": 1,
+      "raw_hex_preview": "01"
+    },
+    {
+      "offset": 7,
+      "length": 1,
+      "path": "ehdr.ident.osabi",
+      "label": "EI_OSABI",
+      "type": "u8",
+      "decoded": "System V",
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 8,
+      "length": 1,
+      "path": "ehdr.ident.abiversion",
+      "label": "EI_ABIVERSION",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 9,
+      "length": 7,
+      "path": "ehdr.ident.pad",
+      "label": "EI_PAD",
+      "kind": "padding",
+      "type": "bytes",
+      "raw_hex_preview": "00000000000000"
+    },
+    {
+      "offset": 16,
+      "length": 2,
+      "path": "ehdr.type",
+      "label": "e_type",
+      "type": "u16le",
+      "decoded": "ET_EXEC (executable)",
+      "raw_hex_preview": "0200"
+    },
+    {
+      "offset": 18,
+      "length": 2,
+      "path": "ehdr.machine",
+      "label": "e_machine",
+      "type": "u16le",
+      "decoded": "EM_X86_64",
+      "raw_hex_preview": "3e00"
+    },
+    {
+      "offset": 20,
+      "length": 4,
+      "path": "ehdr.version",
+      "label": "e_version",
+      "type": "u32le",
+      "decoded": 1,
+      "raw_hex_preview": "01000000"
+    },
+    {
+      "offset": 24,
+      "length": 8,
+      "path": "ehdr.entry",
+      "label": "e_entry (entry point vaddr)",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 4198464,
+      "raw_hex_preview": "4010400000000000"
+    },
+    {
+      "offset": 32,
+      "length": 8,
+      "path": "ehdr.phoff",
+      "label": "e_phoff (program header table offset)",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 64,
+      "raw_hex_preview": "4000000000000000"
+    },
+    {
+      "offset": 40,
+      "length": 8,
+      "path": "ehdr.shoff",
+      "label": "e_shoff (section header table offset)",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 12288,
+      "raw_hex_preview": "0030000000000000"
+    },
+    {
+      "offset": 48,
+      "length": 4,
+      "path": "ehdr.flags",
+      "label": "e_flags",
+      "kind": "flags",
+      "type": "u32le",
+      "decoded": 0,
+      "raw_hex_preview": "00000000"
+    },
+    {
+      "offset": 52,
+      "length": 2,
+      "path": "ehdr.ehsize",
+      "label": "e_ehsize",
+      "kind": "length",
+      "type": "u16le",
+      "decoded": 64,
+      "raw_hex_preview": "4000"
+    },
+    {
+      "offset": 54,
+      "length": 2,
+      "path": "ehdr.phentsize",
+      "label": "e_phentsize",
+      "kind": "length",
+      "type": "u16le",
+      "decoded": 56,
+      "raw_hex_preview": "3800"
+    },
+    {
+      "offset": 56,
+      "length": 2,
+      "path": "ehdr.phnum",
+      "label": "e_phnum",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 11,
+      "raw_hex_preview": "0b00"
+    },
+    {
+      "offset": 58,
+      "length": 2,
+      "path": "ehdr.shentsize",
+      "label": "e_shentsize",
+      "kind": "length",
+      "type": "u16le",
+      "decoded": 64,
+      "raw_hex_preview": "4000"
+    },
+    {
+      "offset": 60,
+      "length": 2,
+      "path": "ehdr.shnum",
+      "label": "e_shnum",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 30,
+      "raw_hex_preview": "1e00"
+    },
+    {
+      "offset": 62,
+      "length": 2,
+      "path": "ehdr.shstrndx",
+      "label": "e_shstrndx",
+      "kind": "count",
+      "type": "u16le",
+      "decoded": 29,
+      "raw_hex_preview": "1d00"
+    },
+    {
+      "offset": 64,
+      "length": 4,
+      "path": "phdr[0].p_type",
+      "label": "p_type",
+      "type": "u32le",
+      "decoded": "PT_PHDR",
+      "raw_hex_preview": "06000000"
+    },
+    {
+      "offset": 68,
+      "length": 4,
+      "path": "phdr[0].p_flags",
+      "label": "p_flags",
+      "kind": "flags",
+      "type": "u32le",
+      "decoded": "PF_R",
+      "raw_hex_preview": "04000000"
+    },
+    {
+      "offset": 72,
+      "length": 8,
+      "path": "phdr[0].p_offset",
+      "label": "p_offset",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 64,
+      "raw_hex_preview": "4000000000000000"
+    },
+    {
+      "offset": 80,
+      "length": 8,
+      "path": "phdr[0].p_vaddr",
+      "label": "p_vaddr",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 4194368,
+      "raw_hex_preview": "4000400000000000"
+    },
+    {
+      "offset": 88,
+      "length": 8,
+      "path": "phdr[0].p_paddr",
+      "label": "p_paddr",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 4194368,
+      "raw_hex_preview": "4000400000000000"
+    },
+    {
+      "offset": 96,
+      "length": 8,
+      "path": "phdr[0].p_filesz",
+      "label": "p_filesz",
+      "kind": "length",
+      "type": "u64le",
+      "decoded": 616,
+      "raw_hex_preview": "6802000000000000"
+    },
+    {
+      "offset": 104,
+      "length": 8,
+      "path": "phdr[0].p_memsz",
+      "label": "p_memsz",
+      "kind": "length",
+      "type": "u64le",
+      "decoded": 616,
+      "raw_hex_preview": "6802000000000000"
+    },
+    {
+      "offset": 112,
+      "length": 8,
+      "path": "phdr[0].p_align",
+      "label": "p_align",
+      "type": "u64le",
+      "decoded": 8,
+      "raw_hex_preview": "0800000000000000"
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,71 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "net_icmp_echo",
+  "source_file": "icmp_echo.bin",
+  "source_size": 16,
+  "source_sha256": "f4f15a8f54043d107f6abaa335dba50f69ff7b8977fea8b08146ede349f0c2e3",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "type",
+      "label": "type",
+      "type": "u8",
+      "decoded": "8 (echo request)",
+      "raw_hex_preview": "08"
+    },
+    {
+      "offset": 1,
+      "length": 1,
+      "path": "code",
+      "label": "code",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 2,
+      "length": 2,
+      "path": "checksum",
+      "label": "checksum",
+      "kind": "checksum",
+      "type": "u16be",
+      "decoded": 21557,
+      "raw_hex_preview": "5435",
+      "expected_hex": "5435",
+      "status": "ok"
+    },
+    {
+      "offset": 4,
+      "length": 2,
+      "path": "identifier",
+      "label": "identifier",
+      "type": "u16be",
+      "decoded": 4660,
+      "raw_hex_preview": "1234"
+    },
+    {
+      "offset": 6,
+      "length": 2,
+      "path": "sequence_number",
+      "label": "sequence number",
+      "type": "u16be",
+      "decoded": 1,
+      "raw_hex_preview": "0001"
+    },
+    {
+      "offset": 8,
+      "length": 8,
+      "path": "data",
+      "label": "echo payload",
+      "kind": "payload",
+      "type": "bytes",
+      "decoded": "abcdefgh",
+      "raw_hex_preview": "6162636465666768"
+    }
+  ],
+  "diagnostics": []
+}

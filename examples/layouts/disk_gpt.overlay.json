@@ -1,0 +1,214 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "disk_gpt",
+  "source_file": "disk.img",
+  "source_size": 1536,
+  "source_sha256": "ae56db611738d1aa8f652066d10635576d93a6932bc5edcf3fd9e757956e3755",
+  "ranges": [
+    {
+      "offset": 446,
+      "length": 16,
+      "path": "pmbr.partition[0]",
+      "label": "protective MBR partition (type 0xEE)",
+      "kind": "reserved",
+      "type": "bytes"
+    },
+    {
+      "offset": 510,
+      "length": 2,
+      "path": "pmbr.boot_signature",
+      "label": "MBR boot signature",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "0x55aa",
+      "raw_hex_preview": "55aa",
+      "expected_hex": "55aa",
+      "status": "ok"
+    },
+    {
+      "offset": 512,
+      "length": 8,
+      "path": "header.signature",
+      "label": "GPT signature",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "EFI PART",
+      "raw_hex_preview": "4546492050415254",
+      "expected_hex": "4546492050415254",
+      "status": "ok"
+    },
+    {
+      "offset": 520,
+      "length": 4,
+      "path": "header.revision",
+      "label": "revision (1.0)",
+      "type": "u32le",
+      "decoded": "0x00010000",
+      "raw_hex_preview": "00000100"
+    },
+    {
+      "offset": 524,
+      "length": 4,
+      "path": "header.header_size",
+      "label": "header size",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 92,
+      "raw_hex_preview": "5c000000"
+    },
+    {
+      "offset": 528,
+      "length": 4,
+      "path": "header.header_crc32",
+      "label": "header CRC-32",
+      "kind": "checksum",
+      "type": "u32le",
+      "decoded": 3175187876,
+      "raw_hex_preview": "a48541bd",
+      "expected_hex": "a48541bd",
+      "status": "ok"
+    },
+    {
+      "offset": 536,
+      "length": 8,
+      "path": "header.current_lba",
+      "label": "current LBA",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 1,
+      "raw_hex_preview": "0100000000000000"
+    },
+    {
+      "offset": 544,
+      "length": 8,
+      "path": "header.backup_lba",
+      "label": "backup LBA",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 65535,
+      "raw_hex_preview": "ffff000000000000"
+    },
+    {
+      "offset": 552,
+      "length": 8,
+      "path": "header.first_usable_lba",
+      "label": "first usable LBA",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 34,
+      "raw_hex_preview": "2200000000000000"
+    },
+    {
+      "offset": 560,
+      "length": 8,
+      "path": "header.last_usable_lba",
+      "label": "last usable LBA",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 65502,
+      "raw_hex_preview": "deff000000000000"
+    },
+    {
+      "offset": 568,
+      "length": 16,
+      "path": "header.disk_guid",
+      "label": "disk GUID",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "04030201-0605-0807-090A-0B0C0D0E0F10",
+      "raw_hex_preview": "0102030405060708090a0b0c0d0e0f10"
+    },
+    {
+      "offset": 584,
+      "length": 8,
+      "path": "header.entries_lba",
+      "label": "partition entries starting LBA",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 2,
+      "raw_hex_preview": "0200000000000000"
+    },
+    {
+      "offset": 592,
+      "length": 4,
+      "path": "header.num_entries",
+      "label": "number of partition entries",
+      "kind": "count",
+      "type": "u32le",
+      "decoded": 128,
+      "raw_hex_preview": "80000000"
+    },
+    {
+      "offset": 596,
+      "length": 4,
+      "path": "header.entry_size",
+      "label": "size of each entry",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 128,
+      "raw_hex_preview": "80000000"
+    },
+    {
+      "offset": 1024,
+      "length": 16,
+      "path": "entry[0].type_guid",
+      "label": "partition type GUID",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "C12A7328-F81F-11D2-BA4B-00A0C93EC93B (EFI System)",
+      "raw_hex_preview": "28732ac11ff8d211ba4b00a0c93ec93b"
+    },
+    {
+      "offset": 1040,
+      "length": 16,
+      "path": "entry[0].unique_guid",
+      "label": "unique partition GUID",
+      "kind": "identifier",
+      "type": "bytes",
+      "decoded": "DDCCBBAA-FFEE-1100-2233-445566778899",
+      "raw_hex_preview": "aabbccddeeff00112233445566778899"
+    },
+    {
+      "offset": 1056,
+      "length": 8,
+      "path": "entry[0].first_lba",
+      "label": "first LBA",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 2048,
+      "raw_hex_preview": "0008000000000000"
+    },
+    {
+      "offset": 1064,
+      "length": 8,
+      "path": "entry[0].last_lba",
+      "label": "last LBA",
+      "kind": "offset",
+      "type": "u64le",
+      "decoded": 1050623,
+      "raw_hex_preview": "ff07100000000000"
+    },
+    {
+      "offset": 1072,
+      "length": 8,
+      "path": "entry[0].attributes",
+      "label": "attribute flags",
+      "kind": "flags",
+      "type": "u64le",
+      "decoded": 0,
+      "raw_hex_preview": "0000000000000000"
+    },
+    {
+      "offset": 1080,
+      "length": 72,
+      "path": "entry[0].name",
+      "label": "partition name (UTF-16LE)",
+      "type": "utf8",
+      "decoded": "EFI System Partition"
+    }
+  ],
+  "diagnostics": []
+}

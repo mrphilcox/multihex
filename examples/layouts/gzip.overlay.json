@@ -1,0 +1,123 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "gzip",
+  "source_file": "hello.txt.gz",
+  "source_size": 54,
+  "source_sha256": "062a450f83e8b198300e47bec3bc12163c35fb7cb9b8065900f02db40c7a6e38",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 1,
+      "path": "header.id1",
+      "label": "magic ID1",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": 31,
+      "raw_hex_preview": "1f",
+      "expected_hex": "1f",
+      "status": "ok"
+    },
+    {
+      "offset": 1,
+      "length": 1,
+      "path": "header.id2",
+      "label": "magic ID2",
+      "kind": "identifier",
+      "type": "u8",
+      "decoded": 139,
+      "raw_hex_preview": "8b",
+      "expected_hex": "8b",
+      "status": "ok"
+    },
+    {
+      "offset": 2,
+      "length": 1,
+      "path": "header.cm",
+      "label": "compression method",
+      "type": "u8",
+      "decoded": "8 (deflate)",
+      "raw_hex_preview": "08"
+    },
+    {
+      "offset": 3,
+      "length": 1,
+      "path": "header.flg",
+      "label": "flags",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": "FNAME",
+      "raw_hex_preview": "08"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "header.mtime",
+      "label": "modification time",
+      "kind": "timestamp",
+      "type": "u32le",
+      "decoded": 1700000000,
+      "raw_hex_preview": "00f15365"
+    },
+    {
+      "offset": 8,
+      "length": 1,
+      "path": "header.xfl",
+      "label": "extra flags",
+      "kind": "flags",
+      "type": "u8",
+      "decoded": 0,
+      "raw_hex_preview": "00"
+    },
+    {
+      "offset": 9,
+      "length": 1,
+      "path": "header.os",
+      "label": "operating system",
+      "type": "u8",
+      "decoded": "3 (Unix)",
+      "raw_hex_preview": "03"
+    },
+    {
+      "offset": 10,
+      "length": 10,
+      "path": "header.fname",
+      "label": "original file name (NUL-terminated)",
+      "kind": "identifier",
+      "type": "ascii",
+      "decoded": "hello.txt",
+      "raw_hex_preview": "68656c6c6f2e74787400"
+    },
+    {
+      "offset": 20,
+      "length": 26,
+      "path": "deflate_data",
+      "label": "DEFLATE-compressed blocks",
+      "kind": "payload",
+      "type": "bytes"
+    },
+    {
+      "offset": 46,
+      "length": 4,
+      "path": "trailer.crc32",
+      "label": "CRC-32 of uncompressed data",
+      "kind": "checksum",
+      "type": "u32le",
+      "decoded": 2069210904,
+      "raw_hex_preview": "18a7557b"
+    },
+    {
+      "offset": 50,
+      "length": 4,
+      "path": "trailer.isize",
+      "label": "uncompressed size mod 2^32",
+      "kind": "length",
+      "type": "u32le",
+      "decoded": 14,
+      "raw_hex_preview": "0e000000"
+    }
+  ],
+  "diagnostics": []
+}
