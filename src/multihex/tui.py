@@ -23,6 +23,7 @@ Keys:
     t             toggle byte-class highlighting
     v             cycle layout (stacked / side-by-side)
     left / right  scroll horizontally (side-by-side)
+    o             open settings / options pane
     /             text search
     x             hex search
     n             next match
@@ -36,6 +37,7 @@ import argparse
 import bisect
 import os
 import sys
+from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
 from multihex.core import (
@@ -59,6 +61,12 @@ from multihex.core import (
     parse_int,
     prev_match_index,
     search_files,
+)
+from multihex.tui_config import (
+    TuiSettings,
+    default_config_path,
+    load_settings,
+    save_settings,
 )
 
 # Textual is only required to *run* the TUI. Import lazily-ish so that
@@ -253,8 +261,45 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.refresh()
 
         def toggle_only_diff(self) -> None:
+            self.set_only_diff(not self.only_diff)
+
+        # -- explicit setters (used by the settings pane; apply immediately) - #
+        def set_ascii(self, value: bool) -> None:
+            self.ascii_on = value
+            self.refresh()
+
+        def set_color_on(self, value: bool) -> None:
+            self.color_on = value
+            self.refresh()
+
+        def set_byte_classes(self, value: bool) -> None:
+            self.byte_classes_on = value
+            self.refresh()
+
+        def set_layout(self, value: str) -> None:
+            self.layout_mode = value
+            self.h_scroll = 0
+            self.refresh()
+
+        def set_names(self, mode: str) -> None:
+            self.name_mode = mode
+            self.name_width = name_column_width(self.model.files, mode)
+            self.refresh()
+
+        def set_width(self, width: int) -> None:
+            """Change bytes-per-row, keeping the top row roughly in place."""
+            if width < 1:
+                return
             keep = self.current_top_row()
-            self.only_diff = not self.only_diff
+            self.model.width = width
+            self.invalidate()
+            self.top = self._position_for_row(keep)
+            self._clamp_top()
+            self.refresh()
+
+        def set_only_diff(self, value: bool) -> None:
+            keep = self.current_top_row()
+            self.only_diff = value
             self.invalidate()
             self.top = self._position_for_row(keep)
             self._clamp_top()
@@ -458,6 +503,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             "  t             toggle byte-class highlighting\n"
             "  v             cycle layout (stacked / side-by-side)\n"
             "  left / right  scroll horizontally (side-by-side)\n"
+            "  o             open settings / options pane\n"
             "  /             text search\n"
             "  x             hex search\n"
             "  n             next match\n"
@@ -472,6 +518,136 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
         def on_key(self, event) -> None:
             self.dismiss(None)
+
+    class SettingsScreen(ModalScreen[None]):
+        """Interactive settings/options pane (the 'o' key).
+
+        Shows the current effective TUI preferences and the active config path.
+        Changes apply to the running view *immediately* (matching the rest of the
+        TUI's toggles); ``s`` saves to the active path, ``S`` saves to a prompted
+        path, ``esc`` closes. Persisting is explicit -- closing alone never writes.
+        """
+
+        DEFAULT_CSS = """
+        SettingsScreen { align: center middle; }
+        SettingsScreen > Vertical {
+            width: 64; height: auto; padding: 1 2;
+            border: round $accent; background: $panel;
+        }
+        """
+
+        # Editable rows, in display order: (attribute-key, label).
+        _FIELDS = [
+            ("layout", "layout"),
+            ("ascii", "ascii gutter"),
+            ("byte_classes", "byte classes"),
+            ("color", "color"),
+            ("names", "names"),
+            ("width", "width"),
+            ("only_diff", "only-diff"),
+        ]
+        _LABEL_W = 14
+
+        def __init__(self) -> None:
+            super().__init__()
+            self._sel = 0
+
+        def compose(self) -> "ComposeResult":
+            with Vertical():
+                yield Static(id="settings_body")
+
+        def on_mount(self) -> None:
+            self._redraw()
+
+        def _values(self) -> dict:
+            app = self.app
+            v = app.view
+            return {
+                "layout": v.layout_mode,
+                "ascii": "on" if v.ascii_on else "off",
+                "byte_classes": "on" if v.byte_classes_on else "off",
+                "color": app.color_mode,
+                "names": v.name_mode,
+                "width": str(app.model.width),
+                "only_diff": "on" if v.only_diff else "off",
+            }
+
+        def _redraw(self) -> None:
+            values = self._values()
+            lines = [
+                "multihex-tui settings",
+                "",
+                f"config: {self.app.config_path}",
+                "",
+            ]
+            for i, (key, label) in enumerate(self._FIELDS):
+                cursor = ">" if i == self._sel else " "
+                lines.append(
+                    f"  {cursor} {label.ljust(self._LABEL_W)} {values[key]}"
+                )
+            lines += [
+                "",
+                "  up/down select   left/right change",
+                "  s save   S save-as   esc close",
+            ]
+            self.query_one("#settings_body", Static).update("\n".join(lines))
+
+        def _change(self, direction: int) -> None:
+            key, _ = self._FIELDS[self._sel]
+            app = self.app
+            v = app.view
+            if key == "layout":
+                v.set_layout(
+                    "side-by-side" if v.layout_mode == "stacked" else "stacked"
+                )
+            elif key == "ascii":
+                v.set_ascii(not v.ascii_on)
+            elif key == "byte_classes":
+                v.set_byte_classes(not v.byte_classes_on)
+            elif key == "color":
+                modes = ["auto", "always", "never"]
+                idx = (modes.index(app.color_mode) + direction) % len(modes)
+                app.set_color_mode(modes[idx])
+            elif key == "names":
+                v.set_names("path" if v.name_mode == "basename" else "basename")
+            elif key == "width":
+                v.set_width(max(1, app.model.width + direction))
+            elif key == "only_diff":
+                v.set_only_diff(not v.only_diff)
+            app.update_status()
+            self._redraw()
+
+        def _save_as(self) -> None:
+            def handle(value: Optional[str]) -> None:
+                if value is None or not value.strip():
+                    return
+                self.app.save_config(Path(value.strip()))
+                self._redraw()
+
+            self.app.push_screen(
+                _PromptScreen("Save settings to path:", str(self.app.config_path)),
+                handle,
+            )
+
+        def on_key(self, event) -> None:
+            key = event.key
+            if key in ("up", "k"):
+                self._sel = (self._sel - 1) % len(self._FIELDS)
+                self._redraw()
+            elif key in ("down", "j"):
+                self._sel = (self._sel + 1) % len(self._FIELDS)
+                self._redraw()
+            elif key == "left":
+                self._change(-1)
+            elif key == "right":
+                self._change(+1)
+            elif key == "s":
+                self.app.save_config()
+                self._redraw()
+            elif key == "S":
+                self._save_as()
+            elif key == "escape":
+                self.dismiss(None)
 
     class MultiHexApp(App):
         TITLE = "multihex-tui"
@@ -507,6 +683,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Binding("v", "cycle_layout", "Layout"),
             Binding("left", "scroll_left", "Scroll left", show=False),
             Binding("right", "scroll_right", "Scroll right", show=False),
+            Binding("o", "open_settings", "Options"),
             Binding("slash", "search_text", "Search"),
             Binding("x", "search_hex", "Hex search"),
             Binding("n", "next_match", "Next", show=False),
@@ -526,6 +703,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
             name_mode: str,
             byte_classes_on: bool = False,
             layout: str = "stacked",
+            color_mode: str = "auto",
+            config_path: Optional[Path] = None,
+            config_warnings: Optional[List[str]] = None,
         ) -> None:
             super().__init__()
             self.model = model
@@ -543,6 +723,12 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.search_matches: List[SearchMatch] = []
             self.search_index: Optional[int] = None
             self.search_error: Optional[str] = None
+            # Persisted-settings state (TUI-only). ``color_mode`` is the ternary
+            # auto/always/never preference saved to config; the runtime ``c``
+            # toggle flips the render bool (view.color_on) independently.
+            self.color_mode = color_mode
+            self.config_path = Path(config_path) if config_path else default_config_path()
+            self.config_warnings = list(config_warnings or [])
 
         def compose(self) -> "ComposeResult":
             yield Header()
@@ -554,6 +740,26 @@ if _TEXTUAL_IMPORT_ERROR is None:
         def on_mount(self) -> None:
             self.update_status()
             self.update_search_status()
+            # Surface any config-load warnings as toasts (also printed to stderr
+            # before launch). A missing config file is normal and warns nothing.
+            for warning in self.config_warnings:
+                try:
+                    self.notify(warning, title="config", severity="warning")
+                except Exception:
+                    pass
+
+        def current_settings(self) -> TuiSettings:
+            """Snapshot the live display state as persistable settings."""
+            v = self.view
+            return TuiSettings(
+                layout=v.layout_mode,
+                ascii=v.ascii_on,
+                byte_classes=v.byte_classes_on,
+                color=self.color_mode,
+                names=v.name_mode,
+                width=self.model.width,
+                only_diff=v.only_diff,
+            )
 
         def on_resize(self, event) -> None:
             self.update_status()
@@ -681,6 +887,30 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
         def action_help(self) -> None:
             self.push_screen(HelpScreen())
+
+        def action_open_settings(self) -> None:
+            self.push_screen(SettingsScreen())
+
+        # -- settings (apply immediately + save) ---------------------------- #
+        def set_color_mode(self, mode: str) -> None:
+            """Set the persisted color mode and re-derive the render bool."""
+            self.color_mode = mode
+            self.view.set_color_on(_resolve_color(mode))
+            self.update_status()
+
+        def save_config(self, path: Optional[Path] = None) -> None:
+            """Write the current settings to ``path`` (or the active path).
+
+            Surfaces success/failure as a toast and never raises out of the UI.
+            """
+            target = Path(path) if path else self.config_path
+            try:
+                save_settings(self.current_settings(), target)
+            except OSError as exc:
+                self.notify(f"Save failed: {exc}", title="config", severity="error")
+                return
+            self.config_path = target
+            self.notify(f"Saved {target}", title="config")
 
         def action_jump(self) -> None:
             def handle(value: Optional[str]) -> None:
@@ -815,25 +1045,76 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("files", nargs="+", help="binary files to compare")
     p.add_argument("--offset", type=parse_int, default=0, metavar="N",
                    help="start offset (int, 0x.. ok)")
-    p.add_argument("--width", type=parse_int, default=16, metavar="N",
+    # The display preferences below default to None so an explicitly-passed flag
+    # can be told apart from "not given"; the effective default comes from the
+    # config file or the built-in TuiSettings (see build_startup_settings).
+    p.add_argument("--width", type=parse_int, default=None, metavar="N",
                    help="bytes per row (default 16)")
     p.add_argument("--ref", type=parse_int, default=None, metavar="INDEX",
                    help="compare every file against this 0-based index")
-    p.add_argument("--names", choices=["basename", "path"], default="basename",
+    p.add_argument("--names", choices=["basename", "path"], default=None,
                    help="how to label files (default basename)")
     p.add_argument("--only-diff", action="store_true", dest="only_diff",
                    help="start with only differing rows shown")
     p.add_argument("--no-ascii", action="store_true", dest="no_ascii",
                    help="start with the ASCII gutter hidden")
     p.add_argument("--color", choices=["auto", "always", "never"],
-                   default="auto", help="highlighting (default auto)")
+                   default=None, help="highlighting (default auto)")
     p.add_argument("--byte-classes", dest="byte_classes", action="store_true",
                    help="start with byte-class highlighting on (toggle with 't'). "
                         "Visual-only; needs color on. Default off.")
-    p.add_argument("--layout", choices=["stacked", "side-by-side"], default="stacked",
+    p.add_argument("--layout", choices=["stacked", "side-by-side"], default=None,
                    help="initial layout: stacked (default) or side-by-side "
                         "(cycle with 'v'; scroll horizontally with left/right).")
+
+    # -- TUI-only persistent config (the batch CLI never reads any config) ---- #
+    cfg = p.add_mutually_exclusive_group()
+    cfg.add_argument("--config", metavar="PATH", default=None,
+                     help="load TUI settings from PATH and make it the save "
+                          "target (default: $XDG_CONFIG_HOME/multihex/tui.toml "
+                          "or ~/.config/multihex/tui.toml)")
+    cfg.add_argument("--no-config", action="store_true", dest="no_config",
+                     help="ignore any config file; start from built-in defaults "
+                          "plus CLI args (saving still uses the default path)")
     return p.parse_args(argv)
+
+
+def build_startup_settings(
+    args: argparse.Namespace,
+) -> "tuple[TuiSettings, Path, List[str]]":
+    """Resolve effective TUI settings and the active save path.
+
+    Applies the precedence chain *built-in defaults -> config file -> CLI args*
+    (interactive changes come later, in the running app). ``--no-config`` skips
+    the file but still honors CLI args; the save target is the ``--config`` path
+    when given, else the default path. Returns ``(settings, active_path,
+    warnings)``; warnings are non-fatal config-load notes for the caller to show.
+    """
+    settings = TuiSettings()
+    warnings: List[str] = []
+    active_path = Path(args.config) if args.config else default_config_path()
+
+    if not args.no_config:
+        settings, warnings = load_settings(active_path, settings)
+
+    # CLI args override the config (and defaults). Value flags use None to mean
+    # "not given"; the one-way bool flags only ever *force* their value on.
+    if args.layout is not None:
+        settings.layout = args.layout
+    if args.width is not None:
+        settings.width = args.width
+    if args.names is not None:
+        settings.names = args.names
+    if args.color is not None:
+        settings.color = args.color
+    if args.no_ascii:
+        settings.ascii = False
+    if args.only_diff:
+        settings.only_diff = True
+    if args.byte_classes:
+        settings.byte_classes = True
+
+    return settings, active_path, warnings
 
 
 def _resolve_color(mode: str) -> bool:
@@ -855,6 +1136,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         return 2
 
+    settings, config_path, config_warnings = build_startup_settings(args)
+
+    # Surface config-load problems before launching (also shown in-app as toasts).
+    for warning in config_warnings:
+        sys.stderr.write(f"multihex-tui: {warning}\n")
+
     try:
         files = load_files(args.files)
     except OSError as exc:
@@ -865,7 +1152,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         model = HexModel(
             files,
             start_offset=args.offset,
-            width=args.width,
+            width=settings.width,
             ref=args.ref,
         )
     except ValueError as exc:
@@ -874,12 +1161,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     app = MultiHexApp(
         model,
-        ascii_on=not args.no_ascii,
-        only_diff=args.only_diff,
-        color_on=_resolve_color(args.color),
-        name_mode=args.names,
-        byte_classes_on=args.byte_classes,
-        layout=args.layout,
+        ascii_on=settings.ascii,
+        only_diff=settings.only_diff,
+        color_on=_resolve_color(settings.color),
+        name_mode=settings.names,
+        byte_classes_on=settings.byte_classes,
+        layout=settings.layout,
+        color_mode=settings.color,
+        config_path=config_path,
+        config_warnings=config_warnings,
     )
     app.run()
     return 0

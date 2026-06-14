@@ -7,6 +7,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **TUI configuration** (`multihex-tui` only): persistent display preferences
+  loaded from `~/.config/multihex/tui.toml` (or
+  `$XDG_CONFIG_HOME/multihex/tui.toml`). Precedence is built-in defaults → config
+  file → CLI args → interactive changes. New flags `--config PATH` and
+  `--no-config` (mutually exclusive); a new in-app settings pane (`o`) views,
+  changes, and saves settings (`s` save, `S` save-as). Saved files are complete
+  snapshots with a `config_version = 1` schema version (independent of the app
+  version) and `multihex_version`. Only preferences are persisted — never session
+  state (reference, offset, scroll, search, file list). The **batch CLI is
+  unchanged and config-free** (no `--config`, reads no config file, identical
+  text/JSON output). Config logic lives in the new TUI-only `multihex.tui_config`
+  module (reads via stdlib `tomllib` on 3.11+, `tomli` on 3.9–3.10; writes via a
+  tiny local serializer); the package now exposes `__version__ = "0.1.0"`.
 - **Side-by-side layout** (`--layout stacked|side-by-side`): a second
   human-readable display that lays each file's hex (and ASCII gutter) out
   horizontally across the offset row instead of stacking one file per line, so

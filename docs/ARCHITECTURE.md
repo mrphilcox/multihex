@@ -26,7 +26,8 @@ contributor workflow see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
 | ----------------------- | -------------------------------------------------------------------- |
 | `src/multihex/core.py`  | The *meaning* of a comparison: loading, the row model, marker computation, cell formatting, and exact search. **Stdlib-only.** |
 | `src/multihex/cli.py`   | Batch rendering: text layout with ANSI color, JSON shaping, search output, argument parsing. |
-| `src/multihex/tui.py`   | Interactive rendering: a Textual app with scrolling, paging, jump, live ref switching, and search highlight state. Requires `textual` + `rich`. |
+| `src/multihex/tui.py`   | Interactive rendering: a Textual app with scrolling, paging, jump, live ref switching, search highlight state, and the settings pane. Requires `textual` + `rich`. |
+| `src/multihex/tui_config.py` | **TUI-only** persistent preferences: config-path discovery, TOML load/validate, and atomic save of `TuiSettings`. No core, Textual, or Rich awareness. The batch CLI never imports it. |
 
 The guiding rule: **comparison and search semantics live in the core; frontends
 render and navigate only.** This is what keeps the batch CLI and the TUI in
@@ -165,6 +166,26 @@ Frontends are allowed to **render, navigate, and filter** — nothing more.
 The two color schemes **differ on purpose** — do not unify them. The CLI is for
 spotting exact differing bytes in a scrollback or a pipe; the TUI is for scanning
 column stability at a glance.
+
+## TUI configuration (`tui_config.py`)
+
+Persistent preferences are a **TUI-only** concern; the batch CLI never reads a
+config file and gains no `--config`/`--no-config`. `tui_config.py` is a small,
+isolated layer (no core/Textual/Rich imports) that owns the `TuiSettings`
+dataclass, XDG-aware path discovery, validated loading, and atomic complete
+saving. Reading uses `tomllib` (3.11+) / `tomli` (3.9–3.10, only in the TUI/dev
+extras); writing uses a tiny local serializer, so no TOML *writer* dependency is
+added.
+
+`tui.py` applies the precedence chain at startup —
+**built-in defaults → config file → CLI args** — in `build_startup_settings()`
+(value flags default to `None` so an explicit flag is distinguishable from
+unset; one-way bool flags like `--no-ascii` only ever force their value on).
+Interactive changes are the final tier: the `o` settings pane mutates the live
+`HexView` immediately and writes a complete config only on an explicit save.
+Only **preferences/startup defaults** are persisted — never session state
+(`ref`, offset, scroll, search, match index, file list). `config_version` is the
+config *schema* version, deliberately decoupled from the application version.
 
 ## Invariants (do not break these)
 

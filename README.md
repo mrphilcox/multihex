@@ -292,7 +292,8 @@ multihex-tui --ref 0 file*.bin
 **Startup flags:** `--offset N`, `--width N`, `--ref INDEX`,
 `--names basename|path`, `--only-diff`, `--no-ascii`, `--color auto|always|never`,
 `--byte-classes` (start with byte-class highlighting on; toggle with `t`),
-`--layout stacked|side-by-side` (start in the chosen layout; cycle with `v`).
+`--layout stacked|side-by-side` (start in the chosen layout; cycle with `v`),
+`--config PATH` / `--no-config` (see [TUI configuration](#tui-configuration)).
 
 **Keys**
 
@@ -311,6 +312,7 @@ multihex-tui --ref 0 file*.bin
 | `c`            | toggle color / highlighting           |
 | `t`            | toggle byte-class highlighting        |
 | `v`            | cycle layout (stacked / side-by-side) |
+| `o`            | open the settings / options pane      |
 | `/`            | text search                           |
 | `x`            | hex search                            |
 | `n`            | next match                            |
@@ -335,6 +337,60 @@ byte-class highlighting is on (`--byte-classes`, or the `t` toggle) it slots in
 as the lowest tier — `… > diff marker > byte class` — so it never hides marker
 or search highlighting. Pressing `c` (color off) hides byte-class colors too;
 the on/off state is remembered independently.
+
+### TUI configuration
+
+The TUI can load persistent display preferences from
+`~/.config/multihex/tui.toml`, or `$XDG_CONFIG_HOME/multihex/tui.toml` when
+`XDG_CONFIG_HOME` is set. **These settings apply only to `multihex-tui`. The
+batch CLI does not read the TUI config file, so scripted output stays explicit
+and repeatable.**
+
+Precedence is: **built-in defaults → config file → command-line options →
+interactive changes**. Command-line flags always win over the config file, and
+interactive changes affect only the running session unless you save them.
+
+| Flag | Effect |
+| ---- | ------ |
+| `--config PATH`  | Load settings from `PATH` and make it the save target. |
+| `--no-config`    | Ignore any config file; start from built-in defaults plus CLI args. Saving still works (it uses the default path). |
+
+`--config` and `--no-config` are mutually exclusive.
+
+Press `o` inside the TUI to open the **settings pane**. It shows the current
+effective settings and the active config path; `↑`/`↓` move between rows,
+`←`/`→` change a value (changes apply to the running view immediately), `s` saves
+to the active path, `S` saves to a prompted path, and `Esc` closes. Saving
+writes a **complete** file (every setting, even those at their defaults) so your
+preferences survive even if defaults change in a future release.
+
+**Persisted settings** (preferences / startup defaults only):
+
+```toml
+config_version = 1
+multihex_version = "0.1.0"
+
+[display]
+layout = "stacked"        # stacked | side-by-side
+ascii = true
+byte_classes = false
+color = "auto"            # auto | always | never
+names = "basename"        # basename | path
+
+[view]
+width = 16
+only_diff = false
+```
+
+`config_version` is the config **schema** version (currently `1`), independent of
+the application version. A config with a missing or newer `config_version`, or
+with invalid values, is reported with a warning and falls back to the
+lower-precedence value rather than failing; a missing config file is normal and
+silent.
+
+**Not persisted** — this is preferences, not session restore. The reference file
+(`--ref`), current offset, scroll position, search string, current match, and the
+file list are all per-session and are never written to the config.
 
 ## Recipes
 
