@@ -7,8 +7,9 @@
 # OverlayState.covers() is a linear scan over all ranges, called per rendered
 # cell when colour is on, so render cost grows O(ranges) -- characterized via a
 # 10x range-count step. Extreme offsets must not overflow. A deeply nested JSON
-# document confirms a known gap: OverlayState.load catches only OSError/
-# JSONDecodeError, so a RecursionError from json.load escapes as a traceback.
+# document confirms the parse boundary is hardened: OverlayState.load catches the
+# RecursionError json.load raises and reports the overlay as unparseable rather
+# than letting a traceback escape.
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
@@ -71,7 +72,11 @@ else
   fail "overlapping ranges (rc $M_RC)"
 fi
 
-# --- deeply nested JSON: RecursionError escapes OverlayState.load (FINDING) ---
+# --- deeply nested JSON: reported cleanly, never a RecursionError traceback ---
+# json.load raises RecursionError on deeply nested input. OverlayState.load now
+# catches it at the parse boundary and treats the overlay as unparseable
+# (reported on stderr, not applied), so the comparison still renders and exits
+# 0 with no traceback. A regression would let the RecursionError escape.
 depth="$(fast_pick 200000 50000)"
 "${GEN[@]}" nested -n "$depth" --out "$WORK/nested.json"
 CE="$WORK/nested.err"
@@ -79,12 +84,13 @@ run_measure --timeout 30 --rss-cap-kb "$(mib_kb 512)" --out /dev/null --err "$CE
   -- "${CLI[@]}" --overlay "$WORK/nested.json" --color always "$WORK/t.bin"
 if [ "${M_SKIP}" = "1" ]; then
   skip "nested JSON (measure unavailable: no procfs)"
-elif grep -q "RecursionError" "$CE" 2>/dev/null; then
-  finding "deeply nested overlay JSON (depth $depth) raises RecursionError: OverlayState.load catches only OSError/JSONDecodeError, so it escapes as a traceback (rc $M_RC)"
-elif [ "$M_RC" = "0" ]; then
-  fail "nested JSON: expected a RecursionError-mode failure but the overlay loaded cleanly (behaviour changed -- revisit OverlayState.load)"
+elif grep -q "RecursionError" "$CE" 2>/dev/null || has_traceback "$CE"; then
+  finding "deeply nested overlay JSON (depth $depth) escapes as a traceback: the RecursionError is not contained at the parse boundary (rc $M_RC)"
+elif [ "$M_RC" = "0" ] && grep -qi "could not load" "$CE" 2>/dev/null; then
+  pass "nested JSON (depth $depth) reported cleanly and not applied (rc 0, message, no traceback)"
 else
-  characterize "nested JSON (depth $depth): non-zero exit rc=$M_RC without a RecursionError trace (json depth handling differs on this build)"
+  fail "nested JSON: expected a clean load-failure report (rc $M_RC)"
+  sed 's/^/    | /' "$CE" 2>/dev/null || true
 fi
 
 # --- pathologically large overlay file: bounded load -------------------------
