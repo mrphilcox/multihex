@@ -393,7 +393,7 @@ multihex-tui --ref 0 file*.bin
 | `PageUp`       | previous page                         |
 | `Home`         | jump to the start of the range        |
 | `End`          | jump to the final page (bottom-anchored) |
-| `←` / `→`      | scroll horizontally (side-by-side)    |
+| `←` / `→`      | scroll horizontally (when a row exceeds the viewport) |
 | `g`            | jump to an offset                     |
 | `r`            | choose the reference file             |
 | `a`            | toggle the ASCII gutter               |
@@ -412,10 +412,11 @@ multihex-tui --ref 0 file*.bin
 | `h` / `?`      | help                                  |
 
 Layout works the same as in the batch CLI (`stacked` is the default; `side-by-side`
-lays files out horizontally), and `v` cycles between them live. Because a
-side-by-side row is usually wider than the viewport, the TUI scrolls horizontally
-with `←` / `→`; vertical scrolling, paging, jump, reference switching, search, and
-the ASCII/only-diff/color/byte-class toggles all keep working in both layouts.
+lays files out horizontally), and `v` cycles between them live. When a row is wider
+than the viewport (a side-by-side row, or a large `--width` in stacked), `←` / `→`
+scroll it horizontally (8 columns per press; a no-op when it already fits);
+vertical scrolling, paging, jump, reference switching, search, and the
+ASCII/only-diff/color/byte-class toggles all keep working in both layouts.
 Layout is visual-only and never changes comparison or search results.
 
 A status line shows the current offset range, row position, active reference,

@@ -523,7 +523,7 @@ The keymap comes from `shortcuts.py` and is enforced against the live bindings b
 | `m` | cycle markers (single / repeat / none) |
 | `l` | load or change the layout overlay (blank path clears) |
 | `L` | view the current overlay (then `c` clears, any other key closes) |
-| `Left` / `Right` | scroll horizontally (side-by-side only) |
+| `Left` / `Right` | scroll horizontally (when a row exceeds the viewport) |
 | `o` | open the settings / options pane |
 | `/` | text search (panel has a case-insensitive ASCII checkbox) |
 | `x` | hex search (matches byte values, not ASCII text) |
@@ -531,8 +531,10 @@ The keymap comes from `shortcuts.py` and is enforced against the live bindings b
 | `N` / `p` | previous match |
 | `h` / `?` | help |
 
-Horizontal scroll (`Left`/`Right`) moves 8 characters per press and is a no-op in
-stacked layout. The `c` toggle flips the render color state independently of the
+Horizontal scroll (`Left`/`Right`) moves 8 characters per press and engages
+whenever a row is wider than the viewport (a wide `--width` in stacked, or a
+side-by-side row); it is a clamped no-op when the row already fits. The `c` toggle
+flips the render color state independently of the
 persisted `color` mode; turning color off also hides byte-class and overlay
 highlighting.
 

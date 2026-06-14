@@ -30,7 +30,7 @@ Keys:
     m             cycle markers (single / repeat / none)
     l             load/change layout overlay (blank path clears)
     L             view current layout overlay
-    left / right  scroll horizontally (side-by-side)
+    left / right  scroll horizontally (when a row exceeds the viewport)
     o             open settings / options pane
     /             text search (panel has an ASCII case-insensitive toggle)
     x             hex search (matches byte values, not ASCII text)
@@ -283,13 +283,14 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.refresh()
 
         def scroll_h(self, delta: int) -> None:
-            """Scroll the side-by-side view horizontally by ``delta`` chars.
+            """Scroll the view horizontally by ``delta`` characters.
 
-            A no-op in stacked mode, where rows are not meant to exceed the
-            viewport and the existing (clip-only) behavior is preserved.
+            Engages whenever the rendered content is wider than the viewport, in
+            any layout -- so a wide ``--width`` in stacked scrolls too, not just
+            side-by-side rows. ``render()`` crops every line by ``h_scroll``
+            regardless of layout, and ``max_scroll`` is 0 (a clamped no-op) when
+            the content already fits.
             """
-            if self.layout_mode != "side-by-side":
-                return
             viewport = self.size.width or 0
             max_scroll = max(0, self._content_width - viewport)
             self.h_scroll = max(0, min(self.h_scroll + delta, max_scroll))
