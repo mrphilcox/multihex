@@ -76,6 +76,36 @@ python3 -m pytest tests/test_core_parity.py
 python3 -m pytest tests/test_multihex_characterization.py::test_stdout_matches_golden[basic]
 ```
 
+## Coverage
+
+`coverage.py` is in the `[dev]` extra; configuration lives in `pyproject.toml`
+(`[tool.coverage.*]`, branch coverage and parallel mode on). Parallel mode means
+each process writes its own data fragment, so a `combine` step is always needed
+before reporting. A quick parent-process measurement:
+
+```bash
+python3 -m coverage run -m pytest && python3 -m coverage combine \
+  && python3 -m coverage report -m
+```
+
+That still undercounts `cli.py` (and anything else exercised only through a child
+process) because most CLI tests run the tool as a subprocess. To capture those
+children too, point `COVERAGE_PROCESS_START` at the config, give every process a
+shared **absolute** `COVERAGE_FILE` (children run from fixture dirs, so a
+relative path would scatter fragments), and put the repo root on `PYTHONPATH`
+with an absolute path (so a child started from a fixture dir still finds
+`sitecustomize.py`):
+
+```bash
+COVERAGE_FILE="$(pwd)/.coverage" COVERAGE_PROCESS_START="$(pwd)/pyproject.toml" \
+  PYTHONPATH="$(pwd)" python3 -m coverage run -m pytest
+python3 -m coverage combine
+python3 -m coverage report -m
+```
+
+The repo-root `sitecustomize.py` only starts coverage when
+`COVERAGE_PROCESS_START` is set, so it is inert during normal runs.
+
 ## Integration tests
 
 End-to-end shell checks live in `scripts/integration/` and drive the real

@@ -1450,7 +1450,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         config_path=config_path,
         config_warnings=config_warnings,
     )
-    app.run()
+    app.run()  # pragma: no cover - live Textual event loop, not the default lane
     return 0
 
 

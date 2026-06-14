@@ -13,3 +13,9 @@ snapshot_report.html
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+
+# coverage.py data, combine fragments, and HTML report.
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml

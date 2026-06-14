@@ -1469,7 +1469,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "the Overlay menu.\n"
         )
     window.show()
-    return app.exec()
+    return app.exec()  # pragma: no cover - live Qt event loop, not the default lane
 
 
 if __name__ == "__main__":

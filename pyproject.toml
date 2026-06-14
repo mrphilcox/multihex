@@ -45,6 +45,7 @@ gui = [
 dev = [
     "pytest>=7",
     "ruff>=0.1",
+    "coverage[toml]>=7",
     "textual>=8.2.7",
     "rich>=13",
     "tomli>=1.1; python_version < '3.11'",
@@ -79,3 +80,27 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
+
+[tool.coverage.run]
+branch = true
+# Identify the measured code by import package, not by filesystem path: child
+# processes run from fixture working directories, where a relative "src/multihex"
+# path would resolve to nothing and silently measure zero lines.
+source_pkgs = ["multihex"]
+# Most CLI tests run the tool in a child process; parallel mode makes each
+# process (parent and children) write its own data fragment, which a following
+# `coverage combine` merges. Children opt in via sitecustomize.py +
+# COVERAGE_PROCESS_START (see CONTRIBUTING.md "Coverage").
+parallel = true
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+# Lines that never execute under the default headless test lane and are not
+# meant to: module CLI shims and typing-only blocks. The TUI/GUI event-loop
+# entry points (`app.run()` / `app.exec()`) carry their own `# pragma: no
+# cover`; see docs/coverage notes in CONTRIBUTING.md.
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
