@@ -84,6 +84,25 @@ def test_clear_removes_overlay(app, tmp_path):
     w.close()
 
 
+def test_warning_overlay_applies_and_shows_details(app, tmp_path):
+    # An unknown-type warning keeps the overlay applicable but surfaces a
+    # non-blocking details dialog carrying the warning.
+    path = _write_json(tmp_path, "warn.json", {
+        "schema": SCHEMA, "name": "warn",
+        "ranges": [{"path": "x", "offset": 0, "length": 1, "type": "float128"}],
+    })
+    w = _loaded_window(tmp_path)
+    st = w.load_overlay(path)
+    assert st.applicable is True
+    assert st.warning_count() >= 1
+    # Still highlights the covered byte.
+    assert w.view_widget._cell_color(0x00, Marker.SAME, 0) == gui._COLOR_OVERLAY
+    # A details dialog was queued with the warning detail.
+    assert w._message_boxes
+    assert "unknown-type" in w._message_boxes[-1].text()
+    w.close()
+
+
 def test_error_overlay_loaded_not_applied(app, tmp_path):
     path = _write_json(tmp_path, "err.json", {
         "schema": SCHEMA,

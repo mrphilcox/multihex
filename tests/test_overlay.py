@@ -157,6 +157,50 @@ def test_out_of_bounds_range_does_not_crash(tmp_path):
     assert [r.path for r in st.ranges_at(50)] == ["tail"]
 
 
+def test_empty_ranges_list_is_applicable_and_safe(tmp_path):
+    # A structurally-valid overlay with no ranges loads and applies; lookups are
+    # safe and the summary pluralizes "0 ranges".
+    doc = {"schema": _schema(), "ranges": []}
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(4))])
+    assert st.applicable is True
+    assert st.range_count == 0
+    assert st.covers(0) is False
+    assert st.ranges_at(0) == []
+    assert "0 ranges" in st.summary()
+
+
+def test_ranges_at_in_gap_returns_empty(tmp_path):
+    # Offset between two non-adjacent ranges matches nothing.
+    doc = {
+        "schema": _schema(),
+        "ranges": [
+            {"path": "a", "offset": 0, "length": 2},
+            {"path": "b", "offset": 4, "length": 2},
+        ],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(8))])
+    assert st.ranges_at(2) == []  # in the gap
+    assert st.ranges_at(3) == []
+    assert [r.path for r in st.ranges_at(1)] == ["a"]
+    assert [r.path for r in st.ranges_at(4)] == ["b"]
+
+
+def test_adjacent_ranges_split_at_shared_boundary(tmp_path):
+    # Half-open intervals: [0,2) and [2,4) touch at offset 2, which belongs only
+    # to the second range -- no double-count at the seam.
+    doc = {
+        "schema": _schema(),
+        "ranges": [
+            {"path": "first", "offset": 0, "length": 2},
+            {"path": "second", "offset": 2, "length": 2},
+        ],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(8))])
+    assert [r.path for r in st.ranges_at(1)] == ["first"]
+    assert [r.path for r in st.ranges_at(2)] == ["second"]
+    assert [r.path for r in st.ranges_at(3)] == ["second"]
+
+
 # -- per-file labelled diagnostics ------------------------------------------- #
 def test_per_file_labelled_diagnostics(tmp_path):
     # source_size mismatches one file but not the other; each file-aware
@@ -190,6 +234,39 @@ def test_details_text_includes_cursor_section(tmp_path):
     assert "status: applied" in text
     assert "Ranges under cursor (0x00000000):" in text
     assert "magic" in text
+
+
+def test_details_text_for_error_overlay_no_cursor(tmp_path):
+    # An overlay with a structural error renders the "not applied" status, lists
+    # its diagnostics, and -- with no cursor -- omits the under-cursor section.
+    doc = {
+        "schema": _schema(),
+        "ranges": [
+            {"path": "dup", "offset": 0, "length": 1},
+            {"path": "dup", "offset": 1, "length": 1},
+        ],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc))
+    text = st.details_text()
+    assert "status: NOT applied (errors present)" in text
+    assert "Diagnostics:" in text
+    assert "duplicate-path" in text
+    assert "Ranges under cursor" not in text
+
+
+def test_summary_for_error_overlay_reports_not_applied(tmp_path):
+    doc = {
+        "schema": _schema(),
+        "ranges": [
+            {"path": "dup", "offset": 0, "length": 1},
+            {"path": "dup", "offset": 1, "length": 1},
+        ],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc))
+    summary = st.summary()
+    assert "not applied" in summary
+    assert "1 error" in summary
+    assert "(see details)" in summary
 
 
 def test_overlay_range_covers_semantics():
