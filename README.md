@@ -156,11 +156,21 @@ By default it shows the largest range common to all files starting at offset 0,
 
 | Option                        | Description                                                       |
 | ----------------------------- | ---------------------------------------------------------------- |
+| `--layout stacked` \| `side-by-side` | Human-readable layout (default `stacked`). `side-by-side` lays the files out horizontally (visual-only; no effect on `--json`). |
 | `--ascii` / `--no-ascii`      | Show / hide the ASCII gutter (default on).                       |
 | `--names basename` \| `path`  | Label files by basename (default) or full path.                  |
 | `--color auto` \| `always` \| `never` | Colorize output. `auto` = on when stdout is a TTY. Honors `NO_COLOR`. |
 | `--byte-classes`              | Highlight byte classes in the hex cells (visual-only; needs color on). |
 | `--json`                      | Emit machine-readable JSON instead of text (implies no color).   |
+
+**Layout (`--layout`).** `stacked` (the default) keeps the familiar one-file-per-line
+block. `side-by-side` instead places each file's hex (and ASCII gutter, if shown)
+horizontally across the row, which makes it easy to compare the same offset across
+files left-to-right. The single column-marker line is unchanged in either layout.
+Layout is **visual-only**: it never affects offsets, bytes, comparison markers,
+`--ref`, `--only-diff`, search, or `--json`. Side-by-side rows are deliberately
+allowed to be wider than the terminal — let your terminal, pager, or pipe handle
+wrapping. (The TUI adds horizontal scrolling instead; see below.)
 
 In the batch CLI, color **reddens each individual cell that differs** from the
 reference file's byte in that column, dims missing cells, and colors the marker
@@ -281,7 +291,8 @@ multihex-tui --ref 0 file*.bin
 
 **Startup flags:** `--offset N`, `--width N`, `--ref INDEX`,
 `--names basename|path`, `--only-diff`, `--no-ascii`, `--color auto|always|never`,
-`--byte-classes` (start with byte-class highlighting on; toggle with `t`).
+`--byte-classes` (start with byte-class highlighting on; toggle with `t`),
+`--layout stacked|side-by-side` (start in the chosen layout; cycle with `v`).
 
 **Keys**
 
@@ -292,17 +303,26 @@ multihex-tui --ref 0 file*.bin
 | `k` / `↑`      | previous row                          |
 | `PageDown`     | next page                             |
 | `PageUp`       | previous page                         |
+| `←` / `→`      | scroll horizontally (side-by-side)    |
 | `g`            | jump to an offset                     |
 | `r`            | choose the reference file             |
 | `a`            | toggle the ASCII gutter               |
 | `d`            | toggle only-diff rows                 |
 | `c`            | toggle color / highlighting           |
 | `t`            | toggle byte-class highlighting        |
+| `v`            | cycle layout (stacked / side-by-side) |
 | `/`            | text search                           |
 | `x`            | hex search                            |
 | `n`            | next match                            |
 | `N` / `p`      | previous match                        |
 | `h` / `?`      | help                                  |
+
+Layout works the same as in the batch CLI (`stacked` is the default; `side-by-side`
+lays files out horizontally), and `v` cycles between them live. Because a
+side-by-side row is usually wider than the viewport, the TUI scrolls horizontally
+with `←` / `→`; vertical scrolling, paging, jump, reference switching, search, and
+the ASCII/only-diff/color/byte-class toggles all keep working in both layouts.
+Layout is visual-only and never changes comparison or search results.
 
 A status line shows the current offset range, row position, active reference,
 toggle states, and file sizes; a second line appears during a search with the

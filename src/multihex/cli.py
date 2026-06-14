@@ -100,6 +100,10 @@ def build_parser():
                    help="highlight byte classes in the hex cells (zero, ASCII "
                         "whitespace, printable ASCII). Visual-only; needs color "
                         "enabled and has no effect on --json. Default off.")
+    p.add_argument("--layout", choices=["stacked", "side-by-side"], default="stacked",
+                   help="human-readable layout: stacked (default, one file per "
+                        "line) or side-by-side (files laid out horizontally). "
+                        "Visual-only; no effect on --json.")
     p.add_argument("--around", type=parse_around, default=None, metavar="OFF:N",
                    help="show a window of N bytes centered on OFF (overrides --offset/--length)")
     p.add_argument("--json", dest="as_json", action="store_true",
@@ -135,8 +139,44 @@ def resolve_color(mode, as_json):
     return sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
 
 
+def _render_file_segment(row, fi, name, name_w, base_row, show_ascii, use_color,
+                         byte_classes):
+    """Build one file's colored segment (the part after the leading indent).
+
+    A segment is ``name + "  " + hex cells + optional "  |gutter|"`` -- the same
+    body used on a stacked per-file line and as one horizontal cell of a
+    side-by-side row. Coloring is the batch tool's own scheme: each present cell
+    is reddened when it differs from the base/reference byte in that column;
+    missing cells are dimmed; non-diff cells optionally get a byte-class color.
+    """
+    hex_cells = []
+    gutter = []
+    for c, b in enumerate(row.cells[fi]):
+        if b is None:
+            cell = format_byte(b)  # "--"
+            if use_color:
+                cell = DIM + cell + RESET
+            hex_cells.append(cell)
+        else:
+            txt = format_byte(b)
+            ref_b = base_row[c] if base_row is not None else None
+            if use_color and ref_b is not None and b != ref_b:
+                txt = RED + txt + RESET
+            elif use_color and byte_classes:
+                color = _BYTE_CLASS_COLOR.get(classify_byte(b))
+                if color:
+                    txt = color + txt + RESET
+            hex_cells.append(txt)
+        # missing -> space, printable -> char, else '.' (all via core helper)
+        gutter.append(format_ascii_char(b))
+    segment = name.ljust(name_w) + "  " + " ".join(hex_cells)
+    if show_ascii:
+        segment += "  |" + "".join(gutter) + "|"
+    return segment
+
+
 def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
-                    byte_classes=False):
+                    byte_classes=False, layout="stacked"):
     """Render one core Row as text lines (with ANSI color when enabled).
 
     Coloring here is the batch tool's own scheme: each present cell is
@@ -148,34 +188,22 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
     a diff get a byte-class foreground color. Missing and diff styling always
     win, so differences stay obvious. The ASCII gutter is left uncolored, as it
     is throughout the batch tool.
+
+    ``layout`` is display-only. ``"stacked"`` (default) puts each file on its own
+    line; ``"side-by-side"`` joins the per-file segments horizontally. The single
+    marker line is unchanged either way.
     """
     lines.append(f"0x{row.offset:08x}")
     base_row = row.cells[base] if base < len(row.cells) else None
-    for fi, name in enumerate(names):
-        hex_cells = []
-        gutter = []
-        for c, b in enumerate(row.cells[fi]):
-            if b is None:
-                cell = format_byte(b)  # "--"
-                if use_color:
-                    cell = DIM + cell + RESET
-                hex_cells.append(cell)
-            else:
-                txt = format_byte(b)
-                ref_b = base_row[c] if base_row is not None else None
-                if use_color and ref_b is not None and b != ref_b:
-                    txt = RED + txt + RESET
-                elif use_color and byte_classes:
-                    color = _BYTE_CLASS_COLOR.get(classify_byte(b))
-                    if color:
-                        txt = color + txt + RESET
-                hex_cells.append(txt)
-            # missing -> space, printable -> char, else '.' (all via core helper)
-            gutter.append(format_ascii_char(b))
-        line = "  " + name.ljust(name_w) + "  " + " ".join(hex_cells)
-        if show_ascii:
-            line += "  |" + "".join(gutter) + "|"
-        lines.append(line)
+    segments = [
+        _render_file_segment(row, fi, name, name_w, base_row, show_ascii,
+                             use_color, byte_classes)
+        for fi, name in enumerate(names)
+    ]
+    if layout == "side-by-side":
+        lines.append("  " + "   ".join(segments))
+    else:
+        lines.extend("  " + segment for segment in segments)
 
     rendered = []
     for m in row.markers:
@@ -291,6 +319,7 @@ def run_search(args, files, names, name_w):
                         name_mode=args.names,
                         ascii_on=args.ascii,
                         name_width=name_w,
+                        layout=args.layout,
                     )
                 )
             # blank line between context blocks for readability
@@ -375,7 +404,8 @@ def main(argv=None):
             json_rows.append(build_json_row(row, names))
         else:
             render_text_row(text_lines, row, names, name_w,
-                            base, args.ascii, use_color, args.byte_classes)
+                            base, args.ascii, use_color, args.byte_classes,
+                            args.layout)
 
     if args.as_json:
         out = {

@@ -7,6 +7,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Side-by-side layout** (`--layout stacked|side-by-side`): a second
+  human-readable display that lays each file's hex (and ASCII gutter) out
+  horizontally across the offset row instead of stacking one file per line, so
+  files can be compared left-to-right at the same offset. `stacked` remains the
+  default. Available in both frontends; the TUI cycles layouts live with `v` and
+  adds horizontal scrolling (`←`/`→`) for the wider rows. Layout is visual-only:
+  it never affects offsets, bytes, comparison markers, `--ref`, `--only-diff`,
+  search, or `--json`. `render_row_text()` gains a `layout` keyword so the CLI's
+  search-context rows honor it.
 - **Byte-class highlighting** (`--byte-classes`): a display-only mode that tints
   hex cells by value class — zero bytes dim, ASCII whitespace cyan, printable
   ASCII green — to help spot structure. Available in both frontends (the TUI also

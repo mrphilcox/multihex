@@ -99,8 +99,10 @@ classify_byte(None)   # ByteClass.MISSING
 - `format_ascii_char(byte) -> str` / `format_ascii(row_bytes) -> str` — printable
   char, `.`, or space (for missing).
 - `render_row_text(row, files, *, name_mode="basename", ascii_on=True,
-  show_markers=True, name_width=None) -> list[str]` — the shared, un-styled
-  multi-line layout for one row.
+  show_markers=True, name_width=None, layout="stacked") -> list[str]` — the
+  shared, un-styled layout for one row. `layout` is display-only: `"stacked"`
+  prints one file per line; `"side-by-side"` joins the per-file segments
+  horizontally on a single line (the marker line is unchanged).
 - `name_column_width(files, mode="basename") -> int`,
   `marker_prefix_width(name_width) -> int` — alignment helpers.
 - `parse_int(text) -> int` — parse like the CLI does (`int(x, 0)`: decimal, `0x`,

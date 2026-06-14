@@ -327,22 +327,33 @@ def render_row_text(
     ascii_on: bool = True,
     show_markers: bool = True,
     name_width: Optional[int] = None,
+    layout: str = "stacked",
 ) -> List[str]:
     """Render a row as a list of plain-text lines.
 
     This is the shared, un-styled layout used by the batch frontend and as
     the geometry reference for the TUI's styled rendering.
+
+    ``layout`` is display-only. ``"stacked"`` (the default) puts each file on
+    its own line; ``"side-by-side"`` joins the per-file segments horizontally on
+    a single line. The single column-marker line is unchanged either way. Layout
+    never affects offsets, bytes, or markers.
     """
     if name_width is None:
         name_width = name_column_width(files, name_mode)
     lines: List[str] = [f"0x{row.offset:08x}"]
+    segments: List[str] = []
     for f, row_bytes in zip(files, row.cells):
         name = f.display_name(name_mode).ljust(name_width)
         hexpart = " ".join(format_byte(b) for b in row_bytes)
-        line = f"  {name}  {hexpart}"
+        segment = f"{name}  {hexpart}"
         if ascii_on:
-            line += f"  |{format_ascii(row_bytes)}|"
-        lines.append(line)
+            segment += f"  |{format_ascii(row_bytes)}|"
+        segments.append(segment)
+    if layout == "side-by-side":
+        lines.append("  " + "   ".join(segments))
+    else:
+        lines.extend(f"  {segment}" for segment in segments)
     if show_markers:
         prefix = " " * marker_prefix_width(name_width)
         marks = " ".join(format_marker(m) for m in row.markers)

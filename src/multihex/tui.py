@@ -21,6 +21,8 @@ Keys:
     d             toggle only-diff rows
     c             toggle color/highlighting
     t             toggle byte-class highlighting
+    v             cycle layout (stacked / side-by-side)
+    left / right  scroll horizontally (side-by-side)
     /             text search
     x             hex search
     n             next match
@@ -114,6 +116,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             color_on: bool,
             name_mode: str,
             byte_classes_on: bool = False,
+            layout: str = "stacked",
         ) -> None:
             super().__init__()
             self.model = model
@@ -123,6 +126,13 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.byte_classes_on = byte_classes_on
             self.name_mode = name_mode
             self.name_width = name_column_width(model.files, name_mode)
+            # Stored as ``layout_mode`` (not ``layout``) to avoid clashing with
+            # Textual's Widget.layout property.
+            self.layout_mode = layout
+            # Horizontal scroll offset (characters) for side-by-side rows that
+            # exceed the viewport width. Always 0 in stacked mode.
+            self.h_scroll = 0
+            self._content_width = 0  # widest rendered line on the last page
             self.top = 0  # position into visible_indices()
             self._visible: Optional[Union[range, List[int]]] = None
             self._page_rows = 1
@@ -221,6 +231,27 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.byte_classes_on = not self.byte_classes_on
             self.refresh()
 
+        def cycle_layout(self) -> None:
+            self.layout_mode = (
+                "side-by-side" if self.layout_mode == "stacked" else "stacked"
+            )
+            # Horizontal scroll only applies to side-by-side; reset on switch.
+            self.h_scroll = 0
+            self.refresh()
+
+        def scroll_h(self, delta: int) -> None:
+            """Scroll the side-by-side view horizontally by ``delta`` chars.
+
+            A no-op in stacked mode, where rows are not meant to exceed the
+            viewport and the existing (clip-only) behavior is preserved.
+            """
+            if self.layout_mode != "side-by-side":
+                return
+            viewport = self.size.width or 0
+            max_scroll = max(0, self._content_width - viewport)
+            self.h_scroll = max(0, min(self.h_scroll + delta, max_scroll))
+            self.refresh()
+
         def toggle_only_diff(self) -> None:
             keep = self.current_top_row()
             self.only_diff = not self.only_diff
@@ -296,10 +327,52 @@ if _TEXTUAL_IMPORT_ERROR is None:
             text = Text()
             for pos in range(self.top, end):
                 self._render_block(text, self.model.build_row(vis[pos]))
+
+            # Track the widest line so scroll_h() can clamp. Only apply the
+            # horizontal crop when actually scrolled, so stacked (and unscrolled
+            # side-by-side) rendering stays byte-for-byte as before.
+            lines = text.split("\n")
+            self._content_width = max((len(ln.plain) for ln in lines), default=0)
+            if self.h_scroll:
+                viewport = self.size.width or 0
+                self.h_scroll = min(self.h_scroll, max(0, self._content_width - viewport))
+                if self.h_scroll:
+                    return Text("\n").join(ln[self.h_scroll:] for ln in lines)
             return text
 
         def _style(self, style: str) -> str:
             return style if self.color_on else ""
+
+        def _append_file_segment(
+            self, text: "Text", row: Row, fi: int, f, row_bytes
+        ) -> None:
+            """Append one file's segment (name + hex + optional ASCII gutter).
+
+            No leading indent and no trailing newline: the caller positions the
+            segment (stacked = one per line, side-by-side = joined horizontally).
+            All cell styling flows through ``_cell_style`` so diff/search/missing/
+            byte-class highlighting is identical in both layouts.
+            """
+            model = self.model
+            name = f.display_name(self.name_mode).ljust(self.name_width)
+            name_style = self._style(_REF_STYLE) if model.ref == fi else ""
+            text.append(name, style=name_style)
+            text.append("  ")
+            for ci in range(model.width):
+                cell_style = self._cell_style(
+                    fi, row.offset + ci, row.markers[ci], row_bytes[ci]
+                )
+                text.append(format_byte(row_bytes[ci]), style=cell_style)
+                if ci != model.width - 1:
+                    text.append(" ")
+            if self.ascii_on:
+                text.append("  |")
+                for ci in range(model.width):
+                    cell_style = self._cell_style(
+                        fi, row.offset + ci, row.markers[ci], row_bytes[ci]
+                    )
+                    text.append(format_ascii_char(row_bytes[ci]), style=cell_style)
+                text.append("|")
 
         def _render_block(self, text: "Text", row: Row) -> None:
             model = self.model
@@ -307,28 +380,16 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
             text.append(f"0x{row.offset:08x}\n", style=self._style(_OFFSET_STYLE))
 
-            for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
-                name = f.display_name(self.name_mode).ljust(self.name_width)
-                name_style = self._style(_REF_STYLE) if model.ref == fi else ""
-                text.append("  ")
-                text.append(name, style=name_style)
-                text.append("  ")
-                for ci in range(model.width):
-                    cell_style = self._cell_style(
-                        fi, row.offset + ci, row.markers[ci], row_bytes[ci]
-                    )
-                    text.append(format_byte(row_bytes[ci]), style=cell_style)
-                    if ci != model.width - 1:
-                        text.append(" ")
-                if self.ascii_on:
-                    text.append("  |")
-                    for ci in range(model.width):
-                        cell_style = self._cell_style(
-                            fi, row.offset + ci, row.markers[ci], row_bytes[ci]
-                        )
-                        text.append(format_ascii_char(row_bytes[ci]), style=cell_style)
-                    text.append("|")
+            if self.layout_mode == "side-by-side":
+                for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
+                    text.append("   " if fi else "  ")
+                    self._append_file_segment(text, row, fi, f, row_bytes)
                 text.append("\n")
+            else:
+                for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
+                    text.append("  ")
+                    self._append_file_segment(text, row, fi, f, row_bytes)
+                    text.append("\n")
 
             text.append(" " * marker_prefix_width(self.name_width))
             for ci in range(model.width):
@@ -395,6 +456,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
             "  d             toggle only-diff rows\n"
             "  c             toggle color\n"
             "  t             toggle byte-class highlighting\n"
+            "  v             cycle layout (stacked / side-by-side)\n"
+            "  left / right  scroll horizontally (side-by-side)\n"
             "  /             text search\n"
             "  x             hex search\n"
             "  n             next match\n"
@@ -441,6 +504,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Binding("d", "toggle_diff", "Only-diff"),
             Binding("c", "toggle_color", "Color"),
             Binding("t", "toggle_byte_classes", "Classes"),
+            Binding("v", "cycle_layout", "Layout"),
+            Binding("left", "scroll_left", "Scroll left", show=False),
+            Binding("right", "scroll_right", "Scroll right", show=False),
             Binding("slash", "search_text", "Search"),
             Binding("x", "search_hex", "Hex search"),
             Binding("n", "next_match", "Next", show=False),
@@ -459,6 +525,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             color_on: bool,
             name_mode: str,
             byte_classes_on: bool = False,
+            layout: str = "stacked",
         ) -> None:
             super().__init__()
             self.model = model
@@ -469,6 +536,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 color_on=color_on,
                 name_mode=name_mode,
                 byte_classes_on=byte_classes_on,
+                layout=layout,
             )
             # Search state lives on the app; the view only renders highlights.
             self.search_query = None
@@ -508,11 +576,12 @@ if _TEXTUAL_IMPORT_ERROR is None:
             ref_label = "all-agree" if m.ref is None else (
                 m.files[m.ref].display_name(v.name_mode)
             )
-            toggles = "ascii:%s diff:%s color:%s classes:%s" % (
+            toggles = "ascii:%s diff:%s color:%s classes:%s layout:%s" % (
                 "on" if v.ascii_on else "off",
                 "on" if v.only_diff else "off",
                 "on" if v.color_on else "off",
                 "on" if v.byte_classes_on else "off",
+                v.layout_mode,
             )
             sizes = "  ".join(
                 f"{f.display_name(v.name_mode)}={f.size}" for f in m.files
@@ -595,6 +664,16 @@ if _TEXTUAL_IMPORT_ERROR is None:
         def action_toggle_byte_classes(self) -> None:
             self.view.toggle_byte_classes()
             self.update_status()
+
+        def action_cycle_layout(self) -> None:
+            self.view.cycle_layout()
+            self.update_status()
+
+        def action_scroll_left(self) -> None:
+            self.view.scroll_h(-8)
+
+        def action_scroll_right(self) -> None:
+            self.view.scroll_h(8)
 
         def action_toggle_diff(self) -> None:
             self.view.toggle_only_diff()
@@ -751,6 +830,9 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--byte-classes", dest="byte_classes", action="store_true",
                    help="start with byte-class highlighting on (toggle with 't'). "
                         "Visual-only; needs color on. Default off.")
+    p.add_argument("--layout", choices=["stacked", "side-by-side"], default="stacked",
+                   help="initial layout: stacked (default) or side-by-side "
+                        "(cycle with 'v'; scroll horizontally with left/right).")
     return p.parse_args(argv)
 
 
@@ -797,6 +879,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         color_on=_resolve_color(args.color),
         name_mode=args.names,
         byte_classes_on=args.byte_classes,
+        layout=args.layout,
     )
     app.run()
     return 0

@@ -99,6 +99,17 @@ directly by the batch CLI and as the geometry reference for the TUI's styled
 rendering. `name_column_width()` and `marker_prefix_width()` keep the marker row
 aligned under the hex columns.
 
+**Display layout** (`--layout stacked|side-by-side`) is a *frontend rendering
+concern*, not a core one: it is a plain string (no enum, no core type) that each
+renderer branches on. `stacked` (the default) prints one file per line;
+`side-by-side` joins the per-file segments horizontally, with the single
+column-marker line unchanged. `render_row_text()` takes a `layout` keyword (so the
+CLI's search-context rows honor it); the CLI and TUI renderers each apply the same
+join. Layout is purely visual — it never touches offsets, bytes, markers,
+filtering, search, or JSON. The TUI additionally cycles layout live (`v`) and adds
+its own horizontal scroll (`←`/`→`, a character offset cropped off each rendered
+line) because side-by-side rows routinely exceed the viewport width.
+
 The core also owns **byte classification** for the optional `--byte-classes`
 highlighting: `classify_byte(value) -> ByteClass` maps a byte (or `None`) to a
 coarse class (`ZERO` / `WHITESPACE` / `PRINTABLE_ASCII` / `OTHER` / `MISSING`).
