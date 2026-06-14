@@ -68,6 +68,9 @@ pip install '.[gui]'
 
 # For development (tests, linter, and the TUI):
 pip install -e '.[dev]'
+
+# For development with the desktop GUI launcher:
+pip install -e '.[dev,gui]'
 ```
 
 Installing provides three console scripts:
