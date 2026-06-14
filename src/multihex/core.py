@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""multihex_core.py - shared core for multihex.py and multihex-tui.py.
+"""multihex.core - shared core for multihex.cli and multihex.tui.
 
 Stdlib-only. This module owns all the *meaning* of a multi-file hex
 comparison so that the batch frontend and the interactive TUI frontend
@@ -20,7 +19,7 @@ Design notes / semantics (per spec):
       - else DIFF.
   * Without --ref, the pivot is column[0] ("all files agree").
   * With --ref INDEX, the pivot is the reference file's byte.
-  * Integer parsing matches multihex.py: int(x, 0).
+  * Integer parsing matches multihex.cli: int(x, 0).
 """
 
 from __future__ import annotations
@@ -33,7 +32,7 @@ from typing import List, Optional, Sequence, Union
 
 
 def parse_int(text: str) -> int:
-    """Parse an integer the same way multihex.py does: ``int(x, 0)``.
+    """Parse an integer the same way multihex.cli does: ``int(x, 0)``.
 
     Accepts decimal, 0x.. (hex), 0o.. (octal), 0b.. (binary), with an
     optional leading sign.

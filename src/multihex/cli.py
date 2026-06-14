@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""multihex.py - side-by-side fixed-offset hex inspection of multiple binary files.
+"""multihex.cli - side-by-side fixed-offset hex inspection of multiple binary files.
 
 Display the same offset range across several binary files so you can compare the
 byte values that live at identical offsets. This is an exact display tool, not an
@@ -16,7 +15,7 @@ import json
 import os
 import sys
 
-from multihex_core import (
+from multihex.core import (
     HexModel,
     Marker,
     format_ascii_char,

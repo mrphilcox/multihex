@@ -1,4 +1,4 @@
-"""Capture byte-exact stdout goldens from the CURRENT multihex.py.
+"""Capture byte-exact stdout goldens from the CURRENT multihex CLI.
 
 Run this BEFORE refactoring:  python tests/capture_goldens.py
 It writes tests/goldens/<name>.out (raw stdout bytes) for every case in
@@ -10,17 +10,14 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 from fixtures import build_fixtures  # noqa: E402
 from golden_cases import CASES  # noqa: E402
 
-MULTIHEX = os.path.join(REPO, "multihex.py")
-
 
 def run_case(fixture_dir, scenario_files, extra_args):
-    cmd = [sys.executable, MULTIHEX, *scenario_files, *extra_args]
+    cmd = [sys.executable, "-m", "multihex.cli", *scenario_files, *extra_args]
     proc = subprocess.run(
         cmd, cwd=fixture_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )

@@ -3,7 +3,7 @@
 1. HexModel.build_row must match an *independent* recomputation of cells and
    three-state markers from the documented rule, across offsets/widths/refs and
    bounded windows that run past EOF with a partial last row.
-2. The batch tool's JSON (multihex.main --json) must report the same cells and
+2. The batch tool's JSON (multihex.cli --json) must report the same cells and
    markers as a direct core walk for the same offset/width/ref/length.
 """
 
@@ -15,14 +15,10 @@ import sys
 import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-sys.path.insert(0, REPO)
 
-from fixtures import build_fixtures  # noqa: E402
-from multihex_core import HexModel, Marker, format_marker, load_files  # noqa: E402
-
-MULTIHEX = os.path.join(REPO, "multihex.py")
+from fixtures import build_fixtures  # noqa: E402, I001
+from multihex.core import HexModel, Marker, format_marker, load_files  # noqa: E402
 
 
 def expected_marker(column, ref):
@@ -85,7 +81,7 @@ def test_json_matches_core_walk(fixtures, scenario, offset, width, ref, length):
     fixture_dir, paths = fixtures
     names = paths[scenario]
 
-    cmd = [sys.executable, MULTIHEX, *names, "--width", str(width), "--json"]
+    cmd = [sys.executable, "-m", "multihex.cli", *names, "--width", str(width), "--json"]
     if offset:
         cmd += ["--offset", hex(offset)]
     if ref is not None:

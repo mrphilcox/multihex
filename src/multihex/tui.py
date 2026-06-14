@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
-"""multihex-tui.py - interactive TUI for fixed-offset multi-file hex compare.
+"""multihex.tui - interactive TUI for fixed-offset multi-file hex compare.
 
 A viewer only: no editing, no inference, no resynchronization, no offset-
-changing byte filtering. All comparison meaning lives in multihex_core so
-this frontend and the batch multihex.py stay in lockstep.
+changing byte filtering. All comparison meaning lives in multihex.core so
+this frontend and the batch multihex.cli stay in lockstep.
 
 Usage:
     multihex-tui file1.bin file2.bin file3.bin
@@ -32,7 +31,7 @@ import os
 import sys
 from typing import List, Optional, Sequence, Union
 
-from multihex_core import (
+from multihex.core import (
     HexModel,
     Marker,
     Row,
@@ -539,7 +538,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if _TEXTUAL_IMPORT_ERROR is not None:
         sys.stderr.write(
             "multihex-tui requires the 'textual' package to run.\n"
-            "Install it with:  pip install textual\n"
+            "Install it with:  pip install 'multihex[tui]'\n"
             f"(import error: {_TEXTUAL_IMPORT_ERROR})\n"
         )
         return 2

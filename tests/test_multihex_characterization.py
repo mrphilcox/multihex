@@ -1,4 +1,4 @@
-"""Characterization: post-refactor multihex.py stdout must equal the goldens.
+"""Characterization: post-refactor multihex output must equal the goldens.
 
 Goldens were captured from the pre-refactor tool by tests/capture_goldens.py
 and are the byte-for-byte contract. Fixtures are rebuilt deterministically into
@@ -12,18 +12,16 @@ import sys
 import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 from fixtures import build_fixtures  # noqa: E402
 from golden_cases import CASES  # noqa: E402
 
-MULTIHEX = os.path.join(REPO, "multihex.py")
 GOLDENS = os.path.join(HERE, "goldens")
 
 
 def _run(fixture_dir, scenario_files, extra_args):
-    cmd = [sys.executable, MULTIHEX, *scenario_files, *extra_args]
+    cmd = [sys.executable, "-m", "multihex.cli", *scenario_files, *extra_args]
     proc = subprocess.run(
         cmd, cwd=fixture_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )

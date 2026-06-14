@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "multihex"
+version = "0.1.0"
+description = "Side-by-side fixed-offset hex comparison of multiple binary files"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+tui = [
+    "textual>=0.1",
+    "rich>=13",
+]
+dev = [
+    "pytest>=7",
+    "ruff>=0.1",
+    "textual>=0.1",
+    "rich>=13",
+]
+
+[project.scripts]
+multihex = "multihex.cli:main"
+multihex-tui = "multihex.tui:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/multihex"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
