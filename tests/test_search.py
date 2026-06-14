@@ -21,6 +21,7 @@ from multihex.core import (  # noqa: E402
     HexModel,
     SearchError,
     SearchMatch,
+    SearchQuery,
     first_match_index,
     make_hex_query,
     make_text_query,
@@ -71,6 +72,8 @@ def test_parse_hex_valid_forms(text):
         "DE AD 0xZZ",   # non-hex in a token
         "",             # empty
         "   ",          # whitespace only
+        ",",            # separators only -> no digits after tokenizing
+        ":-,",          # every accepted separator, still no digits
     ],
 )
 def test_parse_hex_invalid_forms_raise(text):
@@ -81,6 +84,15 @@ def test_parse_hex_invalid_forms_raise(text):
 def test_make_hex_query_invalid_raises():
     with pytest.raises(SearchError):
         make_hex_query("GG")
+
+
+def test_empty_needle_yields_no_matches_without_hanging():
+    # The public query builders reject empty input, but search_files must still
+    # be defensive: an empty needle has to terminate with zero matches rather
+    # than spin (bytes.find("", start) always succeeds at `start`).
+    f = _file("a", b"abc")
+    query = SearchQuery(mode="hex", pattern="", needle=b"")
+    assert search_files([f], query) == []
 
 
 @pytest.mark.parametrize(

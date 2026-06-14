@@ -28,6 +28,12 @@ from multihex.core import ByteClass, classify_byte  # noqa: E402
         (0x0C, ByteClass.WHITESPACE),
         (0x0D, ByteClass.WHITESPACE),
         (0x20, ByteClass.WHITESPACE),       # space is whitespace, not printable
+        # Control bytes that are not the recognized whitespace set fall to
+        # OTHER, not WHITESPACE or PRINTABLE: 0x01..0x08 and 0x0E..0x1F.
+        (0x01, ByteClass.OTHER),
+        (0x08, ByteClass.OTHER),            # just below the 0x09 whitespace run
+        (0x0E, ByteClass.OTHER),            # just above the 0x0D whitespace run
+        (0x1F, ByteClass.OTHER),            # last control byte before space
         (0x21, ByteClass.PRINTABLE_ASCII),
         (0x41, ByteClass.PRINTABLE_ASCII),
         (0x7E, ByteClass.PRINTABLE_ASCII),
