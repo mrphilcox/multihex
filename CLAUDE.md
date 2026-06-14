@@ -36,7 +36,8 @@ multihex --byte-classes --color always FILE1 FILE2
 # Run the TUI (requires textual + rich)
 multihex-tui FILE1 FILE2
 multihex-tui --byte-classes FILE1 FILE2   # start with byte-class highlighting on
-# TUI search keys:  /  text search   x  hex search   n  next   N/p  previous
+# TUI search keys:  /  text search (panel has ASCII case-insensitive checkbox)
+#                   x  hex search (byte values, not ASCII)   n  next   N/p  previous
 # TUI toggles:  c  color   t  byte-class highlighting
 
 # Run all tests
@@ -65,7 +66,7 @@ python3 tests/capture_goldens.py
 
 **`HexFile.data`** is either `mmap.mmap` (lazy, for real files) or `bytes`/`bytearray` (for tests). `byte_at()` and `size` work identically for both.
 
-**Search** is exact (no inference, no alignment, no wildcards) and lives entirely in the core: `parse_hex_pattern()`, `make_text_query()`/`make_hex_query()` → `SearchQuery`, `search_files()` → ordered `SearchMatch` list, plus index-based navigation helpers (`first_match_index`, `next_match_index`, `prev_match_index`, `match_index_after`/`before`). Results are ordered by `(file_index, offset)`; matches are non-overlapping unless `overlap=True`. Case-insensitive text search folds ASCII letters only. Frontends add UI glue only: the CLI prints `file=… offset=… match=… ascii=…` lines (with optional `--search-context` rows), the TUI tracks search state and highlights matches (current match strongest). TUI render priority: missing > current match > other matches > diff marker > byte class.
+**Search** is exact (no inference, no alignment, no wildcards) and lives entirely in the core: `parse_hex_pattern()`, `make_text_query()`/`make_hex_query()` → `SearchQuery`, `search_files()` → ordered `SearchMatch` list, plus index-based navigation helpers (`first_match_index`, `next_match_index`, `prev_match_index`, `match_index_after`/`before`). Results are ordered by `(file_index, offset)`; matches are non-overlapping unless `overlap=True`. Case-insensitive text search folds ASCII letters only (`--search-ignore-case`; the TUI text-search panel has a session-only "Case-insensitive (ASCII)" checkbox). Hex search is always exact byte matching — it has no case toggle, parses upper/lowercase hex digits via `parse_hex_pattern()`, and never falls back to a text search of the raw input. Frontends add UI glue only: the CLI prints `file=… offset=… match=… ascii=…` lines (with optional `--search-context` rows), the TUI tracks search state and highlights matches (current match strongest). TUI render priority: missing > current match > other matches > diff marker > byte class.
 
 **Byte classes** (`--byte-classes`; TUI `t`): display-only highlighting. `core.classify_byte()` maps a byte (or `None`) to a `ByteClass` (`ZERO`/`WHITESPACE`/`PRINTABLE_ASCII`/`OTHER`/`MISSING`) — data only, no ANSI/Rich. Frontends color hex cells by class as the **lowest-priority** tier (missing/diff/search styling always wins), only when color is enabled; off by default. It never affects offsets, markers, `--only-diff`, `--ref`, search, or `--json`.
 

@@ -80,6 +80,20 @@ def test_make_hex_query_invalid_raises():
         make_hex_query("GG")
 
 
+@pytest.mark.parametrize(
+    "upper, lower",
+    [
+        ("D9", "d9"),
+        ("DE AD BE EF", "de ad be ef"),
+        ("0xDE 0xAD", "0xde 0xad"),
+        ("DE:AD:BE:EF", "de:ad:be:ef"),
+    ],
+)
+def test_parse_hex_case_insensitive_identical_bytes(upper, lower):
+    # Hex digit case must not matter: both spellings yield identical bytes.
+    assert parse_hex_pattern(upper) == parse_hex_pattern(lower)
+
+
 def test_make_text_query_empty_raises():
     with pytest.raises(SearchError):
         make_text_query("")
@@ -148,6 +162,34 @@ def test_hex_search_finds_bytes():
     matches = search_files([f], make_hex_query("DE AD BE EF"))
     assert _offsets(matches) == [1]
     assert matches[0].matched == b"\xde\xad\xbe\xef"
+
+
+# Hex search must match *byte values*, never the ASCII spelling of the hex
+# input. This file holds byte 0xd9 at offset 0 and the ASCII text "D9"
+# (bytes 0x44 0x39) at offset 1, so the two are unambiguously distinguishable.
+_HEX_VS_ASCII = bytes([0xD9]) + b"D9"  # 0xd9, then 0x44 0x39
+
+
+def test_hex_search_uppercase_finds_byte_not_ascii():
+    f = _file("a", _HEX_VS_ASCII)
+    assert _offsets(search_files([f], make_hex_query("D9"))) == [0]
+
+
+def test_hex_search_lowercase_finds_same_byte():
+    f = _file("a", _HEX_VS_ASCII)
+    assert _offsets(search_files([f], make_hex_query("d9"))) == [0]
+
+
+def test_hex_search_for_ascii_bytes_finds_the_ascii():
+    f = _file("a", _HEX_VS_ASCII)
+    # "44 39" is the byte form of ASCII "D9"; it should match offset 1, not 0.
+    assert _offsets(search_files([f], make_hex_query("44 39"))) == [1]
+
+
+def test_text_search_finds_ascii_spelling():
+    f = _file("a", _HEX_VS_ASCII)
+    # Text search for "D9" finds the ASCII bytes (offset 1), not the 0xd9 byte.
+    assert _offsets(search_files([f], make_text_query("D9"))) == [1]
 
 
 # --------------------------------------------------------------------------- #

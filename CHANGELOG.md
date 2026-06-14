@@ -7,6 +7,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **TUI text-search case-insensitivity**: the `multihex-tui` text-search panel
+  (`/`) now has a **Case-insensitive (ASCII)** checkbox, matching the batch CLI's
+  `--search-ignore-case`. The choice is remembered for the session (and shown as
+  `(ci)` on the search status line) but is not persisted to the config file —
+  persistence is a possible follow-up. Hex search (`x`) is unchanged and has no
+  case toggle (it is always exact byte matching).
+
+### Clarified
+- **Hex search matches bytes, not the ASCII spelling of the hex input** in both
+  frontends — e.g. `--search-hex D9` (and `x` then `D9` in the TUI) finds the
+  byte `0xd9`, never ASCII `"D9"` (bytes `44 39`). This was already the behavior
+  via the shared `parse_hex_pattern()`; it is now covered by regression tests and
+  spelled out in the docs and TUI help. To search for ASCII text use text search;
+  to search for raw bytes use hex search. Invalid hex shows an error and never
+  falls back to a text search.
+
 - **TUI configuration** (`multihex-tui` only): persistent display preferences
   loaded from `~/.config/multihex/tui.toml` (or
   `$XDG_CONFIG_HOME/multihex/tui.toml`). Precedence is built-in defaults → config

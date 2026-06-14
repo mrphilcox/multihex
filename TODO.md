@@ -21,6 +21,14 @@ Repo-wide tasks and follow-ups to track.
   - `pyproject.toml` → `[project.urls]` (`Homepage`, `Repository`, `Changelog`)
   - `CHANGELOG.md` → the `[Unreleased]` and `[0.1.0]` link references at the bottom
 - [ ] Add the git remote (`git remote add origin <url>`) and push.
+- [ ] **Persist the TUI text-search case-insensitive preference (optional).** The
+      `multihex-tui` text-search panel now has a "Case-insensitive (ASCII)"
+      checkbox whose state is remembered for the running session only. If desired,
+      promote it to a persisted startup default: add a field to `TuiSettings`,
+      wire it through `load_settings`/`_dump_toml`/the settings pane (`o`) and
+      `build_startup_settings` (and likely a `--search-ignore-case` startup flag).
+      Persist only the *preference* — never the search string, match index, or
+      results.
 
 ## Done
 

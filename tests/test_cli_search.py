@@ -64,6 +64,48 @@ def test_invalid_hex_exits_nonzero(fixtures):
     assert 'invalid hex byte "GG"' in proc.stderr
 
 
+def test_hex_search_matches_byte_not_ascii(tmp_path):
+    """--search-hex D9 finds byte 0xd9, never the ASCII spelling 44 39.
+
+    The file holds 0xd9 at offset 0 and ASCII "D9" (0x44 0x39) at offset 1.
+    """
+    p = tmp_path / "mix.bin"
+    p.write_bytes(bytes([0xD9]) + b"D9")
+    for pattern in ("D9", "d9", "0xD9"):
+        proc = _run(str(tmp_path), ["--search-hex", pattern, "mix.bin"])
+        assert proc.returncode == 0, proc.stderr
+        assert "offset=0x00000000 len=1 match=d9" in proc.stdout
+        # Must not report the ASCII bytes at offset 1.
+        assert "offset=0x00000001" not in proc.stdout
+
+
+def test_hex_search_for_ascii_bytes_finds_ascii(tmp_path):
+    p = tmp_path / "mix.bin"
+    p.write_bytes(bytes([0xD9]) + b"D9")
+    # The byte form of ASCII "D9" is 44 39 -> matches offset 1, not 0.
+    proc = _run(str(tmp_path), ["--search-hex", "44 39", "mix.bin"])
+    assert proc.returncode == 0, proc.stderr
+    assert "offset=0x00000001 len=2 match=44 39" in proc.stdout
+    assert "offset=0x00000000" not in proc.stdout
+
+
+def test_ignore_case_text_search_folds_ascii(tmp_path):
+    p = tmp_path / "hdr.bin"
+    p.write_bytes(b"....Content-Type: text/plain")
+    # Case-sensitive (default) misses the lowercase query.
+    miss = _run(str(tmp_path), ["--search-text", "content-type", "hdr.bin"])
+    assert miss.returncode == 0
+    assert "file=" not in miss.stdout
+    assert "no matches" in miss.stderr
+    # --search-ignore-case folds ASCII letters and finds it.
+    hit = _run(
+        str(tmp_path),
+        ["--search-text", "content-type", "--search-ignore-case", "hdr.bin"],
+    )
+    assert hit.returncode == 0, hit.stderr
+    assert "offset=0x00000004 len=12 match=43 6f 6e 74 65 6e 74 2d 54 79 70 65" in hit.stdout
+
+
 def test_overlap_reports_more(fixtures):
     fixture_dir, _ = fixtures
     # dY is 48 bytes of 0x11; "11 11" overlapping finds many more than not.

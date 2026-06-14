@@ -24,8 +24,8 @@ Keys:
     v             cycle layout (stacked / side-by-side)
     left / right  scroll horizontally (side-by-side)
     o             open settings / options pane
-    /             text search
-    x             hex search
+    /             text search (panel has an ASCII case-insensitive toggle)
+    x             hex search (matches byte values, not ASCII text)
     n             next match
     N / p         previous match
     h / ?         help
@@ -79,7 +79,7 @@ try:
     from textual.containers import Vertical
     from textual.screen import ModalScreen
     from textual.widget import Widget
-    from textual.widgets import Footer, Header, Input, Label, Static
+    from textual.widgets import Checkbox, Footer, Header, Input, Label, Static
 
     _TEXTUAL_IMPORT_ERROR: Optional[BaseException] = None
 except ImportError as exc:  # pragma: no cover - depends on environment
@@ -479,6 +479,49 @@ if _TEXTUAL_IMPORT_ERROR is None:
             if event.key == "escape":
                 self.dismiss(None)
 
+    class TextSearchScreen(ModalScreen[Optional[tuple]]):
+        """Text-search prompt with a case-insensitive toggle.
+
+        Dismisses with ``(text, ignore_case)`` on submit, or ``None`` when
+        cancelled. The checkbox is seeded from the app's remembered (session-only)
+        preference so the last choice sticks for the session. This is the *text*
+        panel only -- the hex panel deliberately has no case control (hex search
+        is always exact byte matching).
+        """
+
+        DEFAULT_CSS = """
+        TextSearchScreen { align: center middle; }
+        TextSearchScreen > Vertical {
+            width: 70; height: auto; padding: 1 2;
+            border: round $accent; background: $panel;
+        }
+        TextSearchScreen Label { margin-bottom: 1; }
+        """
+
+        def __init__(self, ignore_case: bool = False) -> None:
+            super().__init__()
+            self._ignore_case = ignore_case
+
+        def compose(self) -> "ComposeResult":
+            with Vertical():
+                yield Label("Search text (UTF-8):")
+                yield Input(id="search_input")
+                yield Checkbox(
+                    "Case-insensitive (ASCII)",
+                    value=self._ignore_case,
+                    id="ci",
+                )
+
+        def on_mount(self) -> None:
+            self.query_one(Input).focus()
+
+        def on_input_submitted(self, event: "Input.Submitted") -> None:
+            self.dismiss((event.value, self.query_one(Checkbox).value))
+
+        def on_key(self, event) -> None:
+            if event.key == "escape":
+                self.dismiss(None)
+
     class HelpScreen(ModalScreen[None]):
         DEFAULT_CSS = """
         HelpScreen { align: center middle; }
@@ -504,8 +547,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
             "  v             cycle layout (stacked / side-by-side)\n"
             "  left / right  scroll horizontally (side-by-side)\n"
             "  o             open settings / options pane\n"
-            "  /             text search\n"
-            "  x             hex search\n"
+            "  /             text search (case-insensitive toggle)\n"
+            "  x             hex search (matches bytes, not ASCII)\n"
             "  n             next match\n"
             "  N / p         previous match\n"
             "  h / ?         this help\n\n"
@@ -723,6 +766,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.search_matches: List[SearchMatch] = []
             self.search_index: Optional[int] = None
             self.search_error: Optional[str] = None
+            # Session-only text-search preference (seeds the panel checkbox; not
+            # persisted to config and never a startup flag).
+            self.text_search_ignore_case = False
             # Persisted-settings state (TUI-only). ``color_mode`` is the ternary
             # auto/always/never preference saved to config; the runtime ``c``
             # toggle flips the render bool (view.color_on) independently.
@@ -831,6 +877,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 return
 
             label = f'{q.mode} "{q.pattern}"'
+            if q.mode == "text" and not q.case_sensitive:
+                label += " (ci)"
             if not self.search_matches:
                 widget.update(f"Search: {label} | no matches")
             else:
@@ -962,8 +1010,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
         # -- search --------------------------------------------------------- #
         def action_search_text(self) -> None:
             self.push_screen(
-                _PromptScreen("Search text (UTF-8):"),
-                lambda v: self._run_search("text", v),
+                TextSearchScreen(self.text_search_ignore_case),
+                self._run_text_search,
             )
 
         def action_search_hex(self) -> None:
@@ -972,7 +1020,21 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 lambda v: self._run_search("hex", v),
             )
 
-        def _run_search(self, mode: str, value: Optional[str]) -> None:
+        def _run_text_search(self, result: Optional[tuple]) -> None:
+            """Handle the text-search panel result: ``(text, ignore_case)``.
+
+            ``None`` (cancelled prompt) leaves the previous search untouched. The
+            chosen case mode is remembered for the session and re-seeds the panel.
+            """
+            if result is None:
+                return
+            value, ignore_case = result
+            self.text_search_ignore_case = bool(ignore_case)
+            self._run_search("text", value, ignore_case=self.text_search_ignore_case)
+
+        def _run_search(
+            self, mode: str, value: Optional[str], *, ignore_case: bool = False
+        ) -> None:
             """Build a query, replace search state, and jump to the first match.
 
             Invalid input sets an error status and never crashes; an empty/
@@ -983,7 +1045,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
             text = value.strip()
             try:
                 if mode == "text":
-                    query = make_text_query(text)
+                    query = make_text_query(
+                        text, case_sensitive=not ignore_case
+                    )
                 else:
                     query = make_hex_query(text)
             except SearchError as exc:

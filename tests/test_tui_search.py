@@ -121,3 +121,142 @@ def test_hex_search_matches_text():
             ]
 
     asyncio.run(go())
+
+
+def _mixed_case_app():
+    f1 = HexFile("a.bin", b"FooFOOfoo")
+    model = HexModel([f1], width=16)
+    return tui.MultiHexApp(
+        model, ascii_on=True, only_diff=False, color_on=True, name_mode="basename"
+    )
+
+
+def test_text_search_default_is_case_sensitive():
+    async def go():
+        app = _mixed_case_app()
+        async with app.run_test() as pilot:
+            # No ignore_case -> case-sensitive: only the lowercase "foo" matches.
+            app._run_search("text", "foo")
+            await pilot.pause()
+            assert [m.offset for m in app.search_matches] == [6]
+            assert "(ci)" not in _status_text(app)
+
+    asyncio.run(go())
+
+
+def test_text_search_case_insensitive_matches_and_navigates():
+    async def go():
+        app = _mixed_case_app()
+        async with app.run_test() as pilot:
+            app._run_search("text", "foo", ignore_case=True)
+            await pilot.pause()
+            assert [m.offset for m in app.search_matches] == [0, 3, 6]
+            assert app.search_index == 0
+            assert "(ci)" in _status_text(app)
+            # existing n/N/p navigation still works over the result set
+            app.action_next_match()
+            await pilot.pause()
+            assert app.search_index == 1
+            app.action_prev_match()
+            await pilot.pause()
+            assert app.search_index == 0
+            # highlight wired up on the matched bytes
+            assert app.view.search_current is app.search_matches[0]
+            assert app.view._search_covered
+
+    asyncio.run(go())
+
+
+def test_run_text_search_remembers_session_pref():
+    async def go():
+        app = _make_app()
+        async with app.run_test() as pilot:
+            assert app.text_search_ignore_case is False
+            app._run_text_search(("RIFF", True))
+            await pilot.pause()
+            assert app.text_search_ignore_case is True
+            # a cancelled (None) prompt leaves state untouched
+            app._run_text_search(None)
+            await pilot.pause()
+            assert app.text_search_ignore_case is True
+
+    asyncio.run(go())
+
+
+def test_hex_search_finds_byte_not_ascii_spelling():
+    async def go():
+        f1 = HexFile("a.bin", bytes([0xD9]) + b"D9")  # 0xd9, then 0x44 0x39
+        model = HexModel([f1], width=16)
+        app = tui.MultiHexApp(
+            model, ascii_on=True, only_diff=False, color_on=True,
+            name_mode="basename",
+        )
+        async with app.run_test() as pilot:
+            app._run_search("hex", "D9")
+            await pilot.pause()
+            # finds the 0xd9 byte at offset 0, not the ASCII "D9" at offset 1
+            assert [(m.file_index, m.offset) for m in app.search_matches] == [(0, 0)]
+
+    asyncio.run(go())
+
+
+def test_text_panel_exposes_case_insensitive_checkbox():
+    async def go():
+        from textual.widgets import Checkbox
+
+        app = _make_app()
+        async with app.run_test() as pilot:
+            app.action_search_text()
+            await pilot.pause()
+            assert isinstance(app.screen, tui.TextSearchScreen)
+            assert len(app.screen.query(Checkbox)) == 1
+
+    asyncio.run(go())
+
+
+def test_hex_panel_has_no_case_toggle():
+    async def go():
+        from textual.widgets import Checkbox
+
+        app = _make_app()
+        async with app.run_test() as pilot:
+            app.action_search_hex()
+            await pilot.pause()
+            assert isinstance(app.screen, tui._PromptScreen)
+            assert len(app.screen.query(Checkbox)) == 0
+
+    asyncio.run(go())
+
+
+def test_text_panel_submit_runs_search():
+    """End-to-end: typing in the panel and pressing Enter runs a text search."""
+    async def go():
+        app = _make_app()
+        async with app.run_test() as pilot:
+            app.action_search_text()
+            await pilot.pause()
+            await pilot.press("R", "I", "F", "F")
+            await pilot.press("enter")
+            await pilot.pause()
+            assert [(m.file_index, m.offset) for m in app.search_matches] == [
+                (0, 2),
+                (1, 4),
+            ]
+            # default checkbox state -> case-sensitive
+            assert app.text_search_ignore_case is False
+
+    asyncio.run(go())
+
+
+def test_text_panel_seeds_checkbox_from_session_pref():
+    async def go():
+        from textual.widgets import Checkbox
+
+        app = _make_app()
+        async with app.run_test() as pilot:
+            app.text_search_ignore_case = True
+            app.action_search_text()
+            await pilot.pause()
+            assert app.screen.query_one(Checkbox).value is True
+
+    asyncio.run(go())

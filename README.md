@@ -247,6 +247,14 @@ Each match prints its file index, path, offset, byte length, the matched bytes,
 and their ASCII rendering. Results are ordered by `(file, offset)`. When there are
 no matches, a `multihex: no matches for '...'` note is written to **stderr**.
 
+**Text vs. hex search.** The two modes never overlap: text search matches the
+literal UTF-8 bytes of your string, while hex search matches the byte *values* of
+your hex pattern. So `--search-hex D9` looks for the single byte `0xd9` — not the
+ASCII text `"D9"` (which is bytes `44 39`). To find ASCII `"D9"`, use
+`--search-text D9`; to find bytes `44 39`, use `--search-hex "44 39"`. Hex input
+is case-insensitive (`D9`, `d9`, `0xD9` are equivalent); `--search-ignore-case`
+applies to **text** search only (ASCII letters).
+
 **Search options**
 
 | Option                   | Description                                                            |
@@ -313,8 +321,8 @@ multihex-tui --ref 0 file*.bin
 | `t`            | toggle byte-class highlighting        |
 | `v`            | cycle layout (stacked / side-by-side) |
 | `o`            | open the settings / options pane      |
-| `/`            | text search                           |
-| `x`            | hex search                            |
+| `/`            | text search (panel has a case-insensitive toggle) |
+| `x`            | hex search (matches byte values, not ASCII text)  |
 | `n`            | next match                            |
 | `N` / `p`      | previous match                        |
 | `h` / `?`      | help                                  |
@@ -328,7 +336,16 @@ Layout is visual-only and never changes comparison or search results.
 
 A status line shows the current offset range, row position, active reference,
 toggle states, and file sizes; a second line appears during a search with the
-match count and current match location.
+match count and current match location (text searches show `(ci)` when
+case-insensitive).
+
+Search works exactly like the batch CLI. The text-search panel (`/`) has a
+**Case-insensitive (ASCII)** checkbox (Tab to it, Space toggles) so you can fold
+ASCII letter case; the choice is remembered for the session. Hex search (`x`)
+matches byte *values* and accepts upper- or lowercase hex digits, so `x` then
+`D9` finds the byte `0xd9` rather than the ASCII text `"D9"`. To search for ASCII
+text use text search; to search for raw bytes use hex search. Invalid hex shows a
+clear error and never silently falls back to a text search.
 
 The TUI colors **whole columns** by their marker state and highlights search
 matches, with this priority: missing byte > current match > other match > diff
