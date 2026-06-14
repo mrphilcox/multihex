@@ -36,6 +36,9 @@ tui = [
     "rich>=13",
     "tomli>=1.1; python_version < '3.11'",
 ]
+gui = [
+    "PySide6>=6.7",
+]
 dev = [
     "pytest>=7",
     "ruff>=0.1",
@@ -47,6 +50,7 @@ dev = [
 [project.scripts]
 multihex = "multihex.cli:main"
 multihex-tui = "multihex.tui:main"
+multihex-gui = "multihex.gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/multihex"]

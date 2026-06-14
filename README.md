@@ -13,6 +13,7 @@ flavors that share one comparison engine:
   scripting and diffs in CI).
 - **`multihex-tui`** — an interactive terminal viewer for scrolling, jumping, and
   searching through large files.
+- **`multihex-gui`** — a read-only PySide6/Qt desktop viewer (first-pass MVP).
 
 It is a **viewer and comparator, not an inference tool.** It shows what bytes are
 present at each offset — it never tries to align, resynchronize, or guess the
@@ -31,6 +32,7 @@ structure of a file.
   - [JSON output](#json-output)
 - [Searching](#searching)
 - [The interactive TUI (`multihex-tui`)](#the-interactive-tui-multihex-tui)
+- [The desktop GUI (`multihex-gui`)](#the-desktop-gui-multihex-gui)
 - [Recipes](#recipes)
 - [Semantics and limitations](#semantics-and-limitations)
 - [Developer documentation](#developer-documentation)
@@ -61,22 +63,27 @@ pip install .
 # With the interactive TUI (adds textual + rich):
 pip install '.[tui]'
 
+# With the desktop GUI (adds PySide6):
+pip install '.[gui]'
+
 # For development (tests, linter, and the TUI):
 pip install -e '.[dev]'
 ```
 
-Installing provides two console scripts:
+Installing provides three console scripts:
 
 | Command        | Module             | Purpose                          |
 | -------------- | ------------------ | -------------------------------- |
 | `multihex`     | `multihex.cli`     | Batch / scriptable comparison    |
 | `multihex-tui` | `multihex.tui`     | Interactive terminal viewer      |
+| `multihex-gui` | `multihex.gui`     | Read-only desktop (Qt) viewer    |
 
 You can also run them without installing:
 
 ```bash
 python3 -m multihex.cli FILE1 FILE2
 python3 -m multihex.tui FILE1 FILE2
+python3 -m multihex.gui FILE1 FILE2
 ```
 
 ## Quickstart
@@ -427,6 +434,36 @@ silent.
 (`--ref`), current offset, scroll position, search string, current match, and the
 file list are all per-session and are never written to the config.
 
+## The desktop GUI (`multihex-gui`)
+
+A read-only **PySide6/Qt** desktop viewer — a first-pass MVP that reuses the same
+comparison engine as the CLI and TUI (identical fixed-offset semantics and markers;
+no editing, search, or selection yet). It requires the `[gui]` extra (`PySide6`); if
+it isn't installed the command prints a clear message and exits.
+
+```bash
+multihex-gui a.bin b.bin c.bin
+multihex-gui --offset 0x10 --width 16 a.bin b.bin
+multihex-gui --only-diff --ref 0 fw_v1.bin fw_v2.bin
+multihex-gui                       # empty window; open files from the File menu
+```
+
+**Startup flags:** `--offset N`, `--width N`, `--ref INDEX`,
+`--names basename|path`, `--only-diff`, `--no-ascii`, `--markers single|none`.
+
+The window has a menu bar (**File** ▸ Open/Quit, **View** ▸ ASCII gutter /
+only-diff / markers / file-name mode, **Navigate** ▸ jump-to-offset and start/end,
+**Compare** ▸ reference file incl. *all-agree*), a custom comparison view that
+paints only the visible rows (so it stays light on large files), and a status bar
+showing the visible offset range, row position, reference mode, toggle states, and
+file sizes. Navigate with the scrollbar, `Up`/`Down`, `PageUp`/`PageDown`, the
+mouse wheel, or `Home`/`End`. The block layout mirrors the CLI/TUI: an offset line,
+one `name  hex  |ascii|` line per file, then the marker strip; columns that differ
+(or are missing) are highlighted, and missing bytes render as `--`.
+
+This is the GUI's first phase. Search, selection/copy, editing, persistent
+settings, and a side-by-side layout are tracked as later phases in `TODO.md`.
+
 ## Recipes
 
 ```bash
@@ -456,7 +493,7 @@ multihex --json a.bin b.bin | jq '.rows[] | select(.markers | index("!="))'
 - **Case-insensitive search cost.** Because memory-mapped files cannot be
   case-folded in place, `--search-ignore-case` copies the whole file once. This is
   a known, documented trade-off.
-- **Read-only.** `multihex` never modifies your files; both frontends are viewers.
+- **Read-only.** `multihex` never modifies your files; all three frontends are viewers.
 - **Empty files** are handled (they simply contribute missing bytes / `--`).
 
 ## Developer documentation

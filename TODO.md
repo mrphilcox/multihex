@@ -45,22 +45,22 @@ Repo-wide tasks and follow-ups to track.
 
 ## GUI Frontend (PySide6)
 
-### Phase 1 - MVP
+### Phase 1 - MVP — complete (see Done; implemented in `src/multihex/gui.py`)
 
-* [ ] Add PySide6 optional dependency group.
-* [ ] Add `multihex-gui` entry point.
-* [ ] Create initial GUI frontend using existing backend.
-* [ ] Support opening multiple files from command line.
-* [ ] Support opening files from a file picker dialog.
-* [ ] Display side-by-side file comparison.
-* [ ] Support vertical scrolling.
-* [ ] Support jump-to-offset.
-* [ ] Support reference-file selection.
-* [ ] Support ASCII column toggle.
-* [ ] Support marker mode toggle.
-* [ ] Support only-diff mode.
-* [ ] Preserve existing CLI/TUI formatting semantics.
-* [ ] Lazy rendering of visible rows only.
+* [x] Add PySide6 optional dependency group.
+* [x] Add `multihex-gui` entry point.
+* [x] Create initial GUI frontend using existing backend.
+* [x] Support opening multiple files from command line.
+* [x] Support opening files from a file picker dialog.
+* [x] Display side-by-side file comparison.
+* [x] Support vertical scrolling.
+* [x] Support jump-to-offset.
+* [x] Support reference-file selection.
+* [x] Support ASCII column toggle.
+* [x] Support marker mode toggle.
+* [x] Support only-diff mode.
+* [x] Preserve existing CLI/TUI formatting semantics.
+* [x] Lazy rendering of visible rows only.
 
 
 ### Phase 2 - Usability
@@ -159,4 +159,16 @@ Repo-wide tasks and follow-ups to track.
 
 ## Done
 
-_(move completed items here)_
+- [x] **GUI Frontend (PySide6) — Phase 1 (MVP).** Added `src/multihex/gui.py`
+      (`multihex-gui` console script + the `[gui]` optional extra): a read-only Qt
+      viewer reusing the core `HexModel`/markers with no new comparison logic. Custom
+      `QAbstractScrollArea` that paints only the visible rows (no whole-range buffer);
+      opens files from the command line or a file dialog; vertical scroll, PageUp/Down,
+      Up/Down, wheel, Home/End, and jump-to-offset; View toggles for the ASCII gutter,
+      only-diff rows, the marker strip, and basename/path names; Compare-menu
+      reference-file selection including all-agree; and a status bar mirroring the TUI's
+      info line. PySide6 is optional and import-guarded (clean message + non-zero exit
+      when absent), matching the TUI's textual guard. Navigation/filter/status logic is
+      in the Qt-free `ViewState`/`format_status` helpers and unit-tested
+      (`tests/test_gui_viewstate.py`), with smoke + offscreen-widget tests
+      (`tests/test_gui_smoke.py`, `tests/test_gui_widget.py`).
