@@ -13,15 +13,20 @@ behave identically. It provides:
 Design notes / semantics (per spec):
   * Always compare *fixed* offsets. No inference, no resync, no alignment.
   * Missing bytes (offset past a file's end) display as "--".
-  * Missing bytes are always marked as different.
-  * Without --ref, a column marker means "all files agree".
-  * With --ref INDEX, a column marker means "every file equals the
-    reference file at that column" (a missing reference byte => differ).
+  * Column markers are three-state (Marker.SAME / DIFF / MISSING):
+      - MISSING if any byte in the column is None (missing wins outright);
+      - else SAME if every byte equals the pivot (the --ref byte, or
+        column[0] when no --ref);
+      - else DIFF.
+  * Without --ref, the pivot is column[0] ("all files agree").
+  * With --ref INDEX, the pivot is the reference file's byte.
   * Integer parsing matches multihex.py: int(x, 0).
 """
 
 from __future__ import annotations
 
+import enum
+import mmap
 import os
 from dataclasses import dataclass
 from typing import List, Optional, Sequence, Union
@@ -37,14 +42,36 @@ def parse_int(text: str) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Column markers (three-state, single source of truth for both frontends)
+# --------------------------------------------------------------------------- #
+class Marker(enum.Enum):
+    """State of one comparison column across all files."""
+
+    SAME = "=="     # every byte equals the pivot
+    DIFF = "!="     # all present, but at least one differs from the pivot
+    MISSING = "--"  # at least one byte is missing (past a file's end)
+
+
+def format_marker(marker: Marker) -> str:
+    """Render a marker as its two-char text token."""
+    return marker.value
+
+
+# --------------------------------------------------------------------------- #
 # Files
 # --------------------------------------------------------------------------- #
 @dataclass
 class HexFile:
-    """A single loaded binary file."""
+    """A single binary file exposed as random-access bytes.
+
+    ``data`` is the backing buffer: either an ``mmap.mmap`` (lazy, demand-paged
+    random access produced by :func:`load_files`) or a plain ``bytes`` object
+    (e.g. for tests or in-memory construction). Indexing and ``len`` behave the
+    same for both, so :meth:`byte_at` and :attr:`size` are backend-agnostic.
+    """
 
     path: str
-    data: bytes
+    data: Union[mmap.mmap, bytes, bytearray]
 
     @property
     def size(self) -> int:
@@ -62,13 +89,24 @@ class HexFile:
         return os.path.basename(self.path)
 
 
+def _open_buffer(path: str) -> Union[mmap.mmap, bytes]:
+    """Return a read-only random-access buffer for ``path``.
+
+    Uses ``mmap`` so only touched pages are read in — a small window over a
+    large file does not load the whole file. Empty files cannot be mmap'd, so
+    they fall back to an empty ``bytes``. On POSIX the mapping stays valid after
+    the file descriptor is closed, so no handle is retained.
+    """
+    with open(path, "rb") as fh:
+        size = os.fstat(fh.fileno()).st_size
+        if size == 0:
+            return b""
+        return mmap.mmap(fh.fileno(), size, access=mmap.ACCESS_READ)
+
+
 def load_files(paths: Sequence[str]) -> List[HexFile]:
-    """Load every path fully into memory. Raises OSError on failure."""
-    files: List[HexFile] = []
-    for p in paths:
-        with open(p, "rb") as fh:
-            files.append(HexFile(path=p, data=fh.read()))
-    return files
+    """Open every path for lazy random access. Raises OSError on failure."""
+    return [HexFile(path=p, data=_open_buffer(p)) for p in paths]
 
 
 # --------------------------------------------------------------------------- #
@@ -76,18 +114,23 @@ def load_files(paths: Sequence[str]) -> List[HexFile]:
 # --------------------------------------------------------------------------- #
 @dataclass
 class Row:
-    """One block of the display: ``width`` columns across every file."""
+    """One block of the display: ``ncols`` columns across every file.
+
+    ``ncols`` is normally the model width, but the final row of a bounded
+    (length-limited) window may be narrower.
+    """
 
     offset: int
-    # One list per file, each of length ``width``; entries are byte (0..255)
+    # One list per file, each of length ``ncols``; entries are byte (0..255)
     # or None for "missing" (past that file's end).
     cells: List[List[Optional[int]]]
-    # One bool per column; True means "this column differs".
-    markers: List[bool]
+    # One Marker per column.
+    markers: List[Marker]
 
     @property
     def has_diff(self) -> bool:
-        return any(self.markers)
+        """True if any column is not SAME (i.e. differs or is missing)."""
+        return any(m is not Marker.SAME for m in self.markers)
 
 
 class HexModel:
@@ -96,6 +139,13 @@ class HexModel:
     The offset grid is fixed at construction: row ``i`` starts at
     ``start_offset + i * width``. Navigation/filtering belong to the
     frontend; the model only answers "what is in row i".
+
+    ``length`` bounds the window independently of file sizes. When given, the
+    window is ``[start_offset, start_offset + length)``: ``row_count`` is
+    derived from ``length`` (not the largest file), the final row may be
+    narrower than ``width``, and rows past every file's end are all-missing.
+    When ``length`` is None (the TUI), the range is derived from the largest
+    file and every row is full ``width``.
     """
 
     def __init__(
@@ -105,6 +155,7 @@ class HexModel:
         start_offset: int = 0,
         width: int = 16,
         ref: Optional[int] = None,
+        length: Optional[int] = None,
     ) -> None:
         if not files:
             raise ValueError("need at least one file")
@@ -112,6 +163,8 @@ class HexModel:
             raise ValueError("width must be positive")
         if start_offset < 0:
             raise ValueError("offset must not be negative")
+        if length is not None and length < 0:
+            raise ValueError("length must not be negative")
         if ref is not None and not (0 <= ref < len(files)):
             raise ValueError(
                 f"reference index {ref} out of range 0..{len(files) - 1}"
@@ -120,10 +173,19 @@ class HexModel:
         self.start_offset = start_offset
         self.width = width
         self.ref = ref
+        self.length = length
         self.max_size = max(f.size for f in files)
+        # End of the bounded window, or None to derive from the largest file.
+        self.end: Optional[int] = (
+            None if length is None else start_offset + length
+        )
 
     @property
     def row_count(self) -> int:
+        if self.length is not None:
+            if self.length <= 0:
+                return 0
+            return (self.length + self.width - 1) // self.width
         span = self.max_size - self.start_offset
         if span <= 0:
             return 0
@@ -131,6 +193,12 @@ class HexModel:
 
     def row_offset(self, index: int) -> int:
         return self.start_offset + index * self.width
+
+    def _row_width(self, off: int) -> int:
+        """Columns in the row at ``off`` (clamped to the bounded window end)."""
+        if self.end is not None:
+            return max(0, min(self.width, self.end - off))
+        return self.width
 
     def index_for_offset(self, offset: int) -> int:
         """Row index whose block contains ``offset`` (clamped to range)."""
@@ -143,26 +211,24 @@ class HexModel:
 
     def build_row(self, index: int) -> Row:
         off = self.row_offset(index)
+        ncols = self._row_width(off)
         cells: List[List[Optional[int]]] = [
-            [f.byte_at(off + i) for i in range(self.width)] for f in self.files
+            [f.byte_at(off + i) for i in range(ncols)] for f in self.files
         ]
         return Row(offset=off, cells=cells, markers=self._markers(cells))
 
-    def _markers(self, cells: List[List[Optional[int]]]) -> List[bool]:
-        markers: List[bool] = []
-        for i in range(self.width):
+    def _markers(self, cells: List[List[Optional[int]]]) -> List[Marker]:
+        ncols = len(cells[0]) if cells else 0
+        markers: List[Marker] = []
+        for i in range(ncols):
             column = [c[i] for c in cells]
-            if self.ref is not None:
-                ref_byte = cells[self.ref][i]
-                # Missing reference byte => everything is "different".
-                # Otherwise any file that is missing or unequal differs.
-                differ = ref_byte is None or any(b != ref_byte for b in column)
-            else:
-                first = column[0]
-                # Missing first byte => different; otherwise any mismatch
-                # (a None never equals an int, so missing is caught here).
-                differ = first is None or any(b != first for b in column)
-            markers.append(differ)
+            # Missing wins outright over any agreement check.
+            if any(b is None for b in column):
+                markers.append(Marker.MISSING)
+                continue
+            pivot = column[self.ref] if self.ref is not None else column[0]
+            same = all(b == pivot for b in column)
+            markers.append(Marker.SAME if same else Marker.DIFF)
         return markers
 
 
@@ -225,6 +291,6 @@ def render_row_text(
         lines.append(line)
     if show_markers:
         prefix = " " * marker_prefix_width(name_width)
-        marks = " ".join("!=" if d else "==" for d in row.markers)
+        marks = " ".join(format_marker(m) for m in row.markers)
         lines.append(prefix + marks)
     return lines

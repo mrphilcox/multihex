@@ -35,9 +35,11 @@ from typing import List, Optional, Sequence, Union
 from multihex_core import (
     HexFile,
     HexModel,
+    Marker,
     Row,
     format_ascii_char,
     format_byte,
+    format_marker,
     load_files,
     marker_prefix_width,
     name_column_width,
@@ -225,22 +227,23 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 text.append(name, style=name_style)
                 text.append("  ")
                 for ci in range(model.width):
-                    cell_style = diff if row.markers[ci] else ""
+                    cell_style = diff if row.markers[ci] is not Marker.SAME else ""
                     text.append(format_byte(row_bytes[ci]), style=cell_style)
                     if ci != model.width - 1:
                         text.append(" ")
                 if self.ascii_on:
                     text.append("  |")
                     for ci in range(model.width):
-                        cell_style = diff if row.markers[ci] else ""
+                        cell_style = diff if row.markers[ci] is not Marker.SAME else ""
                         text.append(format_ascii_char(row_bytes[ci]), style=cell_style)
                     text.append("|")
                 text.append("\n")
 
             text.append(" " * marker_prefix_width(self.name_width))
             for ci in range(model.width):
-                mark = "!=" if row.markers[ci] else "=="
-                text.append(mark, style=diff if row.markers[ci] else "")
+                marker = row.markers[ci]
+                cell_style = diff if marker is not Marker.SAME else ""
+                text.append(format_marker(marker), style=cell_style)
                 if ci != model.width - 1:
                     text.append(" ")
             text.append("\n\n")

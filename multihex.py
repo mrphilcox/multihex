@@ -16,15 +16,21 @@ import json
 import os
 import sys
 
+from multihex_core import (
+    HexModel,
+    Marker,
+    format_ascii_char,
+    format_byte,
+    format_marker,
+    load_files,
+    marker_prefix_width,
+    parse_int,
+)
+
 RED = "\033[31m"
 GREEN = "\033[32m"
 DIM = "\033[2m"
 RESET = "\033[0m"
-
-
-def parse_int(text):
-    """Parse an integer with base autodetection (0x.., 0b.., 0o.., decimal)."""
-    return int(text, 0)
 
 
 def parse_around(text):
@@ -84,71 +90,61 @@ def resolve_color(mode, as_json):
     return sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
 
 
-def marker_for(col_vals, ref=None):
+def render_text_row(lines, row, names, name_w, base, show_ascii, use_color):
+    """Render one core Row as text lines (with ANSI color when enabled).
+
+    Coloring here is the batch tool's own scheme: each present cell is
+    reddened when it differs from the base/reference file's byte in that
+    column; missing cells are dimmed. (The TUI colors whole columns by
+    marker instead -- the two schemes intentionally differ.)
     """
-    Without --ref: == all files agree, != at least two differ, -- one or more missing.
-    With --ref R:  == all files match col_vals[R], != at least one differs, -- one or more missing.
-    Both modes use the same -- rule so missing always wins over agreement checks.
-    """
-    if any(v is None for v in col_vals):
-        return "--"
-    pivot = col_vals[ref] if ref is not None else col_vals[0]
-    return "==" if all(v == pivot for v in col_vals) else "!="
-
-
-def ascii_char(b):
-    return chr(b) if 0x20 <= b <= 0x7e else "."
-
-
-def render_text_row(lines, row_off, ncols, names, name_w, cells, markers,
-                    base, show_ascii, use_color):
-    lines.append(f"0x{row_off:08x}")
-    base_row = cells[base] if base < len(cells) else None
+    lines.append(f"0x{row.offset:08x}")
+    base_row = row.cells[base] if base < len(row.cells) else None
     for fi, name in enumerate(names):
         hex_cells = []
         gutter = []
-        for c in range(ncols):
-            b = cells[fi][c]
+        for c, b in enumerate(row.cells[fi]):
             if b is None:
-                cell = "--"
+                cell = format_byte(b)  # "--"
                 if use_color:
                     cell = DIM + cell + RESET
                 hex_cells.append(cell)
-                gutter.append(" ")  # missing -> space (distinct from '.' nonprintable)
             else:
-                txt = f"{b:02x}"
+                txt = format_byte(b)
                 ref_b = base_row[c] if base_row is not None else None
                 if use_color and ref_b is not None and b != ref_b:
                     txt = RED + txt + RESET
                 hex_cells.append(txt)
-                gutter.append(ascii_char(b))
+            # missing -> space, printable -> char, else '.' (all via core helper)
+            gutter.append(format_ascii_char(b))
         line = "  " + name.ljust(name_w) + "  " + " ".join(hex_cells)
         if show_ascii:
             line += "  |" + "".join(gutter) + "|"
         lines.append(line)
 
     rendered = []
-    for m in markers:
+    for m in row.markers:
+        tok = format_marker(m)
         if not use_color:
-            rendered.append(m)
-        elif m == "==":
-            rendered.append(GREEN + m + RESET)
-        elif m == "!=":
-            rendered.append(RED + m + RESET)
+            rendered.append(tok)
+        elif m is Marker.SAME:
+            rendered.append(GREEN + tok + RESET)
+        elif m is Marker.DIFF:
+            rendered.append(RED + tok + RESET)
         else:
-            rendered.append(DIM + m + RESET)
+            rendered.append(DIM + tok + RESET)
     # align the marker row under the hex columns
-    prefix = "  " + " " * name_w + "  "
-    lines.append(prefix + " ".join(rendered))
+    lines.append(" " * marker_prefix_width(name_w) + " ".join(rendered))
 
 
-def build_json_row(row_off, ncols, names, cells, markers):
+def build_json_row(row, names):
     files = []
     for fi, name in enumerate(names):
-        b_list = [cells[fi][c] for c in range(ncols)]
-        ascii_s = "".join(ascii_char(b) if b is not None else " " for b in b_list)
+        b_list = list(row.cells[fi])
+        ascii_s = "".join(format_ascii_char(b) for b in b_list)
         files.append({"name": name, "bytes": b_list, "ascii": ascii_s})
-    return {"offset": row_off, "markers": markers, "files": files}
+    markers = [format_marker(m) for m in row.markers]
+    return {"offset": row.offset, "markers": markers, "files": files}
 
 
 def main(argv=None):
@@ -178,12 +174,8 @@ def main(argv=None):
     if length < 0:
         sys.exit("multihex: --length must be >= 0")
 
-    data = []
     try:
-        for f in args.files:
-            with open(f, "rb") as fh:
-                fh.seek(args.offset)
-                data.append(fh.read(length))
+        files = load_files(args.files)
     except OSError as exc:
         sys.exit(f"multihex: {exc}")
 
@@ -195,36 +187,37 @@ def main(argv=None):
     base = args.ref if args.ref is not None else 0
 
     use_color = resolve_color(args.color, args.as_json)
-    end = args.offset + length
+
+    # The core owns the offset grid, three-state markers, and the bounded
+    # window (partial last row + all-missing rows past EOF). The frontend keeps
+    # only its presentation concerns: --only-diff / --limit-rows filtering,
+    # ANSI coloring, and JSON shaping.
+    model = HexModel(
+        files,
+        start_offset=args.offset,
+        width=args.width,
+        ref=args.ref,
+        length=length,
+    )
 
     json_rows = []
     text_lines = []
     printed = 0
 
-    for row_off in range(args.offset, end, args.width):
-        ncols = min(args.width, end - row_off)
-        cells = [[None] * ncols for _ in args.files]  # cells[file][col] = byte int or None
-        markers = []
-        for c in range(ncols):
-            rel = (row_off - args.offset) + c
-            col_vals = []
-            for fi, d in enumerate(data):
-                b = d[rel] if rel < len(d) else None
-                cells[fi][c] = b
-                col_vals.append(b)
-            markers.append(marker_for(col_vals, args.ref))
+    for i in range(model.row_count):
+        row = model.build_row(i)
 
-        if args.only_diff and all(m == "==" for m in markers):
+        if args.only_diff and not row.has_diff:
             continue
         if args.limit_rows is not None and printed >= args.limit_rows:
             break
         printed += 1
 
         if args.as_json:
-            json_rows.append(build_json_row(row_off, ncols, names, cells, markers))
+            json_rows.append(build_json_row(row, names))
         else:
-            render_text_row(text_lines, row_off, ncols, names, name_w,
-                            cells, markers, base, args.ascii, use_color)
+            render_text_row(text_lines, row, names, name_w,
+                            base, args.ascii, use_color)
 
     if args.as_json:
         out = {
