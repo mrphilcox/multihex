@@ -38,11 +38,16 @@ from multihex.core import (
     render_row_text,
     search_files,
 )
+from multihex.overlay import OverlayState
 
 RED = "\033[31m"
 GREEN = "\033[32m"
 CYAN = "\033[36m"
 DIM = "\033[2m"
+# Layout-overlay highlight: a background so it reads as an annotation layer and
+# stays distinct from the foreground diff/byte-class colors. Lowest priority
+# after missing and diff (see _render_file_segment).
+OVERLAY = "\033[44m"
 RESET = "\033[0m"
 
 # Byte-class -> ANSI foreground for --byte-classes (display-only). OTHER and
@@ -132,6 +137,12 @@ def build_parser():
                         "not affect comparison, --only-diff, search, or --json.")
     p.add_argument("--around", type=parse_around, default=None, metavar="OFF:N",
                    help="show a window of N bytes centered on OFF (overrides --offset/--length)")
+    p.add_argument("--overlay", metavar="PATH", default=None,
+                   help="load a bintools.layout-overlay v1 JSON file (a read-only "
+                        "annotation layer) and highlight its byte ranges. The "
+                        "overlay is validated; diagnostics print to stderr and an "
+                        "overlay with errors is not applied. Visual-only; needs "
+                        "color enabled and has no effect on --json.")
     p.add_argument("--json", dest="as_json", action="store_true",
                    help="emit machine-readable JSON rows")
 
@@ -166,14 +177,16 @@ def resolve_color(mode, as_json):
 
 
 def _render_file_segment(row, fi, name, name_w, base_row, show_ascii, use_color,
-                         byte_classes):
+                         byte_classes, overlay=None):
     """Build one file's colored segment (the part after the leading indent).
 
     A segment is ``name + "  " + hex cells + optional "  |gutter|"`` -- the same
     body used on a stacked per-file line and as one horizontal cell of a
     side-by-side row. Coloring is the batch tool's own scheme: each present cell
     is reddened when it differs from the base/reference byte in that column;
-    missing cells are dimmed; non-diff cells optionally get a byte-class color.
+    missing cells are dimmed; non-diff cells inside a layout-overlay range get an
+    overlay background, otherwise an optional byte-class color. Priority:
+    missing > diff > overlay > byte-class.
     """
     hex_cells = []
     gutter = []
@@ -188,6 +201,8 @@ def _render_file_segment(row, fi, name, name_w, base_row, show_ascii, use_color,
             ref_b = base_row[c] if base_row is not None else None
             if use_color and ref_b is not None and b != ref_b:
                 txt = RED + txt + RESET
+            elif use_color and overlay is not None and overlay.covers(row.offset + c):
+                txt = OVERLAY + txt + RESET
             elif use_color and byte_classes:
                 color = _BYTE_CLASS_COLOR.get(classify_byte(b))
                 if color:
@@ -202,7 +217,8 @@ def _render_file_segment(row, fi, name, name_w, base_row, show_ascii, use_color,
 
 
 def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
-                    byte_classes=False, layout="stacked", markers="single"):
+                    byte_classes=False, layout="stacked", markers="single",
+                    overlay=None):
     """Render one core Row as text lines (with ANSI color when enabled).
 
     Coloring here is the batch tool's own scheme: each present cell is
@@ -228,7 +244,7 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
     base_row = row.cells[base] if base < len(row.cells) else None
     segments = [
         _render_file_segment(row, fi, name, name_w, base_row, show_ascii,
-                             use_color, byte_classes)
+                             use_color, byte_classes, overlay)
         for fi, name in enumerate(names)
     ]
 
@@ -266,6 +282,20 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
         if markers != "none":
             # align the marker row under the hex columns
             lines.append(" " * marker_prefix_width(name_w) + strip)
+
+
+def load_overlay(path, files):
+    """Load + validate a layout overlay, report to stderr, return it if applicable.
+
+    Diagnostics (and a one-line summary) always go to stderr so stdout stays
+    clean. An overlay with any error-severity diagnostic is reported but not
+    returned, so it is never applied as a highlight layer.
+    """
+    overlay = OverlayState.load(path, files)
+    print(f"multihex: {overlay.summary()}", file=sys.stderr)
+    for line in overlay.diagnostic_lines():
+        print(f"multihex:   {line}", file=sys.stderr)
+    return overlay if overlay.applicable else None
 
 
 def build_json_row(row, names):
@@ -424,6 +454,12 @@ def main(argv=None):
 
     use_color = resolve_color(args.color, args.as_json)
 
+    # Layout overlay is a display-only annotation layer: load + report it only
+    # for the text dump (no effect on --json), and apply it only when loadable.
+    overlay = None
+    if args.overlay is not None and not args.as_json:
+        overlay = load_overlay(args.overlay, files)
+
     # The core owns the offset grid, three-state markers, and the bounded
     # window (partial last row + all-missing rows past EOF). The frontend keeps
     # only its presentation concerns: --only-diff / --limit-rows filtering,
@@ -454,7 +490,7 @@ def main(argv=None):
         else:
             render_text_row(text_lines, row, names, name_w,
                             base, args.ascii, use_color, args.byte_classes,
-                            args.layout, args.markers)
+                            args.layout, args.markers, overlay)
 
     if args.as_json:
         out = {

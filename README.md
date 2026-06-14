@@ -172,6 +172,7 @@ By default it shows the largest range common to all files starting at offset 0,
 | `--names basename` \| `path`  | Label files by basename (default) or full path.                  |
 | `--color auto` \| `always` \| `never` | Colorize output. `auto` = on when stdout is a TTY. Honors `NO_COLOR`. |
 | `--byte-classes`              | Highlight byte classes in the hex cells (visual-only; needs color on). |
+| `--overlay PATH`              | Load a [layout-overlay-v1](docs/layout-overlay-v1.md) JSON annotation layer and highlight its byte ranges (visual-only; needs color on; no effect on `--json`). |
 | `--json`                      | Emit machine-readable JSON instead of text (implies no color).   |
 
 **Layout (`--layout`).** `stacked` (the default) keeps the familiar one-file-per-line
@@ -210,6 +211,27 @@ It is **disabled by default** and does not affect offsets, comparison markers,
 `--only-diff`, `--ref`, search, or `--json` output. Existing missing/diff
 styling always takes priority, so differences never become harder to see. With
 `--color never` (or `--json`) it emits no color.
+
+**Layout overlays (`--overlay PATH`).** A layout overlay is a
+[`bintools.layout-overlay` v1](docs/layout-overlay-v1.md) JSON file: a resolved
+list of byte ranges for one binary — a **read-only annotation layer**, not a
+file-format grammar. multihex is a consumer: it loads the file, validates it,
+prints a one-line summary plus any diagnostics to stderr, and highlights the
+overlay's ranges in the hex view. The overlay's own validator is the source of
+truth for what counts as an error vs a warning:
+
+- An overlay with any **error**-severity diagnostic is reported but **not
+  applied** (the comparison still renders).
+- An overlay with only **warnings** is applied; the warnings are summarized
+  (full detail is available via "view current overlay" in the TUI/GUI).
+
+Highlighting is **visual-only** (needs color on, no effect on `--json`) and slots
+in below missing/diff styling, so differences stay obvious. Overlay paths are
+**not saved in config** in v1 — an overlay is specific to one file/session.
+
+```bash
+multihex --overlay header.overlay.json --color always firmware-a.bin firmware-b.bin
+```
 
 ### JSON output
 
@@ -327,6 +349,7 @@ multihex-tui --ref 0 file*.bin
 `--byte-classes` (start with byte-class highlighting on; toggle with `t`),
 `--layout stacked|side-by-side` (start in the chosen layout; cycle with `v`),
 `--markers single|repeat|none` (start with the chosen marker display; cycle with `m`),
+`--overlay PATH` (load a [layout overlay](docs/layout-overlay-v1.md); manage with `l`/`L`),
 `--config PATH` / `--no-config` (see [TUI configuration](#tui-configuration)).
 
 **Keys**
@@ -347,6 +370,8 @@ multihex-tui --ref 0 file*.bin
 | `t`            | toggle byte-class highlighting        |
 | `v`            | cycle layout (stacked / side-by-side) |
 | `m`            | cycle markers (single / repeat / none)|
+| `l`            | load/change layout overlay (blank path clears) |
+| `L`            | view current layout overlay (`c` clears)       |
 | `o`            | open the settings / options pane      |
 | `/`            | text search (panel has a case-insensitive toggle) |
 | `x`            | hex search (matches byte values, not ASCII text)  |
@@ -460,17 +485,27 @@ multihex-gui                       # empty window; open files from the File menu
 ```
 
 **Startup flags:** `--offset N`, `--width N`, `--ref INDEX`,
-`--names basename|path`, `--only-diff`, `--no-ascii`, `--markers single|none`.
+`--names basename|path`, `--only-diff`, `--no-ascii`, `--markers single|none`,
+`--overlay PATH` (load a [layout overlay](docs/layout-overlay-v1.md); manage from
+the **Overlay** menu).
 
 The window has a menu bar (**File** ▸ Open/Quit, **View** ▸ ASCII gutter /
 only-diff / markers / file-name mode, **Navigate** ▸ jump-to-offset and start/end,
-**Compare** ▸ reference file incl. *all-agree*), a custom comparison view that
+**Compare** ▸ reference file incl. *all-agree*, **Overlay** ▸ load/change, clear,
+and view current layout overlay), a custom comparison view that
 paints only the visible rows (so it stays light on large files), and a status bar
 showing the visible offset range, row position, reference mode, toggle states, and
 file sizes. Navigate with the scrollbar, `Up`/`Down`, `PageUp`/`PageDown`, the
 mouse wheel, or `Home`/`End`. The block layout mirrors the CLI/TUI: an offset line,
 one `name  hex  |ascii|` line per file, then the marker strip; columns that differ
 (or are missing) are highlighted, and missing bytes render as `--`.
+
+**Layout overlays** work as in the CLI/TUI: the **Overlay** menu loads/changes,
+clears, and views a [layout-overlay-v1](docs/layout-overlay-v1.md) annotation
+layer. Diagnostics surface in the status bar (summary) and a dialog (full detail);
+an overlay with errors is reported but not applied, and overlay paths are not saved
+in config. Loading new files drops a previously loaded overlay (its validation was
+file-specific).
 
 This is the GUI's first phase. Search, selection/copy, editing, persistent
 settings, and a side-by-side layout are tracked as later phases in `TODO.md`.

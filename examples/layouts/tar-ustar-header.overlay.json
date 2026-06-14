@@ -1,0 +1,56 @@
+{
+  "schema": { "name": "bintools.layout-overlay", "version": 1 },
+  "name": "POSIX ustar header (partial)",
+  "ranges": [
+    {
+      "path": "name",
+      "offset": 0,
+      "length": 100,
+      "label": "file name",
+      "type": "ascii"
+    },
+    {
+      "path": "mode",
+      "offset": 100,
+      "length": 8,
+      "label": "mode (octal ASCII)",
+      "type": "ascii"
+    },
+    {
+      "path": "uid",
+      "offset": 108,
+      "length": 8,
+      "label": "owner uid (octal ASCII)",
+      "type": "ascii"
+    },
+    {
+      "path": "gid",
+      "offset": 116,
+      "length": 8,
+      "label": "owner gid (octal ASCII)",
+      "type": "ascii"
+    },
+    {
+      "path": "size",
+      "offset": 124,
+      "length": 12,
+      "label": "size (octal ASCII)",
+      "type": "ascii"
+    },
+    {
+      "path": "magic",
+      "offset": 257,
+      "length": 6,
+      "kind": "identifier",
+      "label": "ustar magic + NUL",
+      "type": "bytes"
+    },
+    {
+      "path": "version",
+      "offset": 263,
+      "length": 2,
+      "label": "ustar version",
+      "type": "bytes"
+    }
+  ]
+}

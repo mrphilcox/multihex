@@ -1,0 +1,201 @@
+"""Unit tests for multihex.overlay.OverlayState (the frontend-agnostic seam).
+
+These target the helper directly -- no CLI/TUI/GUI -- covering: no overlay,
+valid load, warnings preserved, structural error blocks apply, range lookup,
+overlapping-range order, zero-length behaviour, out-of-bounds robustness, and
+per-file labelled diagnostics. Overlay docs are built inline (mirroring
+test_layout_overlay_v1.py); binaries are tiny in-memory HexFiles.
+"""
+
+import json
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+from multihex.core import HexFile  # noqa: E402
+from multihex.overlay import OverlayRange, OverlayState  # noqa: E402
+
+
+def _schema():
+    return {"name": "bintools.layout-overlay", "version": 1}
+
+
+def _write(tmp_path, name, doc):
+    p = tmp_path / name
+    p.write_text(json.dumps(doc))
+    return str(p)
+
+
+def _file(name="a.bin", data=b""):
+    return HexFile(name, data)
+
+
+# -- no overlay / failed load ------------------------------------------------ #
+def test_missing_file_is_not_loaded(tmp_path):
+    st = OverlayState.load(str(tmp_path / "nope.json"))
+    assert st.loaded is False
+    assert st.applicable is False
+    assert st.covers(0) is False
+    assert st.ranges_at(0) == []
+    assert "Could not load" in st.summary()
+
+
+def test_invalid_json_is_not_loaded(tmp_path):
+    p = tmp_path / "bad.json"
+    p.write_text("{ not json")
+    st = OverlayState.load(str(p))
+    assert st.loaded is False
+    assert st.applicable is False
+
+
+# -- valid overlay ----------------------------------------------------------- #
+def test_valid_overlay_loads_and_highlights(tmp_path):
+    doc = {
+        "schema": _schema(),
+        "name": "demo",
+        "ranges": [
+            {"path": "magic", "offset": 0, "length": 2, "label": "magic"},
+            {"path": "body", "offset": 4, "length": 4, "type": "u32le"},
+        ],
+    }
+    data = bytes(range(16))
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=data)])
+    assert st.applicable is True
+    assert st.name == "demo"
+    assert st.range_count == 2
+    assert st.error_count() == 0 and st.warning_count() == 0
+    # In-range vs out-of-range.
+    assert st.covers(0) and st.covers(1) and not st.covers(2)
+    assert st.covers(4) and st.covers(7) and not st.covers(8)
+    hits = st.ranges_at(0)
+    assert [r.path for r in hits] == ["magic"]
+
+
+def test_warnings_preserved_and_still_applicable(tmp_path):
+    # unknown-type is a warning; the overlay stays loadable/applicable.
+    doc = {
+        "schema": _schema(),
+        "ranges": [{"offset": 0, "length": 1, "type": "float128"}],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=b"\x00\x01")])
+    assert st.applicable is True
+    assert st.warning_count() >= 1
+    assert any("unknown-type" in line for line in st.diagnostic_lines())
+
+
+# -- structural error blocks apply ------------------------------------------- #
+def test_structural_error_blocks_apply(tmp_path):
+    # duplicate-path is an error -> not applicable -> never highlights.
+    doc = {
+        "schema": _schema(),
+        "ranges": [
+            {"path": "dup", "offset": 0, "length": 1},
+            {"path": "dup", "offset": 1, "length": 1},
+        ],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc))
+    assert st.loaded is True
+    assert st.applicable is False
+    assert st.error_count() >= 1
+    assert st.covers(0) is False
+    assert st.ranges_at(0) == []
+    assert any("duplicate-path" in line for line in st.diagnostic_lines())
+
+
+def test_wrong_schema_name_not_applicable(tmp_path):
+    doc = {"schema": {"name": "something.else", "version": 1}, "ranges": []}
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=b"x")])
+    assert st.applicable is False
+    # File-aware checks are skipped for a foreign schema, so no per-file noise.
+    assert st.file_results == []
+
+
+# -- range lookup ------------------------------------------------------------ #
+def test_overlapping_ranges_returned_in_deterministic_order(tmp_path):
+    doc = {
+        "schema": _schema(),
+        "ranges": [
+            {"path": "outer", "offset": 0, "length": 8},
+            {"path": "inner", "offset": 2, "length": 2},
+            {"path": "point", "offset": 2, "length": 4},
+        ],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(8))])
+    hits = st.ranges_at(2)
+    # All three cover offset 2; order is (offset, length, path, index).
+    assert [r.path for r in hits] == ["outer", "inner", "point"]
+    # Calling again yields the same order (no in-place mutation surprises).
+    assert [r.path for r in st.ranges_at(2)] == ["outer", "inner", "point"]
+
+
+def test_zero_length_range_matches_nothing(tmp_path):
+    doc = {
+        "schema": _schema(),
+        "ranges": [{"path": "marker", "offset": 3, "length": 0}],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(8))])
+    assert st.applicable is True
+    assert st.range_count == 1
+    assert st.covers(3) is False
+    assert st.ranges_at(3) == []
+
+
+def test_out_of_bounds_range_does_not_crash(tmp_path):
+    # Range extends past the 4-byte file: a warning, still applicable, and
+    # lookups around/inside the range never raise.
+    doc = {
+        "schema": _schema(),
+        "ranges": [{"path": "tail", "offset": 2, "length": 100}],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(4))])
+    assert st.applicable is True
+    assert any("range-out-of-bounds" in line for line in st.diagnostic_lines())
+    assert st.covers(50) is True   # inside the (oversized) range, no crash
+    assert st.covers(1) is False
+    assert [r.path for r in st.ranges_at(50)] == ["tail"]
+
+
+# -- per-file labelled diagnostics ------------------------------------------- #
+def test_per_file_labelled_diagnostics(tmp_path):
+    # source_size mismatches one file but not the other; each file-aware
+    # diagnostic is labelled by that file's basename.
+    doc = {
+        "schema": _schema(),
+        "source_size": 4,
+        "ranges": [{"offset": 0, "length": 1}],
+    }
+    good = _file("good.bin", bytes(4))
+    bad = _file("bad.bin", bytes(8))
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [good, bad])
+    assert st.applicable is True  # size mismatch is a warning
+    labels = [label for label, _ in st.file_results]
+    assert labels == ["good.bin", "bad.bin"]
+    lines = st.diagnostic_lines()
+    assert any("[bad.bin]" in line and "source-size-mismatch" in line for line in lines)
+    assert not any("[good.bin]" in line for line in lines)
+
+
+# -- details / summary ------------------------------------------------------- #
+def test_details_text_includes_cursor_section(tmp_path):
+    doc = {
+        "schema": _schema(),
+        "name": "demo",
+        "ranges": [{"path": "magic", "offset": 0, "length": 2}],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(8))])
+    text = st.details_text(cursor_offset=0)
+    assert "Layout overlay" in text
+    assert "status: applied" in text
+    assert "Ranges under cursor (0x00000000):" in text
+    assert "magic" in text
+
+
+def test_overlay_range_covers_semantics():
+    r = OverlayRange(offset=4, length=2)
+    assert r.end == 6
+    assert not r.covers(3)
+    assert r.covers(4) and r.covers(5)
+    assert not r.covers(6)
+    assert OverlayRange(offset=4, length=0).covers(4) is False

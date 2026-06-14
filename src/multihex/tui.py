@@ -23,6 +23,8 @@ Keys:
     t             toggle byte-class highlighting
     v             cycle layout (stacked / side-by-side)
     m             cycle markers (single / repeat / none)
+    l             load/change layout overlay (blank path clears)
+    L             view current layout overlay
     left / right  scroll horizontally (side-by-side)
     o             open settings / options pane
     /             text search (panel has an ASCII case-insensitive toggle)
@@ -63,6 +65,7 @@ from multihex.core import (
     prev_match_index,
     search_files,
 )
+from multihex.overlay import OverlayState
 from multihex.tui_config import (
     TuiSettings,
     default_config_path,
@@ -101,6 +104,9 @@ _BYTE_CLASS_STYLE = {
     ByteClass.WHITESPACE: "cyan",
     ByteClass.PRINTABLE_ASCII: "green",
 }
+# Layout-overlay highlight: a neutral background so an annotated byte is
+# distinguishable, sitting just above byte class and below diff/search.
+_OVERLAY_STYLE = "on blue"
 
 
 if _TEXTUAL_IMPORT_ERROR is None:
@@ -127,6 +133,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             byte_classes_on: bool = False,
             layout: str = "stacked",
             markers: str = "single",
+            overlay: Optional[OverlayState] = None,
         ) -> None:
             super().__init__()
             self.model = model
@@ -134,6 +141,10 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.only_diff = only_diff
             self.color_on = color_on
             self.byte_classes_on = byte_classes_on
+            # Loaded layout overlay (None = none). Highlighting is gated on the
+            # overlay being applicable, so a loaded-but-erroring overlay can be
+            # kept for "view current overlay" without ever highlighting.
+            self.overlay = overlay
             self.name_mode = name_mode
             self.name_width = name_column_width(model.files, name_mode)
             # Stored as ``layout_mode`` (not ``layout``) to avoid clashing with
@@ -356,9 +367,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Display priority (only matters when colour is on): a missing byte is
             never part of a match, so it never reaches a search branch; among
             present bytes the order is current search match > other search match
-            > diff/stability marker > byte class. Byte-class color is the lowest
-            tier: it applies only to present, non-diff cells, so search and diff
-            highlighting stay the most visible.
+            > diff/stability marker > layout overlay > byte class. Overlay and
+            byte-class color are the lowest tiers: they apply only to present,
+            non-diff cells, so search and diff highlighting stay the most visible.
             """
             if self.color_on:
                 cur = self.search_current
@@ -372,6 +383,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
                     return _SEARCH_STYLE
             if marker is not Marker.SAME:
                 return self._style(_DIFF_STYLE)
+            if self.color_on and self.overlay is not None and self.overlay.covers(abs_off):
+                return _OVERLAY_STYLE
             if self.color_on and self.byte_classes_on and value is not None:
                 return _BYTE_CLASS_STYLE.get(classify_byte(value), "")
             return ""
@@ -598,6 +611,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
             "  t             toggle byte-class highlighting\n"
             "  v             cycle layout (stacked / side-by-side)\n"
             "  m             cycle markers (single / repeat / none)\n"
+            "  l             load/change layout overlay (blank path clears)\n"
+            "  L             view current layout overlay (c clears)\n"
             "  left / right  scroll horizontally (side-by-side)\n"
             "  o             open settings / options pane\n"
             "  /             text search (case-insensitive toggle)\n"
@@ -614,6 +629,38 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
         def on_key(self, event) -> None:
             self.dismiss(None)
+
+    class OverlayScreen(ModalScreen[Optional[str]]):
+        """Read-only "view current overlay" panel.
+
+        Shows the overlay's path, schema, name, source_* fields, range count,
+        applied/not-applied status, diagnostics, range list, and the ranges under
+        the cursor (the top visible offset). Press ``c`` to clear the overlay,
+        any other key to close. Editing is out of scope.
+        """
+
+        DEFAULT_CSS = """
+        OverlayScreen { align: center middle; }
+        OverlayScreen > Vertical {
+            width: 84; height: auto; max-height: 90%; padding: 1 2;
+            border: round $accent; background: $panel;
+        }
+        """
+
+        def __init__(self, text: str) -> None:
+            super().__init__()
+            self._text = text
+
+        def compose(self) -> "ComposeResult":
+            with Vertical():
+                yield Static(self._text)
+                yield Static("(c clear overlay - any other key closes)")
+
+        def on_key(self, event) -> None:
+            if event.key == "c":
+                self.dismiss("clear")
+            else:
+                self.dismiss(None)
 
     class SettingsScreen(ModalScreen[None]):
         """Interactive settings/options pane (the 'o' key).
@@ -784,6 +831,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Binding("t", "toggle_byte_classes", "Classes"),
             Binding("v", "cycle_layout", "Layout"),
             Binding("m", "cycle_markers", "Markers"),
+            Binding("l", "load_overlay", "Overlay"),
+            Binding("L", "view_overlay", "View overlay", show=False),
             Binding("left", "scroll_left", "Scroll left", show=False),
             Binding("right", "scroll_right", "Scroll right", show=False),
             Binding("o", "open_settings", "Options"),
@@ -808,6 +857,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             layout: str = "stacked",
             markers: str = "single",
             color_mode: str = "auto",
+            overlay: Optional[OverlayState] = None,
             config_path: Optional[Path] = None,
             config_warnings: Optional[List[str]] = None,
         ) -> None:
@@ -822,7 +872,12 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 byte_classes_on=byte_classes_on,
                 layout=layout,
                 markers=markers,
+                overlay=overlay,
             )
+            # Loaded layout overlay (None = none). Kept on the app so the load/
+            # clear/view actions and the status line can reach it; the view holds
+            # the same reference for highlighting.
+            self.overlay = overlay
             # Search state lives on the app; the view only renders highlights.
             self.search_query = None
             self.search_matches: List[SearchMatch] = []
@@ -899,6 +954,10 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 v.layout_mode,
                 v.markers_mode,
             )
+            if self.overlay is not None:
+                toggles += " overlay:%s" % (
+                    "on" if self.overlay.applicable else "err"
+                )
             sizes = "  ".join(
                 f"{f.display_name(v.name_mode)}={f.size}" for f in m.files
             )
@@ -1006,6 +1065,63 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
         def action_open_settings(self) -> None:
             self.push_screen(SettingsScreen())
+
+        # -- layout overlay (load / change / clear / view) ------------------ #
+        def _apply_overlay(self, value: Optional[str]) -> None:
+            """Handle the load-overlay prompt result.
+
+            ``None`` (escape) leaves the current overlay untouched; an empty/blank
+            path clears it; otherwise the overlay is loaded, validated, and kept
+            for viewing. It only highlights when applicable (no error-severity
+            diagnostic), so an erroring overlay is reported but not applied.
+            """
+            if value is None:
+                return
+            text = value.strip()
+            if not text:
+                self.overlay = None
+                self.view.overlay = None
+                self.view.refresh()
+                self.update_status()
+                self.notify("Cleared layout overlay", title="overlay")
+                return
+            overlay = OverlayState.load(text, self.model.files)
+            self.overlay = overlay
+            self.view.overlay = overlay
+            self.view.refresh()
+            self.update_status()
+            self.notify(
+                overlay.summary(),
+                title="overlay",
+                severity="information" if overlay.applicable else "error",
+            )
+
+        def action_load_overlay(self) -> None:
+            body = (
+                f"current: {self.overlay.path}"
+                if self.overlay is not None
+                else "none loaded"
+            )
+            self.push_screen(
+                _PromptScreen("Layout overlay path (blank to clear):", body),
+                self._apply_overlay,
+            )
+
+        def action_view_overlay(self) -> None:
+            if self.overlay is None:
+                self.notify("No layout overlay loaded (press 'l').", title="overlay")
+                return
+            cursor = self.model.start_offset
+            if self.view.visible_count:
+                cursor = self.model.row_offset(self.view.current_top_row())
+
+            def handle(result: Optional[str]) -> None:
+                if result == "clear":
+                    self._apply_overlay("")
+
+            self.push_screen(
+                OverlayScreen(self.overlay.details_text(cursor)), handle
+            )
 
         # -- settings (apply immediately + save) ---------------------------- #
         def set_color_mode(self, mode: str) -> None:
@@ -1203,6 +1319,10 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
                         "(repeat the strip under each segment in side-by-side; "
                         "same as single when stacked), or none (hidden). Cycle "
                         "with 'm'. Display-only.")
+    p.add_argument("--overlay", metavar="PATH", default=None,
+                   help="load a bintools.layout-overlay v1 JSON file (a read-only "
+                        "annotation layer) and highlight its byte ranges. Change "
+                        "with 'l', view with 'L'. Not saved in config.")
 
     # -- TUI-only persistent config (the batch CLI never reads any config) ---- #
     cfg = p.add_mutually_exclusive_group()
@@ -1298,6 +1418,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         sys.stderr.write(f"multihex-tui: {exc}\n")
         return 2
 
+    # A startup overlay is loaded and reported up front; like the runtime 'l'
+    # action it is kept even when not applicable (so 'L' can show why), and only
+    # highlights when applicable. Overlay paths are never persisted to config.
+    overlay = None
+    if args.overlay is not None:
+        overlay = OverlayState.load(args.overlay, files)
+        sys.stderr.write(f"multihex-tui: {overlay.summary()}\n")
+        for line in overlay.diagnostic_lines():
+            sys.stderr.write(f"multihex-tui:   {line}\n")
+
     app = MultiHexApp(
         model,
         ascii_on=settings.ascii,
@@ -1308,6 +1438,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         layout=settings.layout,
         markers=settings.markers,
         color_mode=settings.color,
+        overlay=overlay,
         config_path=config_path,
         config_warnings=config_warnings,
     )

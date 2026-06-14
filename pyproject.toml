@@ -57,6 +57,9 @@ packages = ["src/multihex"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Integration tests live under tests/integration/ and are run via
+# scripts/integration/, not pytest; keep them out of default collection.
+norecursedirs = ["tests/integration"]
 
 [tool.ruff]
 line-length = 100

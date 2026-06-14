@@ -44,6 +44,10 @@ multihex-tui --markers repeat FILE1 FILE2 # start with the chosen marker display
 # TUI search keys:  /  text search (panel has ASCII case-insensitive checkbox)
 #                   x  hex search (byte values, not ASCII)   n  next   N/p  previous
 # TUI toggles:  c  color   t  byte-class highlighting   v  layout   m  markers
+# TUI overlay:  l  load/change layout overlay (blank clears)   L  view current overlay
+
+# Layout overlay (read-only annotation layer; validated; needs color on; no --json effect)
+multihex --overlay path/to/file.overlay.json --color always FILE1 FILE2
 
 # Run all tests
 python3 -m pytest
@@ -77,6 +81,8 @@ python3 tests/capture_goldens.py
 
 **Marker display** (`--markers single|repeat|none`; TUI `m`): display-only, and a **separate concern from `--layout`** — a plain string each frontend renderer branches on (also a `markers` keyword on `core.render_row_text()`, so CLI search-context rows honor it). `single` (default) draws one strip per block — in side-by-side as its own left prefix column, not attached to the first file; `repeat` repeats the strip under each segment in side-by-side (identical to `single` when stacked); `none` hides the strip text. Stacked `single`/`repeat` output is byte-identical to the pre-feature rendering. Marker **computation** stays in `HexModel._markers()` and is untouched, so this never affects `--only-diff`, diff/missing highlighting, search, or `--json` (the `markers` array is always present). TUI persists it as `[display] markers` (config schema still v1; missing key defaults to `single`).
 
+**Layout overlays** (`--overlay PATH`; TUI `l`/`L`; GUI Overlay menu): display-only consumption of `bintools.layout-overlay` v1 files — a read-only annotation layer, never authored or inferred here. The seam is `src/multihex/overlay.py` (`OverlayState`/`OverlayRange`), separate from `core.py` so the comparison core stays focused. `OverlayState.load(path, files)` reads the JSON and calls `layout_overlay_v1.validate_structural` once plus `validate_file_aware` per loaded file (diagnostics labelled by file). The **validator is the single source of truth** for severities and the `ok`-means-loadable contract — multihex never re-derives them: `OverlayState.applicable` is `True` only when no `error`-severity diagnostic exists anywhere, and frontends highlight only when applicable (errored overlays are reported but not applied; warnings are summarized with detail in "view current overlay"). Frontends never touch raw JSON — they ask the state object: `covers(offset)`, `ranges_at(offset)` (deterministic order; zero-length match nothing, out-of-bounds/overlapping never crash), `all_diagnostics()`, `summary()`, `details_text()`. Highlight priority sits **below missing/diff** and search (CLI blue background, TUI `on blue`, GUI a distinct cell color), needs color on, and has no effect on `--json`. Overlay paths are **never persisted** to config (overlays are file/session-specific).
+
 ## Tests
 
 - `tests/fixtures.py` — builds deterministic binary test fixtures
@@ -93,6 +99,10 @@ python3 tests/capture_goldens.py
 - `tests/test_tui_byte_classes.py` — headless TUI byte-class state, toggle, status/help, priority
 - `tests/test_cli_markers.py` — CLI `--markers` parsing, both layouts, JSON/only-diff/search invariants
 - `tests/test_tui_markers.py` — headless TUI marker-mode state, `m` cycle, status/help, redraw
+- `tests/test_overlay.py` — core `OverlayState`/`OverlayRange`: load, per-file validation, range lookup, overlap/zero-length/out-of-bounds robustness
+- `tests/test_cli_overlay.py` — CLI `--overlay` highlight ANSI, diagnostics on stderr, JSON safety, no-op path
+- `tests/test_tui_overlay.py` — headless TUI overlay load/clear/view state, status, cell-style priority
+- `tests/test_gui_overlay.py` — headless GUI overlay menu glue, diagnostics surfaced, cell-color tier, stale-overlay drop on reload
 
 When updating `tests/goldens/*.out`, review the diff carefully and note the reason in the commit.
 
@@ -102,3 +112,4 @@ When updating `tests/goldens/*.out`, review the diff carefully and note the reas
 - `src/multihex/core.py` must remain stdlib-only (no third-party imports).
 - Search is exact: report observed byte matches only. Never add wildcards, alignment, or inference to it.
 - The batch CLI and TUI color differently by design: CLI colors individual cells that differ from the reference; TUI colors whole columns by marker state. Do not unify them.
+- Layout overlays are **consumer-only**: load, validate, display, highlight. Never author, infer, or edit overlays, and never re-derive the validator's severities/`ok` contract — call `multihex.layout_overlay_v1` and render its diagnostics. Keep `core.py` free of overlay logic; it lives in `src/multihex/overlay.py`. Don't persist overlay paths in config.

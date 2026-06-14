@@ -1,0 +1,50 @@
+{
+  "schema": { "name": "bintools.layout-overlay", "version": 1 },
+  "name": "gzip member header (partial)",
+  "ranges": [
+    {
+      "path": "magic",
+      "offset": 0,
+      "length": 2,
+      "kind": "identifier",
+      "label": "gzip magic (1f 8b)",
+      "type": "bytes"
+    },
+    {
+      "path": "compression_method",
+      "offset": 2,
+      "length": 1,
+      "label": "CM (8 = deflate)",
+      "type": "u8"
+    },
+    {
+      "path": "flags",
+      "offset": 3,
+      "length": 1,
+      "kind": "flags",
+      "label": "FLG",
+      "type": "u8"
+    },
+    {
+      "path": "mtime",
+      "offset": 4,
+      "length": 4,
+      "label": "modification time (epoch)",
+      "type": "u32le"
+    },
+    {
+      "path": "extra_flags",
+      "offset": 8,
+      "length": 1,
+      "label": "XFL",
+      "type": "u8"
+    },
+    {
+      "path": "os",
+      "offset": 9,
+      "length": 1,
+      "label": "OS",
+      "type": "u8"
+    }
+  ]
+}

@@ -36,6 +36,7 @@ from multihex.core import (
     name_column_width,
     parse_int,
 )
+from multihex.overlay import OverlayState
 
 # --------------------------------------------------------------------------- #
 # Pure-Python helpers (no Qt). Defined unconditionally so they import and unit-
@@ -203,6 +204,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="start with the ASCII gutter hidden")
     p.add_argument("--markers", choices=["single", "none"], default="single",
                    help="show the marker strip (default single) or hide it (none)")
+    p.add_argument("--overlay", metavar="PATH", default=None,
+                   help="load a bintools.layout-overlay v1 JSON file (a read-only "
+                        "annotation layer) and highlight its byte ranges. Manage "
+                        "from the Overlay menu. Not saved in config.")
     return p
 
 
@@ -301,6 +306,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
     _COLOR_SAME = QColor(0x2D, 0xA0, 0x44)     # SAME marker
     _COLOR_DIM = QColor(0x99, 0x99, 0x99)      # missing ("--") / MISSING marker
     _COLOR_REF = QColor(0x8A, 0x63, 0xD2)      # reference file's name
+    _COLOR_OVERLAY = QColor(0x12, 0x8E, 0x9E)  # bytes inside a layout-overlay range
 
     class HexCompareView(QAbstractScrollArea):
         """Custom-painted, lazily-rendered comparison view.
@@ -331,6 +337,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.ascii_on = True
             self.markers_on = True
             self.color_on = True
+            # Loaded layout overlay (None = none). Highlighting is gated on the
+            # overlay being applicable, so a loaded-but-erroring overlay is kept
+            # for "view current overlay" without ever highlighting.
+            self.overlay: Optional[OverlayState] = None
             self._char_w = 8
             self._line_h = 16
             self._ascent = 12
@@ -489,6 +499,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.name_width = name_column_width(self.files, mode) if self.files else 0
             self.viewport().update()
 
+        def set_overlay(self, overlay: Optional[OverlayState]) -> None:
+            self.overlay = overlay
+            self.viewport().update()
+
         def set_only_diff(self, on: bool) -> None:
             if self.view is None:
                 return
@@ -507,13 +521,20 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _text_color(self) -> "QColor":
             return self.palette().color(QPalette.ColorRole.Text)
 
-        def _cell_color(self, value: Optional[int], marker: Marker) -> "QColor":
+        def _cell_color(
+            self, value: Optional[int], marker: Marker, offset: Optional[int] = None
+        ) -> "QColor":
+            # Priority mirrors the CLI/TUI: missing > diff > layout overlay >
+            # normal text. Overlay highlighting applies only to present, non-diff
+            # cells inside an applicable overlay's range.
             if not self.color_on:
                 return self._text_color()
             if value is None:
                 return _COLOR_DIM
             if marker is not Marker.SAME:
                 return _COLOR_DIFF
+            if offset is not None and self.overlay is not None and self.overlay.covers(offset):
+                return _COLOR_OVERLAY
             return self._text_color()
 
         def _marker_color(self, marker: Marker) -> "QColor":
@@ -580,14 +601,14 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 for c in range(width):
                     marker = row.markers[c]
                     draw(hex_start + c * 3, line, format_byte(row_bytes[c]),
-                         self._cell_color(row_bytes[c], marker))
+                         self._cell_color(row_bytes[c], marker, row.offset + c))
                 if self.ascii_on:
                     acol = hex_start + width * 3 + 1  # past hex + "  |"
                     draw(acol, line, "|", text_color)
                     for c in range(width):
                         marker = row.markers[c]
                         draw(acol + 1 + c, line, format_ascii_char(row_bytes[c]),
-                             self._cell_color(row_bytes[c], marker))
+                             self._cell_color(row_bytes[c], marker, row.offset + c))
                     draw(acol + 1 + width, line, "|", text_color)
 
             # marker strip
@@ -620,6 +641,11 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.name_mode = name_mode
             self.files: List = []
             self.model: Optional[HexModel] = None
+            # Loaded layout overlay (None = none). Session-only; overlay paths are
+            # never persisted. Kept even when not applicable so "View current
+            # overlay" can show its diagnostics.
+            self.overlay: Optional[OverlayState] = None
+            self._message_boxes: List = []  # keep non-modal dialogs alive
 
             self.view_widget = HexCompareView(self)
             self.view_widget.ascii_on = ascii_on
@@ -699,6 +725,18 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.ref_group.triggered.connect(self._on_ref_changed)
             self._rebuild_ref_menu()
 
+            overlaym = mb.addMenu("&Overlay")
+            act_ov_load = QAction("&Load/change layout overlay…", self)
+            act_ov_load.triggered.connect(self._overlay_load_dialog)
+            overlaym.addAction(act_ov_load)
+            self.act_overlay_clear = QAction("&Clear overlay", self)
+            self.act_overlay_clear.triggered.connect(self._overlay_clear)
+            overlaym.addAction(self.act_overlay_clear)
+            overlaym.addSeparator()
+            act_ov_view = QAction("&View current overlay…", self)
+            act_ov_view.triggered.connect(self._overlay_view)
+            overlaym.addAction(act_ov_view)
+
         def _rebuild_ref_menu(self) -> None:
             """(Re)populate the Compare menu with the reference radio choices."""
             for a in list(self.ref_group.actions()):
@@ -746,6 +784,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 return False
             self.files = files
             self.model = model
+            # A previously loaded overlay was validated against the old files;
+            # drop it rather than silently re-applying it to a different binary.
+            self.overlay = None
+            self.view_widget.set_overlay(None)
             self.view_widget.set_model(
                 model, files, self.name_mode, only_diff=self.act_diff.isChecked()
             )
@@ -807,6 +849,81 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 return
             self.view_widget.jump_to_offset(offset)
             self._update_status()
+
+        # -- layout overlay (load / change / clear / view) ------------------ #
+        def _show_message(self, title: str, text: str, *, warn: bool = False):
+            """Show a non-blocking message box (safe under headless tests).
+
+            Static QMessageBox helpers spin a modal event loop, which would hang
+            unattended tests; ``.show()`` returns immediately. A reference is kept
+            so the dialog is not garbage-collected before it is displayed.
+            """
+            box = QMessageBox(self)
+            box.setIcon(
+                QMessageBox.Icon.Warning if warn else QMessageBox.Icon.Information
+            )
+            box.setWindowTitle(title)
+            box.setText(text)
+            box.setStandardButtons(QMessageBox.StandardButton.Ok)
+            box.setModal(False)
+            box.show()
+            self._message_boxes.append(box)
+            return box
+
+        def load_overlay(self, path: str) -> "OverlayState":
+            """Load + validate an overlay and apply it when loadable.
+
+            Diagnostics are always surfaced (status bar summary plus a dialog with
+            full detail when there are warnings or errors). An overlay with any
+            error-severity diagnostic is reported but not applied. Returns the
+            :class:`OverlayState` so callers/tests can inspect it.
+            """
+            overlay = OverlayState.load(path, self.files)
+            self.overlay = overlay
+            self.view_widget.set_overlay(overlay)
+            if not overlay.applicable:
+                self._show_message(
+                    "Layout overlay",
+                    overlay.summary() + "\n\n" + "\n".join(overlay.diagnostic_lines()),
+                    warn=True,
+                )
+            elif overlay.warning_count():
+                self._show_message("Layout overlay", overlay.details_text())
+            # Leave the overlay summary on the status bar; it persists until the
+            # next navigation refreshes the standard status line.
+            self.statusBar().showMessage(overlay.summary())
+            return overlay
+
+        def _overlay_load_dialog(self) -> None:
+            if self.model is None:
+                self._show_message(
+                    "Layout overlay", "Open files first, then load an overlay."
+                )
+                return
+            path, _ = QFileDialog.getOpenFileName(
+                self, "Load layout overlay", "",
+                "Overlay JSON (*.json);;All files (*)",
+            )
+            if path:
+                self.load_overlay(path)
+
+        def _overlay_clear(self) -> None:
+            self.overlay = None
+            self.view_widget.set_overlay(None)
+            self.statusBar().showMessage("Cleared layout overlay")
+            self._update_status()
+
+        def _overlay_view(self) -> None:
+            if self.overlay is None:
+                self._show_message("Layout overlay", "No layout overlay loaded.")
+                return
+            cursor = None
+            v = self.view_widget.view
+            if v is not None and v.visible_count:
+                cursor = self.model.row_offset(v.row_index_at(v.top))
+            self._show_message(
+                "Layout overlay", self.overlay.details_text(cursor)
+            )
 
         # -- status bar ----------------------------------------------------- #
         def _ref_label(self) -> str:
@@ -884,6 +1001,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     if args.files:
         window.load_paths(args.files)
+        if args.overlay is not None:
+            window.load_overlay(args.overlay)
+    elif args.overlay is not None:
+        sys.stderr.write(
+            "multihex-gui: --overlay needs files; open files then load it from "
+            "the Overlay menu.\n"
+        )
     window.show()
     return app.exec()
 

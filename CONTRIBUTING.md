@@ -56,6 +56,24 @@ python3 -m pytest tests/test_core_parity.py
 python3 -m pytest tests/test_multihex_characterization.py::test_stdout_matches_golden[basic]
 ```
 
+## Integration tests
+
+End-to-end shell checks live in `scripts/integration/` and drive the real
+command-line entry points and the `layout_overlay_v1` validator against a
+generated corpus (`tests/integration/generators/`). They are **not** part of the
+pytest run (excluded via `norecursedirs`); run them manually:
+
+```bash
+scripts/integration/run_all.sh          # smoke + layout-overlay + examples
+scripts/integration/run_smoke.sh        # entry-point --help and a real comparison
+scripts/integration/run_layout_overlay.sh
+KEEP_WORK=1 scripts/integration/run_all.sh   # preserve temp dirs for debugging
+```
+
+Each script prints `PASS`/`FAIL`/`SKIP` lines, cleans up its own `mktemp -d`
+work dir, and skips optional frontends (e.g. the Textual TUI) when their
+dependencies are absent.
+
 ## Linting
 
 ```bash

@@ -29,6 +29,12 @@ Repo-wide tasks and follow-ups to track.
       `build_startup_settings` (and likely a `--search-ignore-case` startup flag).
       Persist only the *preference* — never the search string, match index, or
       results.
+- [ ] **Layout-overlay follow-ups (v2+).** Overlay *consumption* now ships (see
+      Done). Deferred extensions: overlay **editing**; **config/session
+      persistence** of overlay paths (currently never saved, by design — an
+      overlay is file/session-specific); **richer per-`status` highlight coloring**
+      (v1 uses one neutral highlight); and **multiple independent overlays** for
+      multi-file views (currently one `--overlay` = one shared layer).
 
 ## Documentation
 
@@ -167,6 +173,36 @@ Repo-wide tasks and follow-ups to track.
 - [ ] Release automation.
 
 ## Done
+
+- [x] **Layout-overlay consumption in the viewers.** Added `src/multihex/overlay.py`
+      (`OverlayState`/`OverlayRange`): the frontend-agnostic seam that loads an
+      overlay JSON, validates it via the `layout_overlay_v1` validator (structural
+      once + file-aware per loaded file, diagnostics labelled by file), and answers
+      "is offset N covered / which ranges / diagnostics / summary / details". All
+      three frontends gained `--overlay PATH` and highlight covered ranges below
+      missing/diff styling (CLI blue background; TUI `on blue`; GUI a distinct cell
+      color). The TUI adds `l` (load/change), `L` (view; `c` clears); the GUI adds an
+      **Overlay** menu (load/change, clear, view). An overlay with any
+      error-severity diagnostic is reported but not applied; warnings are summarized
+      with full detail in "view current overlay". Overlay paths are **not** persisted
+      to config. Robust against overlapping/zero-length/out-of-bounds ranges. Tests:
+      `tests/test_overlay.py`, `tests/test_cli_overlay.py`, `tests/test_tui_overlay.py`,
+      `tests/test_gui_overlay.py`; the integration `SKIP overlay rendering` placeholder
+      is now real `--overlay` assertions. **Deferred:** see "Layout-overlay
+      follow-ups" under Open (editing, config/session persistence, per-status
+      coloring, multiple overlays).
+
+- [x] **Integration-test scaffold.** Added `scripts/integration/`
+      (`run_all.sh`, `run_smoke.sh`, `run_layout_overlay.sh`, `run_examples.sh`,
+      and shared `lib.sh`) plus `tests/integration/generators/make_overlay_samples.py`,
+      driving the real CLI entry points and the `layout_overlay_v1` validator
+      end-to-end against a generated, deliberately non-canonical corpus. Each case
+      asserts both exit code and diagnostic code; the scripts use `mktemp -d`,
+      honour `KEEP_WORK=1`, print `PASS`/`FAIL`/`SKIP`, and skip optional frontends
+      cleanly. Not collected by pytest (`norecursedirs`). Also added partial,
+      educational example overlays under `examples/layouts/` (gzip, ustar). Run with
+      `scripts/integration/run_all.sh`. **Deferred:** overlay rendering in the
+      viewers — the run emits an explicit `SKIP overlay rendering: …` marker.
 
 - [x] **GUI Frontend (PySide6) — Phase 1 (MVP).** Added `src/multihex/gui.py`
       (`multihex-gui` console script + the `[gui]` optional extra): a read-only Qt
