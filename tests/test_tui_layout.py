@@ -232,13 +232,62 @@ def test_lines_per_block_drops_the_offset_line():
         async with app.run_test() as pilot:
             await pilot.pause()
             view = app.view
-            # Stacked: one line per file + a marker line + blank gap (no
-            # separate offset line). Two files, markers on -> 2 + 1 + 1 = 4.
+            # Stacked: one line per file + a marker line, blocks adjacent (no
+            # separate offset line, no blank gap). Two files, markers on ->
+            # 2 + 1 = 3.
             assert view.layout_mode == "stacked"
-            assert view._lines_per_block() == 4
+            assert view._lines_per_block() == 3
             app.action_cycle_layout()
             await pilot.pause()
-            # Side-by-side single: one combined data line + blank gap = 2.
-            assert view._lines_per_block() == 2
+            # Side-by-side single: one combined data line, no gap = 1.
+            assert view._lines_per_block() == 1
+
+    asyncio.run(go())
+
+
+def test_lines_per_block_marker_line_height():
+    async def go():
+        app = _make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            view = app.view
+            # Stacked: the marker strip is its own line, so "single" is exactly
+            # one taller than "none" (no other vertical space is reserved).
+            assert view.layout_mode == "stacked"
+            view.set_markers("single")
+            await pilot.pause()
+            single = view._lines_per_block()
+            view.set_markers("none")
+            await pilot.pause()
+            assert single - view._lines_per_block() == 1
+
+            app.action_cycle_layout()
+            await pilot.pause()
+            # Side-by-side: "single" draws the strip inline (no extra line);
+            # "repeat" adds one line below the data.
+            assert view.layout_mode == "side-by-side"
+            view.set_markers("single")
+            await pilot.pause()
+            side_single = view._lines_per_block()
+            view.set_markers("repeat")
+            await pilot.pause()
+            assert view._lines_per_block() - side_single == 1
+
+    asyncio.run(go())
+
+
+@pytest.mark.parametrize("layout", ["stacked", "side-by-side"])
+def test_no_blank_line_between_blocks(layout):
+    async def go():
+        # 40 bytes at width 16 -> 3 rows, so multiple blocks render together.
+        files = [
+            HexFile("a.bin", bytes(range(40))),
+            HexFile("b.bin", bytes(range(40, 80))),
+        ]
+        app = _make_app(layout=layout, files=files)
+        async with app.run_test(size=(120, 24)) as pilot:
+            await pilot.pause()
+            lines = app.view.render().plain.splitlines()
+            assert "" not in lines
 
     asyncio.run(go())

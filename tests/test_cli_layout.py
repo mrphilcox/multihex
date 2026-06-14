@@ -122,6 +122,18 @@ def test_offset_attached_no_standalone_offset_line(fixtures, layout, ascii_flag,
     assert "dX" in off_line
 
 
+@pytest.mark.parametrize("layout", ["stacked", "side-by-side"])
+@pytest.mark.parametrize("markers", ["single", "repeat", "none"])
+def test_no_blank_lines_between_blocks(fixtures, layout, markers):
+    """No blank line separates consecutive offset blocks (information density)."""
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir,
+                ["--length", "0x20", "--layout", layout,
+                 "--markers", markers, "dX", "dY", "dZ"])
+    assert proc.returncode == 0
+    assert "" not in proc.stdout.splitlines()
+
+
 def test_offset_attached_with_changed_bytes_and_diff_markers(fixtures):
     fixture_dir, _ = fixtures
     # dX/dY/dZ differ in every column -> the offset line carries diffing bytes.

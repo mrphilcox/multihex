@@ -134,21 +134,35 @@ def test_layout_is_display_only(app, tmp_path):
 def test_lines_per_block_matches_modes(app, tmp_path):
     w = _loaded(tmp_path)  # two files
     vw = w.view_widget
-    # Stacked: 2 files + marker line + gap.
+    # Stacked: 2 files + marker line, blocks adjacent (no gap). The
+    # single-vs-none difference is exactly the marker line's height, so marker
+    # space is reserved only when markers are on.
     vw.set_layout("stacked")
     vw.set_markers_mode("single")
-    assert vw._lines_per_block() == 4
-    vw.set_markers_mode("none")
     assert vw._lines_per_block() == 3
-    # Side-by-side: 1 content line + gap; "repeat" adds a marker line, "single"
-    # draws the strip inline (no extra line).
+    vw.set_markers_mode("none")
+    assert vw._lines_per_block() == 2
+    # Side-by-side: 1 content line, blocks adjacent; "repeat" adds a marker
+    # line, "single"/"none" draw/hide the strip inline (no extra line).
     vw.set_layout("side-by-side")
     vw.set_markers_mode("single")
-    assert vw._lines_per_block() == 2
+    assert vw._lines_per_block() == 1
     vw.set_markers_mode("none")
-    assert vw._lines_per_block() == 2
+    assert vw._lines_per_block() == 1
     vw.set_markers_mode("repeat")
-    assert vw._lines_per_block() == 3
+    assert vw._lines_per_block() == 2
+    w.close()
+
+
+def test_block_px_matches_lines_per_block(app, tmp_path):
+    # Row height is exactly the painted lines: no hidden blank-separator pixels.
+    w = _loaded(tmp_path)
+    vw = w.view_widget
+    for layout in ("stacked", "side-by-side"):
+        for mode in ("single", "repeat", "none"):
+            vw.set_layout(layout)
+            vw.set_markers_mode(mode)
+            assert vw._block_px() == vw._lines_per_block() * vw._line_h
     w.close()
 
 

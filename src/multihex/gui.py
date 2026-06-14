@@ -628,7 +628,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _lines_per_block(self) -> int:
             # Mirrors tui.HexView._lines_per_block so the page math matches the
             # other interactive frontend. The offset rides the first content line
-            # as a left gutter; a trailing blank line separates blocks.
+            # as a left gutter; blocks are adjacent (no blank separator).
             nfiles = len(self.files) if self.files else 1
             if self.layout_mode == "side-by-side":
                 # All files share one content line; "repeat" adds a marker line
@@ -638,7 +638,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             else:
                 content = nfiles
                 marker = 0 if self.markers_mode == "none" else 1
-            return content + marker + 1
+            return content + marker
 
         def _block_px(self) -> int:
             return self._lines_per_block() * self._line_h

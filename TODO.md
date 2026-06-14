@@ -196,6 +196,21 @@ Guidelines:
 
 ## Done or superseded
 
+- [x] **Compact TUI/GUI hex blocks (drop the inter-block blank line).** Both
+      interactive frontends reserved one unconditional blank line between every
+      logical hex block (`_lines_per_block` returned `content + marker + 1`, and
+      `HexView._render_block` appended a trailing `"\n"`), so the TUI and GUI were
+      less dense than the batch CLI, which never had a separator. The `+ 1` and
+      the trailing append are gone, so blocks are now adjacent in all three
+      frontends; the marker line still contributes height only when markers are
+      on, and the offset still rides the first content line. Purely presentational
+      -- comparison semantics, offsets, markers, overlays, color, and JSON are
+      untouched, and the CLI goldens are byte-for-byte unchanged. Covered by
+      updated `_lines_per_block` assertions plus new "no blank line between
+      blocks" tests in `tests/test_tui_layout.py`, `tests/test_gui_layout.py`,
+      `tests/test_gui_widget.py`, and `tests/test_cli_layout.py`. Follow-up: the
+      TUI SVG snapshots in `tests_ui/__snapshots__/` must be regenerated with
+      `scripts/ui-tests/update_snapshots.sh` (needs the `[ui-test]` extra).
 - [x] **Size the offset gutter for large offsets.** The gutter was fixed at 8
       hex digits (`OFFSET_LABEL_WIDTH` == 10), so offsets at or above
       `0x100000000` (9+ digits) overgrew the first line's label while

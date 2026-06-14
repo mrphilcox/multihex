@@ -93,8 +93,9 @@ def test_load_and_navigate(app, tmp_path):
 
 def test_block_geometry_attaches_offset_to_first_row(app, tmp_path):
     # The offset rides the first file's row as a left gutter, so a block no
-    # longer reserves a standalone offset line. Two files + marker strip =>
-    # 2 + 1 + 1 (blank gap) = 4 lines per block (was 5 with the offset line).
+    # longer reserves a standalone offset line, and blocks are adjacent (no
+    # blank separator). Two files + marker strip => 2 + 1 = 3 lines per block
+    # (was 5 with the offset line and the separator).
     a = _write(tmp_path, "a.bin", bytes(48))
     b = _write(tmp_path, "b.bin", bytes(48))
     w = gui.MainWindow()
@@ -102,10 +103,10 @@ def test_block_geometry_attaches_offset_to_first_row(app, tmp_path):
     vw = w.view_widget
 
     assert vw.markers_mode == "single"
-    assert vw._lines_per_block() == 4
+    assert vw._lines_per_block() == 3
     # Hiding the marker strip drops one more line.
     vw.set_markers_mode("none")
-    assert vw._lines_per_block() == 3
+    assert vw._lines_per_block() == 2
     # The block paints without error after the geometry change.
     w.resize(900, 400)
     w.show()

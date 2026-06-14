@@ -204,14 +204,14 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
         def _lines_per_block(self) -> int:
             # content lines (the offset rides the first one as a left gutter)
-            # + optional marker line + blank separator
+            # + optional marker line. Blocks are adjacent (no blank separator).
             if self.layout_mode == "side-by-side":
                 content = 1
                 marker = 1 if self.markers_mode == "repeat" else 0
             else:
                 content = len(self.model.files)
                 marker = 0 if self.markers_mode == "none" else 1
-            return content + marker + 1
+            return content + marker
 
         def _max_top(self) -> int:
             return max(0, self.visible_count - self._page_rows)
@@ -541,7 +541,6 @@ if _TEXTUAL_IMPORT_ERROR is None:
                     text.append(" " * marker_prefix_width(self.name_width))
                     self._append_marker_strip(text, row, diff)
                     text.append("\n")
-            text.append("\n")
 
     class _PromptScreen(ModalScreen[Optional[str]]):
         """A small modal asking for one line of input."""
