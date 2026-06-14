@@ -83,6 +83,8 @@ def main(argv=None) -> int:
     parser.add_argument("--err", default=None, help="redirect child stderr to this path")
     parser.add_argument("--sigint-after", type=float, default=None,
                         help="send SIGINT to the child group this many seconds in")
+    parser.add_argument("--nofile", type=int, default=None,
+                        help="set the child's RLIMIT_NOFILE (open-file limit) to N")
     parser.add_argument("cmd", nargs=argparse.REMAINDER,
                         help="-- followed by the command to run")
     args = parser.parse_args(argv)
@@ -97,6 +99,14 @@ def main(argv=None) -> int:
         print("SKIP reason=no-procfs", file=sys.stderr)
         return NO_PROCFS_EXIT
 
+    preexec = None
+    if args.nofile is not None:
+        import resource
+
+        def preexec():  # runs in the child after fork, before exec
+            os.setsid()  # own session (start_new_session gives this too; explicit)
+            resource.setrlimit(resource.RLIMIT_NOFILE, (args.nofile, args.nofile))
+
     out_fh = open(args.out, "wb") if args.out else None
     err_fh = open(args.err, "wb") if args.err else None
     try:
@@ -105,7 +115,8 @@ def main(argv=None) -> int:
             cmd,
             stdout=out_fh if out_fh else None,
             stderr=err_fh if err_fh else None,
-            start_new_session=True,  # own process group; enables killpg containment
+            start_new_session=(preexec is None),  # own process group for killpg
+            preexec_fn=preexec,
         )
     except OSError as exc:
         if out_fh:
