@@ -57,5 +57,10 @@ def test_core_render_performance_smoke(tmp_path, capsys):
     assert elapsed >= 0.0
     assert model.row_count == size // 16
     assert rendered_lines
-    assert rendered_lines[0] == "0x00000000"
+    assert rendered_lines[0].startswith("0x00000000  left.bin")
+    assert "11 36 5b 80" in rendered_lines[0]
+    assert all(line.strip() != "0x00000000" for line in rendered_lines)
+    offset_gutter = " " * len("0x00000000")
+    assert rendered_lines[1].startswith(offset_gutter)
+    assert rendered_lines[2].startswith(offset_gutter)
     assert any("!=" in line for line in rendered_lines)
