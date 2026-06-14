@@ -1,0 +1,17 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "unrecognized type",
+  "source_size": 16,
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 3,
+      "path": "field.a",
+      "type": "u24be",
+      "decoded": 66051
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 2
+  },
+  "name": "unsupported schema version",
+  "source_size": 16,
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "field.a",
+      "type": "u32le"
+    }
+  ]
+}

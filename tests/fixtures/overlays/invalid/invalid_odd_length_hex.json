@@ -1,0 +1,17 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "odd-length hex preview",
+  "source_size": 16,
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 2,
+      "path": "field.a",
+      "type": "u16le",
+      "raw_hex_preview": "abc"
+    }
+  ]
+}

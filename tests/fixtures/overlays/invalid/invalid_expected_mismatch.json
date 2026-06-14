@@ -1,0 +1,21 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "status=ok but expected_hex != actual bytes",
+  "source_file": "sample16.bin",
+  "source_size": 16,
+  "source_sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "magic",
+      "kind": "identifier",
+      "type": "u32be",
+      "expected_hex": "deadbeef",
+      "status": "ok"
+    }
+  ]
+}

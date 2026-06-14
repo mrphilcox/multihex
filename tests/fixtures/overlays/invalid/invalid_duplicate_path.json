@@ -1,0 +1,22 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "duplicate path",
+  "source_size": 16,
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "header.magic",
+      "type": "u32le"
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "path": "header.magic",
+      "type": "u32le"
+    }
+  ]
+}

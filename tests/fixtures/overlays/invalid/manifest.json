@@ -1,0 +1,129 @@
+{
+  "companion_file": "sample16.bin",
+  "companion_sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991",
+  "note": "Each fixture isolates one defect. `expected_code`/`severity` are the diagnostic the multihex layout_overlay_v1 validator emits TODAY (asserted literally by tests/test_overlay_fixtures.py). `suggested_code` preserves the original snake_case name from layout-3.zip. `validator_gap: true` marks defects the validator does not yet detect (xfailed); see the plan/gap report.",
+  "fixtures": [
+    {
+      "file": "invalid_duplicate_path.json",
+      "layer": "structural",
+      "severity": "error",
+      "expected_code": "duplicate-path",
+      "suggested_code": "duplicate_path",
+      "description": "two ranges share path 'header.magic'"
+    },
+    {
+      "file": "invalid_unknown_type.json",
+      "layer": "structural",
+      "severity": "warning",
+      "expected_code": "unknown-type",
+      "suggested_code": "unrecognized_type",
+      "description": "type 'u24be' is not in the recognized set"
+    },
+    {
+      "file": "invalid_unknown_status.json",
+      "layer": "structural",
+      "severity": "error",
+      "expected_code": "bad-status",
+      "suggested_code": "invalid_status",
+      "description": "status 'valid' is outside the closed vocabulary"
+    },
+    {
+      "file": "invalid_odd_length_hex.json",
+      "layer": "structural",
+      "severity": "warning",
+      "expected_code": "malformed-hex",
+      "suggested_code": "malformed_hex",
+      "description": "raw_hex_preview 'abc' has odd length"
+    },
+    {
+      "file": "invalid_uppercase_hex.json",
+      "layer": "structural",
+      "severity": "warning",
+      "expected_code": "malformed-hex",
+      "suggested_code": "malformed_hex",
+      "description": "raw_hex_preview 'DEADBE' is not lowercase"
+    },
+    {
+      "file": "invalid_negative_offset.json",
+      "layer": "structural",
+      "severity": "error",
+      "expected_code": "bad-offset",
+      "suggested_code": "negative_offset",
+      "description": "offset is -1"
+    },
+    {
+      "file": "invalid_negative_length.json",
+      "layer": "structural",
+      "severity": "error",
+      "expected_code": "bad-length",
+      "suggested_code": "negative_length",
+      "description": "length is -4"
+    },
+    {
+      "file": "invalid_missing_length.json",
+      "layer": "structural",
+      "severity": "error",
+      "expected_code": "bad-length",
+      "suggested_code": "missing_required_field",
+      "description": "range has no 'length'; validator reports the missing required field as bad-length"
+    },
+    {
+      "file": "invalid_bad_schema_version.json",
+      "layer": "structural",
+      "severity": "error",
+      "expected_code": "unsupported-version",
+      "suggested_code": "unsupported_schema",
+      "description": "schema.version is 2 (validator handles v1)"
+    },
+    {
+      "file": "invalid_overlap.json",
+      "layer": "structural",
+      "severity": "warning",
+      "expected_code": "overlapping-ranges",
+      "suggested_code": "overlapping_ranges",
+      "validator_gap": true,
+      "description": "field.a [0,6) overlaps field.b [4,10); validator has no overlap detection yet (provisional expected_code)"
+    },
+    {
+      "file": "invalid_out_of_bounds.json",
+      "layer": "file-aware",
+      "severity": "warning",
+      "expected_code": "range-out-of-bounds",
+      "suggested_code": "out_of_bounds",
+      "description": "offset 12 + length 8 > file size 16"
+    },
+    {
+      "file": "invalid_size_mismatch.json",
+      "layer": "file-aware",
+      "severity": "warning",
+      "expected_code": "source-size-mismatch",
+      "suggested_code": "source_size_mismatch",
+      "description": "declared source_size 999 != actual 16"
+    },
+    {
+      "file": "invalid_sha_mismatch.json",
+      "layer": "file-aware",
+      "severity": "warning",
+      "expected_code": "source-sha256-mismatch",
+      "suggested_code": "source_sha256_mismatch",
+      "description": "declared sha256 does not match file"
+    },
+    {
+      "file": "invalid_preview_mismatch.json",
+      "layer": "file-aware",
+      "severity": "warning",
+      "expected_code": "raw-preview-mismatch",
+      "suggested_code": "preview_mismatch",
+      "description": "raw_hex_preview ffffffff != actual 00010203"
+    },
+    {
+      "file": "invalid_expected_mismatch.json",
+      "layer": "file-aware",
+      "severity": "error",
+      "expected_code": "expected-mismatch",
+      "suggested_code": "expected_mismatch",
+      "validator_gap": true,
+      "description": "status=ok but expected_hex deadbeef != actual 00010203; validator does not compare expected_hex against file bytes yet (provisional expected_code)"
+    }
+  ]
+}

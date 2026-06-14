@@ -1,0 +1,18 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "declared source_sha256 != actual",
+  "source_file": "sample16.bin",
+  "source_size": 16,
+  "source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "field.a",
+      "type": "u32le"
+    }
+  ]
+}

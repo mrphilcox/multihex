@@ -1,0 +1,15 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "range missing required length",
+  "source_size": 16,
+  "ranges": [
+    {
+      "offset": 0,
+      "path": "field.a",
+      "type": "u32le"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "overlapping leaf ranges",
+  "source_size": 16,
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 6,
+      "path": "field.a",
+      "type": "bytes"
+    },
+    {
+      "offset": 4,
+      "length": 6,
+      "path": "field.b",
+      "type": "bytes"
+    }
+  ]
+}

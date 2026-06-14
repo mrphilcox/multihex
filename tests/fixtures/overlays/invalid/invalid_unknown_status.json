@@ -1,0 +1,17 @@
+{
+  "schema": {
+    "name": "bintools.layout-overlay",
+    "version": 1
+  },
+  "name": "status outside closed vocabulary",
+  "source_size": 16,
+  "ranges": [
+    {
+      "offset": 0,
+      "length": 4,
+      "path": "field.a",
+      "type": "u32le",
+      "status": "valid"
+    }
+  ]
+}
