@@ -12,6 +12,7 @@ _(nothing in flight — pick the next item from Near-term)_
 
 ## Near-term
 
+- [ ] **Single file viewing should not show markers by default.**
 - [ ] **Persist the TUI text-search case-insensitive preference (optional).** The
       `multihex-tui` text-search panel has a "Case-insensitive (ASCII)" checkbox
       whose state is remembered for the running session only. If desired, promote
