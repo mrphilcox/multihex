@@ -14,8 +14,12 @@ expected CLI output is stored in `tests/goldens/*.out`.
 - `python3 multihex.py FILE1 FILE2 --json`: run the batch CLI locally.
 - `python3 multihex.py --offset 0x40 --length 0x80 FILE1 FILE2`: inspect a
   fixed byte range.
+- `python3 multihex.py --search-text RIFF FILE1 FILE2`: exact text search;
+  `--search-hex "52 49 46 46"` for bytes, `--search-ignore-case` (ASCII) and
+  `--search-context N` are also available.
 - `python3 multihex-tui.py FILE1 FILE2`: run the TUI; requires `textual` and
-  `rich` to be installed in the active environment.
+  `rich` to be installed in the active environment. Search keys: `/` text,
+  `x` hex, `n` next, `N`/`p` previous.
 - `python3 -m pytest`: run all tests.
 - `python3 tests/capture_goldens.py`: regenerate golden output files after an
   intentional CLI rendering change.
@@ -50,4 +54,6 @@ changes that affect display behavior.
 
 Preserve fixed-offset comparison semantics: no byte alignment, resync, or
 inference. Missing bytes render as `--`, and marker behavior should remain
-centralized in `HexModel`.
+centralized in `HexModel`. Search is exact too — it reports observed byte
+matches only, with no wildcards or inference — and its semantics
+(`parse_hex_pattern`, `search_files`, navigation helpers) stay in the core.

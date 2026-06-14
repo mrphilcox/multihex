@@ -8,6 +8,7 @@ behave identically. It provides:
   * the row model           -> HexModel / Row
   * marker computation      -> HexModel._markers()
   * cell formatting         -> format_byte() / format_ascii() / render_row_text()
+  * exact search            -> SearchQuery / search_files() / navigation helpers
 
 Design notes / semantics (per spec):
   * Always compare *fixed* offsets. No inference, no resync, no alignment.
@@ -28,7 +29,7 @@ import enum
 import mmap
 import os
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Union
+from typing import Iterator, List, Optional, Sequence, Tuple, Union
 
 
 def parse_int(text: str) -> int:
@@ -208,6 +209,20 @@ class HexModel:
         idx = (offset - self.start_offset) // self.width
         return min(idx, self.row_count - 1)
 
+    def locate(self, offset: int) -> Optional[Tuple[int, int]]:
+        """Map an absolute ``offset`` to its ``(row_index, column)`` in the grid.
+
+        Uses the same fixed grid the renderer does: row ``i`` starts at
+        ``start_offset + i * width``. Returns ``None`` for offsets before the
+        grid start. The row index is unbounded (it may point past a bounded
+        window's last visible row); callers that only want visible rows can
+        clamp with :meth:`index_for_offset`.
+        """
+        if offset < self.start_offset:
+            return None
+        rel = offset - self.start_offset
+        return rel // self.width, rel % self.width
+
     def build_row(self, index: int) -> Row:
         off = self.row_offset(index)
         ncols = self._row_width(off)
@@ -293,3 +308,304 @@ def render_row_text(
         marks = " ".join(format_marker(m) for m in row.markers)
         lines.append(prefix + marks)
     return lines
+
+
+# --------------------------------------------------------------------------- #
+# Exact search
+# --------------------------------------------------------------------------- #
+# Search is *exact*: it reports observed byte matches only. It never infers
+# structure, alignment, or format, and it has no wildcards. The same semantics
+# back both frontends; only UI glue lives in multihex.cli / multihex.tui.
+
+
+class SearchError(ValueError):
+    """A search query could not be built (bad hex, empty pattern, ...).
+
+    Carries a human-readable message suitable for showing directly to the user
+    (CLI exit message / TUI status line).
+    """
+
+
+# ASCII-only case fold (A-Z -> a-z). Bytes outside A-Z are left untouched, so
+# case-insensitive matching is reliable for ASCII letters only; non-ASCII case
+# folding is intentionally *not* attempted by this byte-oriented scheme.
+_ASCII_FOLD = bytes.maketrans(
+    bytes(range(0x41, 0x5B)), bytes(range(0x61, 0x7B))
+)
+
+_HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
+
+
+@dataclass(frozen=True)
+class SearchQuery:
+    """A fully-parsed, frontend-independent search request.
+
+    ``needle`` is the exact byte sequence to look for. ``case_sensitive`` only
+    has meaning for text mode (hex is always exact). ``file_index`` selects a
+    single file, or None to search every file.
+    """
+
+    mode: str            # "text" | "hex"
+    pattern: str         # original user string (for echoing in status output)
+    needle: bytes        # exact bytes to search for
+    case_sensitive: bool = True
+    file_index: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class SearchMatch:
+    """One exact occurrence of a query's needle in one file.
+
+    ``row_index`` / ``column`` locate the match's *first* byte in a model grid
+    and are filled only when :func:`search_files` is given a ``model``.
+    """
+
+    file_index: int
+    path: str
+    offset: int
+    length: int
+    matched: bytes
+    row_index: Optional[int] = None
+    column: Optional[int] = None
+
+
+def parse_hex_pattern(text: str) -> bytes:
+    """Parse a flexible hex byte pattern into raw bytes.
+
+    Accepts whitespace, ``:``, ``-`` and ``,`` separators and optional ``0x``
+    prefixes per token, e.g. all of these yield ``b"\\xde\\xad\\xbe\\xef"``::
+
+        "DE AD BE EF"  "deadbeef"  "0xDE 0xAD 0xBE 0xEF"
+        "DE:AD:BE:EF"  "de-ad-be-ef"  "DE,AD,BE,EF"
+
+    Raises :class:`SearchError` (with a useful message) on empty input, an odd
+    number of hex digits, non-hex characters, or a bare ``0x`` token. There is
+    no wildcard support.
+    """
+    s = (text or "").strip()
+    if not s:
+        raise SearchError("empty hex query")
+    # Normalise every accepted separator to a space, then tokenise.
+    for sep in ":-,":
+        s = s.replace(sep, " ")
+    digits: List[str] = []
+    for token in s.split():
+        body = token
+        if body[:2] in ("0x", "0X"):
+            body = body[2:]
+            if not body:
+                raise SearchError(f'invalid hex token "{token}" (0x with no digits)')
+        for ch in body:
+            if ch not in _HEX_DIGITS:
+                raise SearchError(f'invalid hex byte "{token}"')
+        digits.append(body)
+    joined = "".join(digits)
+    if not joined:
+        raise SearchError("empty hex query")
+    if len(joined) % 2 != 0:
+        raise SearchError(f"odd number of hex digits in {text!r} (need whole bytes)")
+    return bytes.fromhex(joined)
+
+
+def make_text_query(
+    pattern: str,
+    *,
+    case_sensitive: bool = True,
+    file_index: Optional[int] = None,
+) -> SearchQuery:
+    """Build a UTF-8 text query. Empty pattern -> :class:`SearchError`."""
+    if pattern == "":
+        raise SearchError("empty search text")
+    return SearchQuery(
+        mode="text",
+        pattern=pattern,
+        needle=pattern.encode("utf-8"),
+        case_sensitive=case_sensitive,
+        file_index=file_index,
+    )
+
+
+def make_hex_query(
+    pattern: str,
+    *,
+    file_index: Optional[int] = None,
+) -> SearchQuery:
+    """Build a hex query (always case-sensitive). Invalid -> :class:`SearchError`."""
+    return SearchQuery(
+        mode="hex",
+        pattern=pattern,
+        needle=parse_hex_pattern(pattern),
+        case_sensitive=True,
+        file_index=file_index,
+    )
+
+
+def _find_in_file(
+    f: HexFile, query: SearchQuery, overlap: bool
+) -> Iterator[Tuple[int, bytes]]:
+    """Yield ``(offset, matched_bytes)`` for every match of ``query`` in ``f``.
+
+    Matches are produced in ascending-offset order. ``matched_bytes`` is always
+    read from the original file data (not the case-folded copy).
+    """
+    needle = query.needle
+    n = len(needle)
+    if n == 0:
+        return
+    if query.mode == "text" and not query.case_sensitive:
+        # mmap has no .translate, so fold a full bytes copy of the file. This
+        # copies the whole file for case-insensitive search (documented cost).
+        haystack: Union[bytes, mmap.mmap] = bytes(f.data).translate(_ASCII_FOLD)
+        needle = needle.translate(_ASCII_FOLD)
+    else:
+        # Case-sensitive / hex: search the backing buffer directly. Both
+        # mmap.mmap and bytes support .find(sub, start) with no copy.
+        haystack = f.data
+    step = 1 if overlap else n
+    start = 0
+    while True:
+        idx = haystack.find(needle, start)
+        if idx < 0:
+            return
+        yield idx, bytes(f.data[idx:idx + n])
+        start = idx + step
+
+
+def search_files(
+    files: Sequence[HexFile],
+    query: SearchQuery,
+    *,
+    max_results: Optional[int] = None,
+    overlap: bool = False,
+    model: Optional[HexModel] = None,
+) -> List[SearchMatch]:
+    """Search ``files`` for ``query.needle`` and return ordered matches.
+
+    Results are ordered deterministically by ``(file_index, offset)``. Matches
+    are non-overlapping by default; pass ``overlap=True`` to also report
+    overlapping occurrences (e.g. ``AA AA`` at offsets 0 and 1 in ``AA AA AA``).
+    ``max_results`` caps the total number returned. When ``model`` is given,
+    each match's ``row_index``/``column`` is filled via :meth:`HexModel.locate`.
+
+    Iteration order already yields matches sorted by ``(file_index, offset)``,
+    so an early ``max_results`` cut keeps the deterministic prefix.
+    """
+    if query.file_index is not None:
+        if not (0 <= query.file_index < len(files)):
+            raise SearchError(
+                f"file index {query.file_index} out of range 0..{len(files) - 1}"
+            )
+        indices: Sequence[int] = (query.file_index,)
+    else:
+        indices = range(len(files))
+
+    matches: List[SearchMatch] = []
+    for fi in indices:
+        f = files[fi]
+        for offset, matched in _find_in_file(f, query, overlap):
+            row_index = column = None
+            if model is not None:
+                located = model.locate(offset)
+                if located is not None:
+                    row_index, column = located
+            matches.append(
+                SearchMatch(
+                    file_index=fi,
+                    path=f.path,
+                    offset=offset,
+                    length=len(matched),
+                    matched=matched,
+                    row_index=row_index,
+                    column=column,
+                )
+            )
+            if max_results is not None and len(matches) >= max_results:
+                return matches
+    return matches
+
+
+# --------------------------------------------------------------------------- #
+# Search navigation (index-based; deterministic; optional wraparound)
+# --------------------------------------------------------------------------- #
+# These operate on a result list already ordered by (file_index, offset) as
+# returned by search_files(). They return an *index* into that list (or None),
+# which is exactly what a frontend tracking a "current match" needs.
+
+
+def _match_key(m: SearchMatch) -> Tuple[int, int]:
+    return (m.file_index, m.offset)
+
+
+def first_match_index(matches: Sequence[SearchMatch]) -> Optional[int]:
+    """Index of the first match, or None if there are none."""
+    return 0 if matches else None
+
+
+def next_match_index(
+    matches: Sequence[SearchMatch], current: int, *, wrap: bool = True
+) -> Optional[int]:
+    """Index after ``current``; wraps to 0 past the end when ``wrap``."""
+    n = len(matches)
+    if n == 0:
+        return None
+    if current + 1 < n:
+        return current + 1
+    return 0 if wrap else None
+
+
+def prev_match_index(
+    matches: Sequence[SearchMatch], current: int, *, wrap: bool = True
+) -> Optional[int]:
+    """Index before ``current``; wraps to the last match when ``wrap``."""
+    n = len(matches)
+    if n == 0:
+        return None
+    if current - 1 >= 0:
+        return current - 1
+    return n - 1 if wrap else None
+
+
+def match_index_after(
+    matches: Sequence[SearchMatch],
+    file_index: int,
+    offset: int,
+    *,
+    inclusive: bool = True,
+    wrap: bool = True,
+) -> Optional[int]:
+    """First match at/after ``(file_index, offset)`` in result order.
+
+    With ``inclusive`` a match exactly at the key counts. When nothing is at or
+    after the key and ``wrap`` is set, returns the first match (index 0).
+    """
+    if not matches:
+        return None
+    key = (file_index, offset)
+    for i, m in enumerate(matches):
+        mk = _match_key(m)
+        if (mk >= key) if inclusive else (mk > key):
+            return i
+    return 0 if wrap else None
+
+
+def match_index_before(
+    matches: Sequence[SearchMatch],
+    file_index: int,
+    offset: int,
+    *,
+    inclusive: bool = True,
+    wrap: bool = True,
+) -> Optional[int]:
+    """Last match at/before ``(file_index, offset)`` in result order.
+
+    With ``inclusive`` a match exactly at the key counts. When nothing is at or
+    before the key and ``wrap`` is set, returns the last match.
+    """
+    if not matches:
+        return None
+    key = (file_index, offset)
+    for i in range(len(matches) - 1, -1, -1):
+        mk = _match_key(matches[i])
+        if (mk <= key) if inclusive else (mk < key):
+            return i
+    return len(matches) - 1 if wrap else None

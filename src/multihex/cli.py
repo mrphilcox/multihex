@@ -4,10 +4,15 @@ Display the same offset range across several binary files so you can compare the
 byte values that live at identical offsets. This is an exact display tool, not an
 inference tool: it shows what bytes are present, not what they mean.
 
+It can also search the loaded files for an exact byte sequence (text or hex) and
+report where it occurs; search is exact and reports observed matches only.
+
 Examples:
     multihex file1.bin file2.bin file3.bin
     multihex --offset 0x40 --length 0x80 *.bin
     multihex --width 16 --ascii *.bin
+    multihex --search-text RIFF file1.bin file2.bin
+    multihex --search-hex "52 49 46 46" --search-context 2 file1.bin
 """
 
 import argparse
@@ -18,12 +23,18 @@ import sys
 from multihex.core import (
     HexModel,
     Marker,
+    SearchError,
+    SearchMatch,
     format_ascii_char,
     format_byte,
     format_marker,
     load_files,
+    make_hex_query,
+    make_text_query,
     marker_prefix_width,
     parse_int,
+    render_row_text,
+    search_files,
 )
 
 RED = "\033[31m"
@@ -76,6 +87,24 @@ def build_parser():
                    help="show a window of N bytes centered on OFF (overrides --offset/--length)")
     p.add_argument("--json", dest="as_json", action="store_true",
                    help="emit machine-readable JSON rows")
+
+    # -- search (exact byte/text match; reports observed matches only) ------- #
+    search = p.add_argument_group("search")
+    mode = search.add_mutually_exclusive_group()
+    mode.add_argument("--search-text", metavar="TEXT", default=None,
+                      help="search for literal UTF-8 text (e.g. RIFF, Content-Type)")
+    mode.add_argument("--search-hex", metavar="HEX", default=None,
+                      help="search for a hex byte pattern (e.g. 'DE AD BE EF', deadbeef)")
+    search.add_argument("--search-ignore-case", action="store_true",
+                        help="case-insensitive text search (ASCII letters only)")
+    search.add_argument("--search-file", metavar="INDEX_OR_NAME", default=None,
+                        help="restrict the search to one file (0-based index or a name)")
+    search.add_argument("--search-context", type=parse_int, default=None, metavar="N",
+                        help="render N comparison rows of context around each match")
+    search.add_argument("--search-max-results", type=parse_int, default=None, metavar="N",
+                        help="stop after N matches")
+    search.add_argument("--search-overlap", action="store_true",
+                        help="also report overlapping matches (default: non-overlapping)")
     return p
 
 
@@ -146,6 +175,103 @@ def build_json_row(row, names):
     return {"offset": row.offset, "markers": markers, "files": files}
 
 
+def _resolve_search_file(spec, files, names):
+    """Resolve --search-file (0-based index or a name) to a file index."""
+    try:
+        idx = parse_int(spec)
+    except ValueError:
+        idx = None
+    if idx is not None and 0 <= idx < len(files):
+        return idx
+    for i, f in enumerate(files):
+        if spec in (names[i], f.path, os.path.basename(f.path)):
+            return i
+    sys.exit(f"multihex: --search-file {spec!r} did not match any file")
+
+
+def _format_match_line(match: SearchMatch, names):
+    """One script-friendly line describing a match (see module examples)."""
+    hexbytes = " ".join(format_byte(b) for b in match.matched)
+    ascii_s = "".join(format_ascii_char(b) for b in match.matched)
+    return (
+        f"file={match.file_index} path={names[match.file_index]} "
+        f"offset=0x{match.offset:08x} len={match.length} "
+        f'match={hexbytes} ascii="{ascii_s}"'
+    )
+
+
+def run_search(args, files, names, name_w):
+    """Run search and print results (+ optional context); never returns a dump.
+
+    Search short-circuits the normal comparison output: when a --search-* flag
+    is given this is the only thing the tool prints, so the standard rendering
+    (and its goldens) are unaffected when no search flag is present.
+    """
+    file_index = None
+    if args.search_file is not None:
+        file_index = _resolve_search_file(args.search_file, files, names)
+
+    try:
+        if args.search_text is not None:
+            query = make_text_query(
+                args.search_text,
+                case_sensitive=not args.search_ignore_case,
+                file_index=file_index,
+            )
+        else:
+            query = make_hex_query(args.search_hex, file_index=file_index)
+    except SearchError as exc:
+        sys.exit(f"multihex: {exc}")
+
+    if args.search_context is not None and args.search_context < 0:
+        sys.exit("multihex: --search-context must be >= 0")
+
+    # A full-file model (length=None -> derived from the largest file) so matches
+    # anywhere in a file get a row/column and renderable context, independent of
+    # any display --offset/--length window.
+    model = HexModel(files, start_offset=0, width=args.width, length=None)
+
+    try:
+        matches = search_files(
+            files,
+            query,
+            max_results=args.search_max_results,
+            overlap=args.search_overlap,
+            model=model,
+        )
+    except SearchError as exc:
+        sys.exit(f"multihex: {exc}")
+
+    if not matches:
+        print(f"multihex: no matches for {query.pattern!r}", file=sys.stderr)
+        return
+
+    context = args.search_context
+    out = []
+    for mi, match in enumerate(matches):
+        out.append(_format_match_line(match, names))
+        if context:
+            row_index = match.row_index
+            if row_index is None:
+                row_index = model.index_for_offset(match.offset)
+            lo = max(0, row_index - context)
+            hi = min(model.row_count - 1, row_index + context)
+            for i in range(lo, hi + 1):
+                out.extend(
+                    render_row_text(
+                        model.build_row(i),
+                        files,
+                        name_mode=args.names,
+                        ascii_on=args.ascii,
+                        name_width=name_w,
+                    )
+                )
+            # blank line between context blocks for readability
+            if mi != len(matches) - 1:
+                out.append("")
+    print("\n".join(out))
+
+
 def main(argv=None):
     args = build_parser().parse_args(argv)
 
@@ -180,6 +306,12 @@ def main(argv=None):
 
     names = [os.path.basename(f) if args.names == "basename" else f for f in args.files]
     name_w = max((len(n) for n in names), default=0)
+
+    # Search short-circuits the normal dump; existing output is untouched when
+    # no --search-* flag is present.
+    if args.search_text is not None or args.search_hex is not None:
+        run_search(args, files, names, name_w)
+        return
 
     if args.ref is not None and not (0 <= args.ref < len(args.files)):
         sys.exit(f"multihex: --ref {args.ref} out of range (have {len(args.files)} files)")

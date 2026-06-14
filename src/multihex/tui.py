@@ -20,6 +20,10 @@ Keys:
     a             toggle ASCII gutter
     d             toggle only-diff rows
     c             toggle color/highlighting
+    /             text search
+    x             hex search
+    n             next match
+    N / p         previous match
     h / ?         help
 """
 
@@ -35,13 +39,21 @@ from multihex.core import (
     HexModel,
     Marker,
     Row,
+    SearchError,
+    SearchMatch,
+    first_match_index,
     format_ascii_char,
     format_byte,
     format_marker,
     load_files,
+    make_hex_query,
+    make_text_query,
     marker_prefix_width,
     name_column_width,
+    next_match_index,
     parse_int,
+    prev_match_index,
+    search_files,
 )
 
 # Textual is only required to *run* the TUI. Import lazily-ish so that
@@ -65,6 +77,9 @@ except ImportError as exc:  # pragma: no cover - depends on environment
 _DIFF_STYLE = "bold red"
 _OFFSET_STYLE = "bold cyan"
 _REF_STYLE = "bold yellow"
+# Search highlight: the current match stands out more strongly than the others.
+_SEARCH_STYLE = "black on yellow"
+_SEARCH_CUR_STYLE = "bold black on bright_yellow"
 
 
 if _TEXTUAL_IMPORT_ERROR is None:
@@ -99,6 +114,13 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.top = 0  # position into visible_indices()
             self._visible: Optional[Union[range, List[int]]] = None
             self._page_rows = 1
+            # Search highlight state (driven by the app). ``search_current`` is
+            # the strongly-highlighted match; ``_search_covered`` is the set of
+            # every matched (file_index, absolute_offset) for the milder
+            # "other matches" highlight. Empty when no search is active.
+            self.search_matches: List[SearchMatch] = []
+            self.search_current: Optional[SearchMatch] = None
+            self._search_covered: set = set()
 
         # -- visible-index (only-diff) management --------------------------- #
         def visible_indices(self) -> Union[range, List[int]]:
@@ -191,6 +213,49 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self._clamp_top()
             self.refresh()
 
+        # -- search highlight ----------------------------------------------- #
+        def set_search(
+            self,
+            matches: List[SearchMatch],
+            current_index: Optional[int],
+        ) -> None:
+            """Install a new result set and recompute the highlight coverage."""
+            self.search_matches = matches
+            covered: set = set()
+            for m in matches:
+                for off in range(m.offset, m.offset + m.length):
+                    covered.add((m.file_index, off))
+            self._search_covered = covered
+            self.set_current_match(current_index)
+
+        def set_current_match(self, index: Optional[int]) -> None:
+            """Point the strong highlight at result ``index`` (or clear it)."""
+            if self.search_matches and index is not None:
+                self.search_current = self.search_matches[index]
+            else:
+                self.search_current = None
+            self.refresh()
+
+        def _cell_style(self, fi: int, abs_off: int, marker: Marker) -> str:
+            """Style for one file's byte cell.
+
+            Display priority (only matters when colour is on): a missing byte is
+            never part of a match, so it never reaches a search branch; among
+            present bytes the order is current search match > other search match
+            > diff/stability marker.
+            """
+            if self.color_on:
+                cur = self.search_current
+                if (
+                    cur is not None
+                    and fi == cur.file_index
+                    and cur.offset <= abs_off < cur.offset + cur.length
+                ):
+                    return _SEARCH_CUR_STYLE
+                if (fi, abs_off) in self._search_covered:
+                    return _SEARCH_STYLE
+            return self._style(_DIFF_STYLE) if marker is not Marker.SAME else ""
+
         # -- rendering ------------------------------------------------------ #
         def render(self) -> "Text":
             height = self.size.height or 24
@@ -225,14 +290,14 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 text.append(name, style=name_style)
                 text.append("  ")
                 for ci in range(model.width):
-                    cell_style = diff if row.markers[ci] is not Marker.SAME else ""
+                    cell_style = self._cell_style(fi, row.offset + ci, row.markers[ci])
                     text.append(format_byte(row_bytes[ci]), style=cell_style)
                     if ci != model.width - 1:
                         text.append(" ")
                 if self.ascii_on:
                     text.append("  |")
                     for ci in range(model.width):
-                        cell_style = diff if row.markers[ci] is not Marker.SAME else ""
+                        cell_style = self._cell_style(fi, row.offset + ci, row.markers[ci])
                         text.append(format_ascii_char(row_bytes[ci]), style=cell_style)
                     text.append("|")
                 text.append("\n")
@@ -301,6 +366,10 @@ if _TEXTUAL_IMPORT_ERROR is None:
             "  a             toggle ASCII gutter\n"
             "  d             toggle only-diff rows\n"
             "  c             toggle color\n"
+            "  /             text search\n"
+            "  x             hex search\n"
+            "  n             next match\n"
+            "  N / p         previous match\n"
             "  h / ?         this help\n\n"
             "  (any key to close)"
         )
@@ -321,6 +390,12 @@ if _TEXTUAL_IMPORT_ERROR is None:
             color: $text-muted; background: $panel;
             padding: 0 1;
         }
+        #search_status {
+            height: 1; dock: bottom;
+            color: $text; background: $panel;
+            padding: 0 1;
+            display: none;
+        }
         """
 
         BINDINGS = [
@@ -336,6 +411,11 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Binding("a", "toggle_ascii", "ASCII"),
             Binding("d", "toggle_diff", "Only-diff"),
             Binding("c", "toggle_color", "Color"),
+            Binding("slash", "search_text", "Search"),
+            Binding("x", "search_hex", "Hex search"),
+            Binding("n", "next_match", "Next", show=False),
+            Binding("N", "prev_match", "Prev", show=False),
+            Binding("p", "prev_match", "Prev", show=False),
             Binding("h", "help", "Help", show=False),
             Binding("question_mark", "help", "Help"),
         ]
@@ -358,15 +438,22 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 color_on=color_on,
                 name_mode=name_mode,
             )
+            # Search state lives on the app; the view only renders highlights.
+            self.search_query = None
+            self.search_matches: List[SearchMatch] = []
+            self.search_index: Optional[int] = None
+            self.search_error: Optional[str] = None
 
         def compose(self) -> "ComposeResult":
             yield Header()
             yield self.view
+            yield Static(id="search_status")
             yield Static(id="status")
             yield Footer()
 
         def on_mount(self) -> None:
             self.update_status()
+            self.update_search_status()
 
         def on_resize(self, event) -> None:
             self.update_status()
@@ -416,6 +503,36 @@ if _TEXTUAL_IMPORT_ERROR is None:
             status.update(
                 f"{where} | ref={ref_label} | {toggles} | sizes: {sizes}"
             )
+
+        def update_search_status(self) -> None:
+            """Refresh the dedicated search line (hidden when no search runs)."""
+            try:
+                widget = self.query_one("#search_status", Static)
+            except Exception:
+                return
+
+            if self.search_error is not None:
+                widget.update(f"Search error: {self.search_error}")
+                widget.display = True
+                return
+
+            q = self.search_query
+            if q is None:
+                widget.update("")
+                widget.display = False
+                return
+
+            label = f'{q.mode} "{q.pattern}"'
+            if not self.search_matches:
+                widget.update(f"Search: {label} | no matches")
+            else:
+                cur = self.search_index or 0
+                m = self.search_matches[cur]
+                widget.update(
+                    f"Search: {label} | match {cur + 1}/{len(self.search_matches)} "
+                    f"| file {m.file_index} | offset 0x{m.offset:08x}"
+                )
+            widget.display = True
 
         # -- actions -------------------------------------------------------- #
         def action_next_row(self) -> None:
@@ -495,6 +612,79 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 self.update_status()
 
             self.push_screen(_PromptScreen("Index or 'a':", body), handle)
+
+        # -- search --------------------------------------------------------- #
+        def action_search_text(self) -> None:
+            self.push_screen(
+                _PromptScreen("Search text (UTF-8):"),
+                lambda v: self._run_search("text", v),
+            )
+
+        def action_search_hex(self) -> None:
+            self.push_screen(
+                _PromptScreen("Search hex (e.g. DE AD BE EF):"),
+                lambda v: self._run_search("hex", v),
+            )
+
+        def _run_search(self, mode: str, value: Optional[str]) -> None:
+            """Build a query, replace search state, and jump to the first match.
+
+            Invalid input sets an error status and never crashes; an empty/
+            cancelled prompt leaves the previous search untouched.
+            """
+            if value is None or not value.strip():
+                return
+            text = value.strip()
+            try:
+                if mode == "text":
+                    query = make_text_query(text)
+                else:
+                    query = make_hex_query(text)
+            except SearchError as exc:
+                self.search_error = str(exc)
+                self.search_query = None
+                self.search_matches = []
+                self.search_index = None
+                self.view.set_search([], None)
+                self.update_search_status()
+                return
+
+            self.search_error = None
+            self.search_query = query
+            self.search_matches = search_files(
+                self.model.files, query, model=self.model
+            )
+            self.search_index = first_match_index(self.search_matches)
+            self.view.set_search(self.search_matches, self.search_index)
+            if self.search_index is not None:
+                self._jump_to_current_match()
+            self.update_status()
+            self.update_search_status()
+
+        def action_next_match(self) -> None:
+            self._step_match(next_match_index)
+
+        def action_prev_match(self) -> None:
+            self._step_match(prev_match_index)
+
+        def _step_match(self, picker) -> None:
+            if not self.search_matches:
+                self.bell()
+                return
+            self.search_index = picker(self.search_matches, self.search_index or 0)
+            self.view.set_current_match(self.search_index)
+            self._jump_to_current_match()
+            self.update_search_status()
+
+        def _jump_to_current_match(self) -> None:
+            if self.search_index is None:
+                return
+            match = self.search_matches[self.search_index]
+            # Navigate the view to the match's offset. If only-diff is on and the
+            # match's row isn't a diff row, jump_to_offset snaps to the nearest
+            # visible row (the offset is still shown in the search status line).
+            self.view.jump_to_offset(match.offset)
+            self.update_status()
 
 
 # --------------------------------------------------------------------------- #
