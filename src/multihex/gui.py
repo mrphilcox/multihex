@@ -1130,9 +1130,16 @@ if _PYSIDE6_IMPORT_ERROR is None:
             never crashes; an empty/cancelled value leaves the previous search
             untouched. Factored out of the dialog so tests drive it directly.
             """
-            if self.model is None or value is None or not value.strip():
+            if self.model is None or value is None:
                 return
-            text = value.strip()
+            if mode == "text":
+                text = value
+                if text == "":
+                    return
+            else:
+                text = value.strip()
+                if not text:
+                    return
             try:
                 if mode == "text":
                     query = make_text_query(text, case_sensitive=not ignore_case)

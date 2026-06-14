@@ -123,6 +123,39 @@ def test_hex_search_matches_text():
     asyncio.run(go())
 
 
+def test_text_search_preserves_significant_whitespace():
+    async def go():
+        f1 = HexFile("a.bin", b"xx RIFF yy   zzRIFF")
+        model = HexModel([f1], width=16)
+        app = tui.MultiHexApp(
+            model, ascii_on=True, only_diff=False, color_on=True,
+            name_mode="basename",
+        )
+        async with app.run_test() as pilot:
+            app._run_search("text", " RIFF ")
+            await pilot.pause()
+            assert [m.offset for m in app.search_matches] == [2]
+            assert app.search_query.pattern == " RIFF "
+            assert app.search_query.needle == b" RIFF "
+
+            app._run_search("text", "   ")
+            await pilot.pause()
+            assert [m.offset for m in app.search_matches] == [10]
+            assert app.search_query.pattern == "   "
+            assert app.search_query.needle == b"   "
+
+            matches = app.search_matches
+            query = app.search_query
+            index = app.search_index
+            app._run_search("hex", "   ")
+            await pilot.pause()
+            assert app.search_matches is matches
+            assert app.search_query is query
+            assert app.search_index == index
+
+    asyncio.run(go())
+
+
 def _mixed_case_app():
     f1 = HexFile("a.bin", b"FooFOOfoo")
     model = HexModel([f1], width=16)

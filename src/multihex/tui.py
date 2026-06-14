@@ -1222,9 +1222,16 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Invalid input sets an error status and never crashes; an empty/
             cancelled prompt leaves the previous search untouched.
             """
-            if value is None or not value.strip():
+            if value is None:
                 return
-            text = value.strip()
+            if mode == "text":
+                text = value
+                if text == "":
+                    return
+            else:
+                text = value.strip()
+                if not text:
+                    return
             try:
                 if mode == "text":
                     query = make_text_query(

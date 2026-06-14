@@ -314,6 +314,32 @@ def test_search_hex_matches_bytes_not_ascii(app, tmp_path):
     w.close()
 
 
+def test_text_search_preserves_significant_whitespace(app, tmp_path):
+    data = b"xx RIFF yy   zzRIFF"
+    a = _write(tmp_path, "a.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a])
+
+    w.run_search("text", " RIFF ")
+    assert [m.offset for m in w.search_matches] == [2]
+    assert w.search_query.pattern == " RIFF "
+    assert w.search_query.needle == b" RIFF "
+
+    w.run_search("text", "   ")
+    assert [m.offset for m in w.search_matches] == [10]
+    assert w.search_query.pattern == "   "
+    assert w.search_query.needle == b"   "
+
+    matches = w.search_matches
+    query = w.search_query
+    index = w.search_index
+    w.run_search("hex", "   ")
+    assert w.search_matches is matches
+    assert w.search_query is query
+    assert w.search_index == index
+    w.close()
+
+
 def test_search_cleared_on_file_reload(app, tmp_path):
     data = bytes(64)
     a = _write(tmp_path, "a.bin", data)
