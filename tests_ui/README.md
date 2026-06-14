@@ -77,6 +77,21 @@ scripts/ui-tests/update_snapshots.sh -k snapshot_diff_view # one
 
 SVG baselines live under `tests_ui/__snapshots__/` and are committed.
 
+## Snapshot determinism (across Rich/Textual versions)
+
+Rich's SVG export namespaces its CSS classes/ids with a `unique_id` that, left
+to its default, is a *version-dependent* value like `terminal-<random>`.
+`pytest-textual-snapshot` only normalizes the purely-numeric form, so committed
+baselines could otherwise fail for contributors whose installed Rich/Textual
+emit a different id scheme. `conftest.py` pins that id to `terminal-0` (which
+the plugin normalizes back to `terminal-matrix`), making the selectors stable
+regardless of version. This affects **only** the generated identifier — visible
+content and layout are unchanged, so the snapshots still catch real rendering
+regressions. Because of this, the `[ui-test]` extra deliberately does **not**
+pin Rich/Textual. An intentional renderer upgrade that changes *visible* output
+still shows up as a snapshot diff; regenerate with `update_snapshots.sh` and
+review the diff as usual.
+
 ## Fixtures
 
 `fixtures_ui.py` builds tiny, deterministic, format-agnostic binaries (no

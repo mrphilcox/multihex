@@ -3,3 +3,5 @@ __pycache__/
 
 # Generated GUI render artifacts from the opt-in UI test suite (tests_ui/).
 tests_ui/_artifacts/
+# pytest-textual-snapshot's HTML report (written to the repo root on a UI run).
+snapshot_report.html
