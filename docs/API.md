@@ -1,8 +1,8 @@
 # `multihex.core` API reference
 
-`multihex.core` is the stdlib-only engine behind both frontends. You can import it
-directly to load files, build the fixed-offset comparison grid, and run exact
-searches in your own programs. Everything below is importable from
+`multihex.core` is the stdlib-only engine behind the CLI, TUI, and GUI. You can
+import it directly to load files, build the fixed-offset comparison grid, and run
+exact searches in your own programs. Everything below is importable from
 `multihex.core`.
 
 ```python
@@ -76,9 +76,9 @@ row = model.build_row(0)
 
 ### `enum ByteClass` / `classify_byte(value) -> ByteClass`
 Display-only classification of a single byte value (or `None` for missing) into
-a coarse class, used by both frontends to drive optional byte-class
-highlighting. This is **data only** — the core never emits ANSI or Rich/Textual
-styles; frontends map a `ByteClass` to their own colors.
+a coarse class, used by the frontends to drive optional byte-class highlighting.
+This is **data only** — the core never emits ANSI, Qt, or Rich/Textual styles;
+frontends map a `ByteClass` to their own colors.
 
 - `MISSING` — `value is None` (a byte past a file's end).
 - `ZERO` — `0x00`.

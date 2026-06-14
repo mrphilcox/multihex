@@ -179,7 +179,7 @@ both generated from the registry. The workflow:
 ### Add a core capability
 1. Implement it in `src/multihex/core.py` (it must stay **stdlib-only**).
 2. Add core tests, and a parity test if a frontend must mirror the behavior.
-3. Keep all comparison **and search** semantics here so both frontends stay in
+3. Keep all comparison **and search** semantics here so all frontends stay in
    lockstep.
 
 ## Invariants you must preserve
@@ -190,7 +190,7 @@ both generated from the registry. The workflow:
   semantics stay in the core.
 - **The core stays stdlib-only.** The TUI may use `textual`/`rich`; `core.py` and
   `cli.py` may not import third-party packages.
-- **The CLI and TUI color differently by design** — do not unify the two schemes.
+- **Frontend color schemes differ by design** — do not unify them.
 
 ## Style
 

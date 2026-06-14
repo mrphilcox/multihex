@@ -7,17 +7,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
-- **Marker display modes** (`--markers single|repeat|none`, both frontends; TUI
-  cycle key `m`): controls how the column-marker strip (`==` / `!=` / `--`) is
-  drawn, kept separate from `--layout`. `single` (default) shows one strip per
-  block — in `side-by-side` as its own left prefix column instead of attached to
-  the first file (which misleadingly implied first-file results); `repeat` repeats
-  the strip under each segment in `side-by-side` (identical to `single` when
-  `stacked`); `none` hides the marker text. Display-only: marker computation,
-  `--only-diff`, diff/missing highlighting, search, and `--json` (the `markers`
-  array stays present and unchanged) are all unaffected. The TUI persists it as
-  `[display] markers` in the config (schema stays `config_version = 1`; configs
-  without the key default to `single`).
+- **Marker display modes** (`--markers single|repeat|none` in the CLI/TUI; GUI
+  marker strip show/hide; TUI cycle key `m`): controls how the column-marker
+  strip (`==` / `!=` / `--`) is drawn, kept separate from `--layout`. `single`
+  (default) shows one strip per block — in `side-by-side` as its own left prefix
+  column instead of attached to the first file (which misleadingly implied
+  first-file results); `repeat` repeats the strip under each segment in
+  `side-by-side` (identical to `single` when `stacked`); `none` hides the marker
+  text. Display-only: marker computation, `--only-diff`, diff/missing
+  highlighting, search, and `--json` (the `markers` array stays present and
+  unchanged) are all unaffected. The TUI persists it as `[display] markers` in
+  the config (schema stays `config_version = 1`; configs without the key default
+  to `single`).
 - **TUI text-search case-insensitivity**: the `multihex-tui` text-search panel
   (`/`) now has a **Case-insensitive (ASCII)** checkbox, matching the batch CLI's
   `--search-ignore-case`. The choice is remembered for the session (and shown as
@@ -26,8 +27,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   case toggle (it is always exact byte matching).
 
 ### Clarified
-- **Hex search matches bytes, not the ASCII spelling of the hex input** in both
-  frontends — e.g. `--search-hex D9` (and `x` then `D9` in the TUI) finds the
+- **Hex search matches bytes, not the ASCII spelling of the hex input** in every
+  frontend — e.g. `--search-hex D9` (and `x` then `D9` in the TUI/GUI) finds the
   byte `0xd9`, never ASCII `"D9"` (bytes `44 39`). This was already the behavior
   via the shared `parse_hex_pattern()`; it is now covered by regression tests and
   spelled out in the docs and TUI help. To search for ASCII text use text search;
@@ -51,15 +52,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   human-readable display that lays each file's hex (and ASCII gutter) out
   horizontally across the offset row instead of stacking one file per line, so
   files can be compared left-to-right at the same offset. `stacked` remains the
-  default. Available in both frontends; the TUI cycles layouts live with `v` and
+  default. Available in the CLI and TUI; the TUI cycles layouts live with `v` and
   adds horizontal scrolling (`←`/`→`) for the wider rows. Layout is visual-only:
   it never affects offsets, bytes, comparison markers, `--ref`, `--only-diff`,
   search, or `--json`. `render_row_text()` gains a `layout` keyword so the CLI's
   search-context rows honor it.
 - **Byte-class highlighting** (`--byte-classes`): a display-only mode that tints
   hex cells by value class — zero bytes dim, ASCII whitespace cyan, printable
-  ASCII green — to help spot structure. Available in both frontends (the TUI also
-  toggles it live with `t`); disabled by default. It needs color enabled and has
+  ASCII green — to help spot structure. Available in all frontends (the TUI/GUI
+  also toggle it live with `t`); disabled by default. It needs color enabled and has
   no effect on offsets, comparison markers, `--only-diff`, `--ref`, search, or
   `--json`. Classification lives in the core as `classify_byte()` / `ByteClass`
   (data only; frontends own the styling), and existing missing/diff/search

@@ -1,8 +1,7 @@
-"""multihex.core - shared core for multihex.cli and multihex.tui.
+"""multihex.core - shared core for multihex frontends.
 
 Stdlib-only. This module owns all the *meaning* of a multi-file hex
-comparison so that the batch frontend and the interactive TUI frontend
-behave identically. It provides:
+comparison so that the CLI, TUI, and GUI behave identically. It provides:
 
   * file loading            -> load_files()
   * the row model           -> HexModel / Row
@@ -42,7 +41,7 @@ def parse_int(text: str) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# Column markers (three-state, single source of truth for both frontends)
+# Column markers (three-state, single source of truth for all frontends)
 # --------------------------------------------------------------------------- #
 class Marker(enum.Enum):
     """State of one comparison column across all files."""
@@ -60,7 +59,7 @@ def format_marker(marker: Marker) -> str:
 # --------------------------------------------------------------------------- #
 # Byte classification (display-only; data, never style)
 # --------------------------------------------------------------------------- #
-# Pure value classification used by both frontends to drive optional
+# Pure value classification used by all frontends to drive optional
 # byte-class highlighting. This is *display-only*: it never affects loading,
 # row construction, offsets, markers, reference comparison, --only-diff, search,
 # or JSON. The core exposes the classification only -- it emits no ANSI and no
@@ -377,7 +376,8 @@ def render_row_text(
 # --------------------------------------------------------------------------- #
 # Search is *exact*: it reports observed byte matches only. It never infers
 # structure, alignment, or format, and it has no wildcards. The same semantics
-# back both frontends; only UI glue lives in multihex.cli / multihex.tui.
+# back all frontends; only UI glue lives in multihex.cli / multihex.tui /
+# multihex.gui.
 
 
 class SearchError(ValueError):

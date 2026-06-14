@@ -80,7 +80,7 @@ Key behaviors:
 ## Marker computation
 
 `HexModel._markers()` is the **single source of truth** for column state, shared
-by both frontends. For each column:
+by every frontend. For each column:
 
 1. If **any** byte is `None`, the column is `MISSING` (`--`). Missing wins
    outright.
@@ -89,8 +89,8 @@ by both frontends. For each column:
 3. If every byte equals the pivot, the column is `SAME` (`==`); otherwise `DIFF`
    (`!=`).
 
-Because this lives in one place, "what differs" is identical in text, JSON, and
-the TUI.
+Because this lives in one place, "what differs" is identical in text, JSON, the
+TUI, and the GUI.
 
 ## Cell formatting
 
@@ -107,22 +107,24 @@ concern*, not a core one: it is a plain string (no enum, no core type) that each
 renderer branches on. `stacked` (the default) prints one file per line;
 `side-by-side` joins the per-file segments horizontally. `render_row_text()` takes
 a `layout` keyword (so the CLI's search-context rows honor it); the CLI and TUI
-renderers each apply the same join. Layout is purely visual — it never touches
-offsets, bytes, markers, filtering, search, or JSON. The TUI additionally cycles
-layout live (`v`) and adds its own horizontal scroll (`←`/`→`, a character offset
-cropped off each rendered line) because side-by-side rows routinely exceed the
-viewport width.
+renderers each apply the same join. The GUI currently renders stacked rows only.
+Layout is purely visual — it never touches offsets, bytes, markers, filtering,
+search, or JSON. The TUI additionally cycles layout live (`v`) and adds its own
+horizontal scroll (`←`/`→`, a character offset cropped off each rendered line)
+because side-by-side rows routinely exceed the viewport width.
 
 **Marker display** (`--markers single|repeat|none`) is a *separate* frontend
-rendering concern from layout, and likewise a plain string each renderer branches
-on (`render_row_text()` also takes a `markers` keyword for search-context rows).
-It controls only the marker *text*: `single` (default) draws one strip per block —
-in `side-by-side` as its own left prefix column rather than attached to the first
-file; `repeat` repeats the strip under each segment in `side-by-side` (and is
-identical to `single` when `stacked`); `none` hides the strip. Marker *computation*
-stays the single source of truth in `HexModel._markers()` and is untouched — this
-mode only hides/positions the rendered text, so it never affects `--only-diff`,
-diff/missing highlighting, search, or JSON. The TUI cycles it live (`m`).
+rendering concern from layout, and likewise a plain string in the CLI/TUI
+renderers (`render_row_text()` also takes a `markers` keyword for search-context
+rows). It controls only the marker *text*: `single` (default) draws one strip per
+block — in `side-by-side` as its own left prefix column rather than attached to
+the first file; `repeat` repeats the strip under each segment in `side-by-side`
+(and is identical to `single` when `stacked`); `none` hides the strip. The GUI
+exposes the same concept as show/hide marker strip because it has no side-by-side
+layout. Marker *computation* stays the single source of truth in
+`HexModel._markers()` and is untouched — this mode only hides/positions rendered
+text, so it never affects `--only-diff`, diff/missing highlighting, search, or
+JSON. The TUI cycles it live (`m`).
 
 The core also owns **byte classification** for the optional `--byte-classes`
 highlighting: `classify_byte(value) -> ByteClass` maps a byte (or `None`) to a
@@ -176,9 +178,9 @@ Frontends are allowed to **render, navigate, and filter** — nothing more.
   (`… > diff > byte class`); the `c` color toggle hides it along with everything
   else, and its on/off state is independent.
 
-The two color schemes **differ on purpose** — do not unify them. The CLI is for
-spotting exact differing bytes in a scrollback or a pipe; the TUI is for scanning
-column stability at a glance.
+Frontend color schemes **differ on purpose** — do not unify them. The CLI is for
+spotting exact differing bytes in a scrollback or a pipe; the TUI and GUI are for
+scanning column stability at a glance.
 
 - **`gui.py`** is a read-only PySide6 window. A custom `QAbstractScrollArea`
   (`HexCompareView`) paints only the visible rows, with the same tier order as the
@@ -192,7 +194,7 @@ column stability at a glance.
 
 ## Keyboard shortcuts (`shortcuts.py`)
 
-Both interactive frontends draw their keymap and on-screen help from one
+The TUI and GUI draw their keymap and on-screen help from one
 **stdlib-only** registry, `src/multihex/shortcuts.py` (no core/Textual/PySide6
 imports), so they cannot drift. `SHORTCUTS` is an ordered table of `Shortcut`
 records keyed by a stable `action_id`; each carries the help `display_keys`/

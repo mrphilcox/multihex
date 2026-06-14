@@ -94,7 +94,7 @@ _(nothing in flight — pick the next item from Near-term)_
       the compared range (honouring `--offset`), End is the bottom-anchored final
       page. Navigation-only — no alignment/resync/inference, and search state is
       untouched. Added `src/multihex/shortcuts.py`, the **single source of truth**
-      for both frontends' keymap and help text (the TUI `_HELP` popup and the GUI
+      for the TUI/GUI keymap and help text (the TUI `_HELP` popup and the GUI
       help dialog are generated from it; `tests/test_shortcuts.py` enforces that
       the live TUI `BINDINGS` and the GUI `_action_slots` cannot drift). The GUI
       gained single-key parity for every shared action via a registry-driven

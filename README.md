@@ -6,8 +6,8 @@
 ![License](https://img.shields.io/badge/license-Apache--2.0-green)
 
 `multihex` lines up several binary files at the **same byte offsets** and shows
-you, byte for byte, where they agree and where they differ. It comes in two
-flavors that share one comparison engine:
+you, byte for byte, where they agree and where they differ. It comes with three
+frontends that share one comparison engine:
 
 - **`multihex`** — a batch CLI for text, colorized, or JSON output (great for
   scripting and diffs in CI).
@@ -199,10 +199,24 @@ or pipe handle wrapping. (The TUI adds horizontal scrolling instead; see below.)
 marker computation, `--only-diff` filtering, diff/missing highlighting, search, or
 `--json` output (the JSON `markers` array is always present and unchanged).
 
+### Large files
+
+For large binaries, start with a bounded window rather than dumping the whole
+common range:
+
+```bash
+multihex --offset 0x4000 --length 0x200 --limit-rows 32 a.bin b.bin
+```
+
+`--offset` chooses where inspection starts, `--length` caps the byte span, and
+`--limit-rows` caps displayed rows after filtering. Plain text rows are streamed
+as they are rendered; JSON is emitted as one complete object, so bounded windows
+are especially important for machine-readable output.
+
 In the batch CLI, color **reddens each individual cell that differs** from the
 reference file's byte in that column, dims missing cells, and colors the marker
-tokens (`==` green, `!=` red, `--` dim). *(The TUI colors whole columns instead —
-the two schemes differ by design.)*
+tokens (`==` green, `!=` red, `--` dim). *(Frontend color schemes differ by
+design.)*
 
 **Byte classes (`--byte-classes`).** A purely visual aid for spotting structure
 while reverse engineering: when color is enabled it tints the hex byte cells by
@@ -508,8 +522,12 @@ states, and file sizes. The block layout mirrors the CLI/TUI: an offset line, on
 `name  hex  |ascii|` line per file, then the marker strip; columns that differ (or
 are missing) are highlighted, and missing bytes render as `--`.
 
-**Keyboard shortcuts mirror the TUI** (the keymap and on-screen help for both
-frontends come from one shared registry, `src/multihex/shortcuts.py`, so they cannot
+The GUI currently has vertical scrolling only. Very wide rows can be clipped on
+the right; use a smaller `--width`, or use the CLI/TUI when you need horizontal
+inspection of wide rows.
+
+**Keyboard shortcuts mirror the TUI** (the keymap and on-screen help for the TUI
+and GUI come from one shared registry, `src/multihex/shortcuts.py`, so they cannot
 drift). Press `h` or `?` for the in-app list. Navigate with `j`/`k` or `↑`/`↓`,
 `PageUp`/`PageDown`, `Home`/`End`, the scrollbar, or the mouse wheel; `g` jumps to an
 offset and `r` picks the reference file. Toggle the display with `a` (ASCII gutter),
@@ -568,8 +586,8 @@ multihex --json a.bin b.bin | jq '.rows[] | select(.markers | index("!="))'
 
 If you want to work on or build against `multihex`:
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the core and the two
-  frontends fit together, and the invariants that must hold.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the core and frontends fit
+  together, and the invariants that must hold.
 - [`docs/API.md`](docs/API.md) — the public `multihex.core` API for embedding the
   comparison/search engine in your own code.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — dev setup, tests, linting, golden files,
