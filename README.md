@@ -590,6 +590,8 @@ If you want to work on or build against `multihex`:
   together, and the invariants that must hold.
 - [`docs/API.md`](docs/API.md) — the public `multihex.core` API for embedding the
   comparison/search engine in your own code.
+- [`docs/TESTING.md`](docs/TESTING.md) — test layers, the full-suite runner, and
+  the performance opt-in policy.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — dev setup, tests, linting, golden files,
   and how to extend the tool.
 - [`CHANGELOG.md`](CHANGELOG.md) — notable changes.

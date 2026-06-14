@@ -52,6 +52,7 @@ tests_ui/                              # opt-in UI visual-regression (SVG/PNG sn
 tests_perf/                            # opt-in performance smoke/measurement tests
 scripts/integration/                   # end-to-end CLI/validator shell checks
 scripts/ui-tests/                      # run / update the tests_ui/ suite
+scripts/stress/                        # stress/correctness runner
 scripts/performance/                   # run the tests_perf/ suite
 ```
 
@@ -60,6 +61,9 @@ installs `textual`/`rich`; add the `[gui]` extra for PySide6 and `[ui-test]` for
 the visual-regression suite.
 
 ## Running tests
+
+For the complete test-layer overview, including the full-suite runner and the
+performance opt-in policy, see [`docs/TESTING.md`](docs/TESTING.md).
 
 ```bash
 # Everything:
@@ -111,13 +115,14 @@ scripts/ui-tests/update_snapshots.sh -k diff_view  # one
 
 See [`docs/ui-testing.md`](docs/ui-testing.md) for details.
 
-## Stress tests (opt-in)
+## Stress tests
 
 A separate suite in `scripts/stress/` probes where multihex breaks under
 **scale, resource pressure, and hostile inputs** (huge sparse files, FD
 exhaustion, the search match-list explosion, overlay scale, `/dev/full`, FIFOs,
 extreme TUI/GUI geometry). It is **not** part of `pytest`, `scripts/integration/`,
-or any automatic CI lane. Every heavy/hostile command runs under
+or any automatic CI lane, but it is a correctness-oriented layer and is included
+by the explicit full-suite runner. Every heavy/hostile command runs under
 `scripts/stress/measure.py`, which contains it in a process group with a
 wall-clock timeout and an RSS cap, so it is safe to run on a workstation.
 
