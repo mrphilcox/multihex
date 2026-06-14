@@ -70,15 +70,25 @@ def _silence_stdout_after_broken_pipe():
     sys.stdout = open(os.devnull, "w")
 
 
-def write_stdout(text):
+def write_stdout_chunk(text):
     """Write CLI stdout and treat closed downstream pipes as normal termination."""
     try:
         sys.stdout.write(text)
-        sys.stdout.write("\n")
         sys.stdout.flush()
     except BrokenPipeError:
         _silence_stdout_after_broken_pipe()
         raise SystemExit(0)
+
+
+def write_stdout(text):
+    """Write one newline-terminated CLI stdout block."""
+    write_stdout_chunk(text + "\n")
+
+
+def write_stdout_block(lines):
+    """Write rendered text lines without accumulating the whole dump."""
+    if lines:
+        write_stdout_chunk("\n".join(lines) + "\n")
 
 
 def parse_around(text):
@@ -477,7 +487,7 @@ def main(argv=None):
     )
 
     json_rows = []
-    text_lines = []
+    wrote_text = False
     printed = 0
 
     for i in range(model.row_count):
@@ -492,9 +502,12 @@ def main(argv=None):
         if args.as_json:
             json_rows.append(build_json_row(row, names))
         else:
-            render_text_row(text_lines, row, names, name_w,
+            row_lines = []
+            render_text_row(row_lines, row, names, name_w,
                             base, args.ascii, use_color, args.byte_classes,
                             args.layout, args.markers, overlay)
+            write_stdout_block(row_lines)
+            wrote_text = True
 
     if args.as_json:
         out = {
@@ -507,10 +520,8 @@ def main(argv=None):
             "rows": json_rows,
         }
         write_stdout(json.dumps(out, indent=2))
-    elif not text_lines:
+    elif not wrote_text:
         print("multihex: nothing to display for this range", file=sys.stderr)
-    else:
-        write_stdout("\n".join(text_lines))
 
 
 if __name__ == "__main__":

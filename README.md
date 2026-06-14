@@ -269,6 +269,10 @@ multihex --length 8 a.bin b.bin --json
 - Each row: `offset`, a `markers` array (one token per column), and `files`, each
   with `name`, `bytes` (integers, or `null` for a missing byte), and `ascii`.
 
+JSON is emitted as one complete object for compatibility. For very large files,
+bound machine-readable dumps with `--offset`, `--length`, and/or `--limit-rows`;
+plain text output streams rows as they are rendered.
+
 ## Searching
 
 `multihex` can search the loaded files for an **exact** byte sequence and report
