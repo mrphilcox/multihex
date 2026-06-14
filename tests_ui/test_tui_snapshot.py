@@ -49,6 +49,11 @@ def _diff_app() -> "tui.MultiHexApp":
         only_diff=False,
         color_on=True,
         name_mode="basename",
+        # Pin a fixed synthetic config path so the settings-panel snapshot is
+        # deterministic across machines. Without this the app falls back to
+        # default_config_path() (~/.config/...), which bakes the regenerating
+        # account's home directory into the committed SVG baseline.
+        config_path=Path("/home/user/.config/multihex/tui.toml"),
     )
 
 
