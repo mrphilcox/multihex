@@ -178,6 +178,70 @@ def test_key_opens_modal_then_escape_closes(key, screen_name):
     asyncio.run(go())
 
 
+# --- dialog error / cancel paths ------------------------------------------
+
+def _set_prompt(app, value):
+    from textual.widgets import Input
+    app.screen.query_one(Input).value = value
+
+
+def test_jump_bad_offset_rings_bell_and_keeps_position():
+    async def go():
+        app = _app()
+        async with app.run_test(size=SIZE) as pilot:
+            await pilot.pause()
+            bells = []
+            app.bell = lambda *a, **k: bells.append(1)
+            top0 = app.view.top
+            await pilot.press("g")
+            await pilot.pause()
+            _set_prompt(app, "not-a-number")
+            await pilot.press("enter")
+            await pilot.pause()
+            assert bells == [1]
+            assert app.view.top == top0
+
+    asyncio.run(go())
+
+
+def test_choose_ref_out_of_range_rings_bell_and_keeps_ref():
+    async def go():
+        app = _app()
+        async with app.run_test(size=SIZE) as pilot:
+            await pilot.pause()
+            bells = []
+            app.bell = lambda *a, **k: bells.append(1)
+            ref0 = app.model.ref
+            await pilot.press("r")
+            await pilot.pause()
+            _set_prompt(app, "99")           # only two files loaded
+            await pilot.press("enter")
+            await pilot.pause()
+            assert bells == [1]
+            assert app.model.ref == ref0
+
+    asyncio.run(go())
+
+
+def test_jump_cancel_is_a_noop():
+    async def go():
+        app = _app()
+        async with app.run_test(size=SIZE) as pilot:
+            await pilot.pause()
+            bells = []
+            app.bell = lambda *a, **k: bells.append(1)
+            top0 = app.view.top
+            await pilot.press("g")
+            await pilot.pause()
+            await pilot.press("escape")       # cancel -> handle(None)
+            await pilot.pause()
+            assert bells == []
+            assert app.view.top == top0
+            assert len(app.screen_stack) == 1
+
+    asyncio.run(go())
+
+
 def test_view_overlay_key_opens_overlay_screen(tmp_path):
     path = tmp_path / "ov.json"
     path.write_text(json.dumps({
