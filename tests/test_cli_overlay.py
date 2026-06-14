@@ -112,6 +112,28 @@ def test_no_overlay_output_unchanged(fixture_dir):
     assert OVERLAY not in r.stdout
 
 
+def test_overlay_missing_file_reported_not_applied(fixture_dir):
+    # A nonexistent overlay path is a load failure: reported on stderr, the
+    # comparison still renders, and nothing is highlighted.
+    r = _run(fixture_dir, ["--overlay", "does-not-exist.json", "--color", "always",
+                           "a.bin", "b.bin"])
+    assert r.returncode == 0
+    assert "Could not load" in r.stderr
+    assert OVERLAY not in r.stdout
+    assert "0x00000000" in r.stdout  # comparison output is intact
+
+
+def test_overlay_non_json_file_reported_not_applied(fixture_dir):
+    # A file that is not JSON fails to parse; same graceful handling.
+    with open(os.path.join(fixture_dir, "garbage.json"), "w") as fh:
+        fh.write("{ not valid json")
+    r = _run(fixture_dir, ["--overlay", "garbage.json", "--color", "always",
+                           "a.bin", "b.bin"])
+    assert r.returncode == 0
+    assert "Could not load" in r.stderr
+    assert OVERLAY not in r.stdout
+
+
 # -- render priority: diff/missing must win over overlay --------------------- #
 @pytest.fixture(scope="module")
 def priority_dir(tmp_path_factory):

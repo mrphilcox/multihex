@@ -13,6 +13,7 @@ default pytest suite; the equivalent checks previously lived only in the opt-in
 covered in ``test_cli_search.py`` and is not duplicated here.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -81,6 +82,28 @@ def test_around_nonnumeric_rejected(fixtures):
     assert proc.returncode != 0
     # argparse surfaces the ValueError text from parse_around.
     assert proc.returncode == 2
+
+
+def test_around_extra_colon_rejected(fixtures):
+    # OFF:N splits on the first colon only, so a second colon lands in N and
+    # fails the integer parse rather than being silently accepted.
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--around", "0x40:8:16", "eqA"])
+    assert proc.returncode == 2
+
+
+def test_json_all_missing_window_is_valid(fixtures):
+    # A window entirely past EOF still produces well-formed JSON: every row is
+    # present with all-null bytes rather than an error or truncated document.
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--json", "--offset", "0x1000", "--length", "0x10",
+                              "eqA"])
+    assert proc.returncode == 0
+    doc = json.loads(proc.stdout)
+    assert doc["rows"], "expected rows even when the window is past EOF"
+    for row in doc["rows"]:
+        for f in row["files"]:
+            assert all(b is None for b in f["bytes"])
 
 
 def test_missing_file_reports_oserror(fixtures):

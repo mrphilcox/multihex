@@ -145,6 +145,16 @@ def test_search_file_selection(fixtures):
     assert lines and all(ln.startswith("file=1 ") for ln in lines)
 
 
+def test_search_file_unmatched_spec_errors(fixtures):
+    # A --search-file that matches no file by index or name exits non-zero with
+    # a clear message rather than silently searching everything.
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--search-hex", "11", "--search-file", "nope",
+                              "dX", "dY", "dZ"])
+    assert proc.returncode != 0
+    assert "did not match any file" in proc.stderr
+
+
 def test_context_renders_rows(fixtures):
     fixture_dir, _ = fixtures
     proc = _run(fixture_dir, ["--search-hex", "00", "--search-context", "1", "dX"])
