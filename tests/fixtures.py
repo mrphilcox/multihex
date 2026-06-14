@@ -42,6 +42,11 @@ def build_fixtures(root):
     _w(root, "eqC", bytes(c))
     paths["equal"] = ["eqA", "eqB", "eqC"]
 
+    # -- single-file scenario: reuses eqA (no comparison partner) ------------- #
+    # A lone file has no other column to compare against, so the marker strip is
+    # pure "==" noise; the default rendering hides it. This scenario locks that.
+    paths["single"] = ["eqA"]
+
     # -- unequal-length set: 20 / 50 / 100 bytes ---------------------------- #
     long_ = bytes((i * 3 + 1) & 0xFF for i in range(100))
     mid = bytearray(long_[:50])

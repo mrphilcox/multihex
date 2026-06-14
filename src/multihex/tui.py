@@ -1358,8 +1358,9 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--markers", choices=["single", "repeat", "none"], default=None,
                    help="initial marker text display: single (default), repeat "
                         "(repeat the strip under each segment in side-by-side; "
-                        "same as single when stacked), or none (hidden). Cycle "
-                        "with 'm'. Display-only.")
+                        "same as single when stacked), or none (hidden). With a "
+                        "single file and no explicit choice the strip starts "
+                        "hidden. Cycle with 'm'. Display-only.")
     p.add_argument("--overlay", metavar="PATH", default=None,
                    help="load a bintools.layout-overlay v1 JSON file (a read-only "
                         "annotation layer) and highlight its byte ranges. Change "
@@ -1379,6 +1380,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 
 def build_startup_settings(
     args: argparse.Namespace,
+    *,
+    nfiles: Optional[int] = None,
 ) -> "tuple[TuiSettings, Path, List[str]]":
     """Resolve effective TUI settings and the active save path.
 
@@ -1387,6 +1390,12 @@ def build_startup_settings(
     the file but still honors CLI args; the save target is the ``--config`` path
     when given, else the default path. Returns ``(settings, active_path,
     warnings)``; warnings are non-fatal config-load notes for the caller to show.
+
+    When ``nfiles`` is given and exactly one file is loaded with no ``--markers``
+    flag, the marker strip starts hidden: a single file has no comparison partner,
+    so the strip would be pure "==" noise. This one-file startup default
+    deliberately overrides a config ``markers`` preference (the user can still
+    cycle markers at runtime); it is never persisted.
     """
     settings = TuiSettings()
     warnings: List[str] = []
@@ -1414,6 +1423,12 @@ def build_startup_settings(
     if args.byte_classes:
         settings.byte_classes = True
 
+    # One-file startup default: hide the marker strip when no --markers flag was
+    # given. Applied last so it wins over both the config file and the built-in
+    # default (an explicit flag set settings.markers above and is left alone).
+    if nfiles == 1 and args.markers is None:
+        settings.markers = "none"
+
     return settings, active_path, warnings
 
 
@@ -1436,17 +1451,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         return 2
 
-    settings, config_path, config_warnings = build_startup_settings(args)
-
-    # Surface config-load problems before launching (also shown in-app as toasts).
-    for warning in config_warnings:
-        sys.stderr.write(f"multihex-tui: {warning}\n")
-
+    # Load files first so the effective marker default can depend on the file
+    # count (a single file starts with the marker strip hidden).
     try:
         files = load_files(args.files)
     except OSError as exc:
         sys.stderr.write(f"multihex-tui: {exc}\n")
         return 2
+
+    settings, config_path, config_warnings = build_startup_settings(
+        args, nfiles=len(files)
+    )
+
+    # Surface config-load problems before launching (also shown in-app as toasts).
+    for warning in config_warnings:
+        sys.stderr.write(f"multihex-tui: {warning}\n")
 
     try:
         model = HexModel(

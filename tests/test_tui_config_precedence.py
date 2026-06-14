@@ -19,8 +19,8 @@ import multihex.tui as tui  # noqa: E402
 from multihex.tui_config import TuiSettings, default_config_path, save_settings  # noqa: E402
 
 
-def _resolve(argv):
-    return tui.build_startup_settings(tui.parse_args(argv))
+def _resolve(argv, *, nfiles=None):
+    return tui.build_startup_settings(tui.parse_args(argv), nfiles=nfiles)
 
 
 def test_defaults_when_no_config_no_args(tmp_path, monkeypatch):
@@ -86,3 +86,39 @@ def test_one_way_bool_flags_force_on(tmp_path):
 def test_config_and_no_config_are_mutually_exclusive():
     with pytest.raises(SystemExit):
         tui.parse_args(["--config", "x.toml", "--no-config", "a.bin"])
+
+
+# -- one-file marker startup default ---------------------------------------- #
+def test_one_file_no_markers_flag_defaults_none(tmp_path, monkeypatch):
+    # A single file with no --markers flag starts with the strip hidden.
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    settings, _, _ = _resolve(["a.bin"], nfiles=1)
+    assert settings.markers == "none"
+
+
+def test_one_file_explicit_markers_flag_wins(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    settings, _, _ = _resolve(["--markers", "single", "a.bin"], nfiles=1)
+    assert settings.markers == "single"
+
+
+def test_multiple_files_keep_single_default(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    settings, _, _ = _resolve(["a.bin", "b.bin"], nfiles=2)
+    assert settings.markers == "single"
+
+
+def test_one_file_default_overrides_config_markers(tmp_path):
+    # The one-file startup default deliberately beats a config preference when no
+    # --markers flag is given (documented behavior); runtime cycling still works.
+    cfg = tmp_path / "c.toml"
+    save_settings(TuiSettings(markers="repeat"), cfg)
+    settings, _, _ = _resolve(["--config", str(cfg), "a.bin"], nfiles=1)
+    assert settings.markers == "none"
+
+
+def test_config_markers_kept_for_multiple_files(tmp_path):
+    cfg = tmp_path / "c.toml"
+    save_settings(TuiSettings(markers="repeat"), cfg)
+    settings, _, _ = _resolve(["--config", str(cfg), "a.bin", "b.bin"], nfiles=2)
+    assert settings.markers == "repeat"

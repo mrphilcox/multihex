@@ -25,6 +25,11 @@ CASES = [
     ("equal_markers_none", "equal", ["--markers", "none"]),
     ("equal_markers_none_only_diff", "equal", ["--markers", "none", "--only-diff"]),
 
+    # single-file: the marker strip defaults to hidden (no comparison partner);
+    # an explicit --markers single still draws it.
+    ("single_default", "single", []),
+    ("single_markers_single", "single", ["--markers", "single"]),
+
     # unequal-length set (20 / 50 / 100 bytes); lengths chosen to run past EOF
     # and to be non-multiples of width (locks the partial last row).
     ("unequal_default", "unequal", []),

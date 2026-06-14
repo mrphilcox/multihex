@@ -181,7 +181,7 @@ A stdin input is labelled `<stdin>` regardless of `--names`, and its
 | Option                        | Description                                                       |
 | ----------------------------- | ---------------------------------------------------------------- |
 | `--layout stacked` \| `side-by-side` | Human-readable layout (default `stacked`). `side-by-side` lays the files out horizontally (visual-only; no effect on `--json`). |
-| `--markers single` \| `repeat` \| `none` | Marker-text display (default `single`). Separate from `--layout`; visual-only (no effect on `--json`). |
+| `--markers single` \| `repeat` \| `none` | Marker-text display (default `single`, or `none` for a single file with no explicit choice). Separate from `--layout`; visual-only (no effect on `--json`). |
 | `--ascii` / `--no-ascii`      | Show / hide the ASCII gutter (default on).                       |
 | `--names basename` \| `path`  | Label files by basename (default) or full path.                  |
 | `--color auto` \| `always` \| `never` | Colorize output. `auto` = on when stdout is a TTY. Honors `NO_COLOR`. |
@@ -207,6 +207,13 @@ or pipe handle wrapping. (The TUI adds horizontal scrolling instead; see below.)
   `stacked` layout it is identical to `single` (one strip already applies to all
   files, so repeating it would just add noise).
 - `none` hides the marker text entirely.
+
+When exactly one file is loaded and no `--markers` flag is given, the strip
+defaults to `none`: a lone file has no comparison partner, so a column of `==`
+markers would only be noise. Pass `--markers single` to draw it anyway. In the
+TUI this one-file startup default also overrides a saved config `markers`
+preference when no flag is given (you can still cycle markers at runtime with
+`m`).
 
 `--markers` is **display-only**: it hides/positions text only and never changes
 marker computation, `--only-diff` filtering, diff/missing highlighting, search, or

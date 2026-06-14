@@ -323,11 +323,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-ascii", action="store_true", dest="no_ascii",
                    help="start with the ASCII gutter hidden")
     p.add_argument("--markers", choices=["single", "repeat", "none"],
-                   default="single",
+                   default=None,
                    help="initial marker text display: single (default), repeat "
                         "(repeat the strip under each segment in side-by-side; "
-                        "same as single when stacked), or none (hidden). Cycle "
-                        "with 'm'. Display-only.")
+                        "same as single when stacked), or none (hidden). With a "
+                        "single file and no explicit choice the strip starts "
+                        "hidden. Cycle with 'm'. Display-only.")
     p.add_argument("--layout", choices=["stacked", "side-by-side"],
                    default="stacked",
                    help="initial layout: stacked (default) or side-by-side "
@@ -354,6 +355,19 @@ def clamp_ref(ref: Optional[int], nfiles: int) -> Optional[int]:
     if ref is not None and 0 <= ref < nfiles:
         return ref
     return None
+
+
+def resolve_markers(cli_markers: Optional[str], nfiles: int) -> str:
+    """Effective startup marker mode (Qt-free; unit-testable without PySide6).
+
+    A single file has no comparison partner, so the marker strip would be pure
+    "==" noise: with no explicit ``--markers`` choice it starts hidden. Zero or
+    several files keep the historical "single" default. An explicit choice always
+    wins. Runtime cycling (the 'm' key / Markers menu) is unaffected.
+    """
+    if cli_markers is not None:
+        return cli_markers
+    return "none" if nfiles == 1 else "single"
 
 
 def _qt_platforms(env: Optional[dict] = None) -> List[str]:
@@ -2120,7 +2134,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         name_mode=args.names,
         ascii_on=not args.no_ascii,
         only_diff=args.only_diff,
-        markers=args.markers,
+        markers=resolve_markers(args.markers, len(args.files)),
         layout=args.layout,
     )
     if args.files:

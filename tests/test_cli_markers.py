@@ -76,6 +76,32 @@ def test_default_is_single(fixtures):
     assert single.stdout == plain.stdout
 
 
+def test_one_file_no_flag_hides_markers(fixtures):
+    # A single file has no comparison partner: with no --markers flag the strip
+    # starts hidden, but the byte/offset rows are still shown.
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--length", "0x20", "eqA"])
+    assert proc.returncode == 0
+    assert not _has_marker_token(proc.stdout)
+    assert _data_lines(proc.stdout)  # the hex rows are still rendered
+
+
+def test_one_file_explicit_single_shows_markers(fixtures):
+    # An explicit choice always wins, even for a single file.
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--length", "0x20", "--markers", "single", "eqA"])
+    assert proc.returncode == 0
+    assert _has_marker_token(proc.stdout)
+
+
+def test_two_files_no_flag_keeps_single(fixtures):
+    # Two or more files preserve the historical default: marker strips present.
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--length", "0x20", "eqA", "eqB"])
+    assert proc.returncode == 0
+    assert _has_marker_token(proc.stdout)
+
+
 @pytest.mark.parametrize("mode", ["single", "repeat", "none"])
 def test_modes_accepted(fixtures, mode):
     fixture_dir, _ = fixtures

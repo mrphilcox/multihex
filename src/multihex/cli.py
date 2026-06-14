@@ -186,12 +186,14 @@ def build_parser():
                    help="human-readable layout: stacked (default, one file per "
                         "line) or side-by-side (files laid out horizontally). "
                         "Visual-only; no effect on --json.")
-    p.add_argument("--markers", choices=["single", "repeat", "none"], default="single",
+    p.add_argument("--markers", choices=["single", "repeat", "none"], default=None,
                    help="marker text display: single (default, one marker strip "
                         "per row), repeat (repeat the strip under each file "
                         "segment in side-by-side layout; same as single when "
-                        "stacked), or none (hide marker text). Display-only; does "
-                        "not affect comparison, --only-diff, search, or --json.")
+                        "stacked), or none (hide marker text). With a single file "
+                        "and no explicit choice the strip starts hidden (no "
+                        "comparison partner). Display-only; does not affect "
+                        "comparison, --only-diff, search, or --json.")
     p.add_argument("--around", type=parse_around, default=None, metavar="OFF:N",
                    help="show a window of N bytes centered on OFF (overrides --offset/--length)")
     p.add_argument("--overlay", metavar="PATH", default=None,
@@ -544,6 +546,13 @@ def _run(argv=None):
     # filesystem stat -- this keeps the default-length math identical for files
     # and stdin alike.
     files = load_inputs(args.files)
+
+    # A single file has no comparison partner, so the marker strip would be pure
+    # "==" noise; default it to hidden when the user did not ask for a mode. With
+    # two or more files keep the historical "single" default. Resolved here, after
+    # the file count is known, so both the dump and the search-context rows agree.
+    if args.markers is None:
+        args.markers = "none" if len(files) == 1 else "single"
 
     sizes = [f.size for f in files]
     available = [max(0, s - args.offset) for s in sizes]

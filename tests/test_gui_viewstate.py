@@ -15,6 +15,7 @@ from multihex.gui import (
     format_search_status,
     format_status,
     format_status_parts,
+    resolve_markers,
 )
 
 
@@ -150,6 +151,27 @@ def test_clamp_ref_none_stays_none():
 def test_clamp_ref_single_file_edge():
     assert clamp_ref(0, 1) == 0
     assert clamp_ref(1, 1) is None
+
+
+# --------------------------------------------------------------------------- #
+# resolve_markers (one-file startup marker default; Qt-free)
+# --------------------------------------------------------------------------- #
+def test_resolve_markers_one_file_no_flag_is_none():
+    assert resolve_markers(None, 1) == "none"
+
+
+def test_resolve_markers_multiple_files_default_single():
+    assert resolve_markers(None, 2) == "single"
+
+
+def test_resolve_markers_zero_files_default_single():
+    assert resolve_markers(None, 0) == "single"
+
+
+def test_resolve_markers_explicit_choice_wins():
+    assert resolve_markers("single", 1) == "single"
+    assert resolve_markers("none", 2) == "none"
+    assert resolve_markers("repeat", 1) == "repeat"
 
 
 # --------------------------------------------------------------------------- #

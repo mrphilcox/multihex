@@ -191,7 +191,10 @@ def test_cli_large_offset_gutter_aligns(tmp_path):
     # hex column. With the legacy fixed 10-char gutter it drifts one left.
     p = tmp_path / "a.bin"
     p.write_bytes(bytes(range(16)))
-    proc = _run_cli(p, "--offset", "0x100000000", "--length", "0x20")
+    # --markers single forces the strip on for this single-file alignment check
+    # (a lone file hides it by default, which is unrelated to gutter geometry).
+    proc = _run_cli(p, "--offset", "0x100000000", "--length", "0x20",
+                    "--markers", "single")
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout
     assert "0x100000000" in out
@@ -207,7 +210,9 @@ def test_cli_small_offset_output_unchanged(tmp_path):
     # strip lines up under the first hex column as it always has.
     p = tmp_path / "a.bin"
     p.write_bytes(bytes(range(16)))
-    proc = _run_cli(p)
+    # --markers single: this single-file dump hides the strip by default, but the
+    # test measures where the (present) strip aligns under the first hex column.
+    proc = _run_cli(p, "--markers", "single")
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout
     data = next(line for line in out.splitlines() if line.startswith("0x"))

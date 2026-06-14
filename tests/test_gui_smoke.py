@@ -26,7 +26,9 @@ def test_parse_args_basic():
     assert args.names == "basename"
     assert args.only_diff is False
     assert args.no_ascii is False
-    assert args.markers == "single"
+    # The parser leaves --markers unset; main() resolves the effective mode from
+    # the file count via resolve_markers (two files -> "single").
+    assert args.markers is None
 
 
 def test_parse_args_allows_zero_files():
