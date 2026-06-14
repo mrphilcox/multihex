@@ -1,0 +1,35 @@
+{
+  "schema": { "name": "bintools.layout-overlay", "version": 1 },
+  "name": "ui-test sample",
+  "ranges": [
+    {
+      "path": "identifier",
+      "offset": 0,
+      "length": 3,
+      "kind": "identifier",
+      "label": "3-byte id",
+      "type": "bytes"
+    },
+    {
+      "path": "count",
+      "offset": 3,
+      "length": 2,
+      "label": "count (u16be)",
+      "type": "u16be"
+    },
+    {
+      "path": "payload",
+      "offset": 5,
+      "length": 7,
+      "label": "unaligned payload",
+      "type": "bytes"
+    },
+    {
+      "path": "trailer",
+      "offset": 14,
+      "length": 8,
+      "label": "runs past end (warns)",
+      "type": "bytes"
+    }
+  ]
+}

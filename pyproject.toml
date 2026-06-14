@@ -46,6 +46,16 @@ dev = [
     "rich>=13",
     "tomli>=1.1; python_version < '3.11'",
 ]
+# Heavy, opt-in UI visual-regression deps for tests_ui/ (NOT installed by the
+# normal/dev install; see tests_ui/README.md). The suite skips cleanly when
+# any of these is missing.
+ui-test = [
+    "pytest>=7",
+    "textual>=0.1",
+    "rich>=13",
+    "PySide6>=6.7",
+    "pytest-textual-snapshot>=1.0",
+]
 
 [project.scripts]
 multihex = "multihex.cli:main"
