@@ -47,6 +47,7 @@ from multihex.core import (
     marker_prefix_width,
     name_column_width,
     next_match_index,
+    offset_hex_digits,
     offset_label,
     parse_hex_pattern,
     parse_int,
@@ -562,6 +563,11 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.files: List = []
             self.name_mode = "basename"
             self.name_width = 0
+            # Offset-gutter geometry, sized once per model from its largest
+            # offset so labels and the byte columns stay aligned for large
+            # files; defaults to the 8-digit minimum until a model is bound.
+            self._offset_digits = OFFSET_LABEL_WIDTH - 2
+            self._gutter_width = OFFSET_LABEL_WIDTH
             self.ascii_on = True
             # Marker-text display mode: "single" / "repeat" / "none" (parity with
             # the TUI/CLI). Display-only; never affects marker computation,
@@ -611,6 +617,8 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.files = files
             self.name_mode = name_mode
             self.name_width = name_column_width(files, name_mode) if files else 0
+            self._offset_digits = offset_hex_digits(model.max_offset)
+            self._gutter_width = 2 + self._offset_digits
             self.view = ViewState(model, only_diff=only_diff)
             self.h_offset_px = 0  # a freshly loaded set starts un-scrolled
             self._sync_scrollbar()
@@ -657,12 +665,12 @@ if _PYSIDE6_IMPORT_ERROR is None:
             nfiles = len(self.files)
             seg = self._seg_width_chars()
             if self.layout_mode == "side-by-side":
-                base = OFFSET_LABEL_WIDTH + 2  # gutter + leading gap
+                base = self._gutter_width + 2  # gutter + leading gap
                 if self.markers_mode == "single":
                     base += (3 * width - 1) + 2  # inline marker strip + gap
                 return base + nfiles * seg + 3 * (nfiles - 1)
             # Stacked: a file line is the widest (the marker line is shorter).
-            return OFFSET_LABEL_WIDTH + 2 + seg
+            return self._gutter_width + 2 + seg
 
         def _content_width_px(self) -> int:
             chars = self._content_width_chars()
@@ -1043,7 +1051,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
                          self._marker_color(marker))
 
             # The offset rides the first content line as a fixed-width left gutter.
-            draw(0, 0, offset_label(row.offset),
+            draw(0, 0, offset_label(row.offset, self._offset_digits),
                  acc.offset if self.color_on else text_color)
 
             if self.layout_mode == "side-by-side":
@@ -1051,7 +1059,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 # "single" draws one strip as a left prefix column on the content
                 # line; "repeat" repeats it under each segment's hex; "none" hides
                 # it. Segments join with a 3-space gap.
-                strip_col = OFFSET_LABEL_WIDTH + 2
+                strip_col = self._gutter_width + 2
                 seg_w = self._seg_width_chars()
                 first_col = strip_col + (
                     (3 * width - 1) + 2 if self.markers_mode == "single" else 0
@@ -1068,13 +1076,13 @@ if _PYSIDE6_IMPORT_ERROR is None:
                         paint_strip(1, seg_cols[fi] + self.name_width + 2)
             else:
                 for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
-                    paint_segment(fi, OFFSET_LABEL_WIDTH + 2, fi, f, row_bytes)
+                    paint_segment(fi, self._gutter_width + 2, fi, f, row_bytes)
                 # In stacked, "single" and "repeat" both draw the one strip
                 # (repeat == single when stacked); only "none" hides it.
                 if self.markers_mode != "none":
                     paint_strip(
                         len(model.files),
-                        OFFSET_LABEL_WIDTH + marker_prefix_width(self.name_width),
+                        self._gutter_width + marker_prefix_width(self.name_width),
                     )
 
     class MainWindow(QMainWindow):

@@ -40,6 +40,7 @@ from multihex.core import (
     make_hex_query,
     make_text_query,
     marker_prefix_width,
+    offset_gutter_width,
     offset_label,
     parse_int,
     render_row_text,
@@ -303,7 +304,7 @@ def _render_file_segment(row, fi, name, name_w, base_row, show_ascii, use_color,
 
 def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
                     byte_classes=False, layout="stacked", markers="single",
-                    overlay=None):
+                    overlay=None, gutter_width=OFFSET_LABEL_WIDTH):
     """Render one core Row as text lines (with ANSI color when enabled).
 
     Coloring here is the batch tool's own scheme: each present cell is
@@ -370,8 +371,8 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
             # align the marker row under the hex columns
             body.append(" " * marker_prefix_width(name_w) + strip)
     # The offset label is left uncolored, matching the prior standalone line.
-    label = offset_label(row.offset)
-    pad = " " * OFFSET_LABEL_WIDTH
+    label = offset_label(row.offset, gutter_width - 2)
+    pad = " " * gutter_width
     lines.extend((label if i == 0 else pad) + line
                  for i, line in enumerate(body))
 
@@ -482,6 +483,7 @@ def run_search(args, files, names, name_w):
         return
 
     context = args.search_context
+    gutter = offset_gutter_width(model.max_offset)
     out = []
     for mi, match in enumerate(matches):
         out.append(_format_match_line(match, names))
@@ -501,6 +503,7 @@ def run_search(args, files, names, name_w):
                         name_width=name_w,
                         layout=args.layout,
                         markers=args.markers,
+                        gutter_width=gutter,
                     )
                 )
             # blank line between context blocks for readability
@@ -589,6 +592,7 @@ def _run(argv=None):
     json_rows = []
     wrote_text = False
     printed = 0
+    gutter = offset_gutter_width(model.max_offset)
 
     for i in range(model.row_count):
         row = model.build_row(i)
@@ -605,7 +609,8 @@ def _run(argv=None):
             row_lines = []
             render_text_row(row_lines, row, names, name_w,
                             base, args.ascii, use_color, args.byte_classes,
-                            args.layout, args.markers, overlay)
+                            args.layout, args.markers, overlay,
+                            gutter_width=gutter)
             write_stdout_block(row_lines)
             wrote_text = True
 

@@ -22,6 +22,12 @@ from PySide6.QtGui import QKeyEvent, QWheelEvent  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 import multihex.gui as gui  # noqa: E402
+from multihex.core import (  # noqa: E402
+    OFFSET_LABEL_WIDTH,
+    HexFile,
+    HexModel,
+    offset_gutter_width,
+)
 from multihex.shortcuts import (  # noqa: E402
     gui_help_text,
     gui_key_names,
@@ -714,3 +720,25 @@ def test_settings_dialog_applies_immediately(app, tmp_path):
     assert w.view_widget.byte_classes_on is True
     dlg.reject()
     w.close()
+
+
+def test_view_gutter_sized_from_model(app):
+    # The offset gutter is sized once per model from its largest offset, so the
+    # byte columns (positioned at gutter + 2) shift right rather than overlapping
+    # the label when offsets need 9+ hex digits.
+    vw = gui.HexCompareView()
+
+    small = HexModel([HexFile("a.bin", bytes(range(16)))], width=16)
+    vw.set_model(small, small.files, "basename", only_diff=False)
+    assert vw._offset_digits == 8
+    assert vw._gutter_width == OFFSET_LABEL_WIDTH
+    small_width = vw._content_width_chars()
+
+    big = HexModel([HexFile("a.bin", bytes(8))], start_offset=0x100000000,
+                   width=16, length=0x40)
+    vw.set_model(big, big.files, "basename", only_diff=False)
+    assert vw._offset_digits == 9
+    assert vw._gutter_width == offset_gutter_width(big.max_offset) == 11
+    # The wider gutter widens the painted content by exactly the extra digit,
+    # so nothing is clipped or overlapped.
+    assert vw._content_width_chars() == small_width + 1

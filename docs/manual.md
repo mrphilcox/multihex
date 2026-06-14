@@ -271,8 +271,11 @@ Marker display (`--markers`):
 ### 5.4 Text output
 
 A block is one row of the offset grid. The offset rides the first content line as
-a fixed-width 10-character left gutter (`0x` plus 8 hex digits); the block's
-remaining lines are indented under it. Stacked layout, no color:
+a left gutter (`0x` plus at least 8 hex digits, so 10 characters wide); the
+block's remaining lines are indented under it. The gutter widens automatically
+when the largest offset on screen needs 9+ hex digits (offsets at or above
+`0x100000000`), keeping a single consistent width for the whole dump. Stacked
+layout, no color:
 
 ```
 0x00000000  a.bin  52 49 46 46 00 01 02 03 4d 41 47 49 43 de ad be  |RIFF....MAGIC...|

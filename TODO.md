@@ -196,6 +196,19 @@ Guidelines:
 
 ## Done or superseded
 
+- [x] **Size the offset gutter for large offsets.** The gutter was fixed at 8
+      hex digits (`OFFSET_LABEL_WIDTH` == 10), so offsets at or above
+      `0x100000000` (9+ digits) overgrew the first line's label while
+      continuation and marker rows stayed padded to 10 -- the CLI/TUI gutter
+      misaligned and the GUI label overlapped the fixed byte columns. The width
+      now derives from the largest rendered offset via shared core helpers
+      (`offset_hex_digits` / `offset_gutter_width` / `HexModel.max_offset`), with
+      the old 8-digit width kept as the minimum so small-file output and goldens
+      are byte-for-byte unchanged. All three frontends size the gutter once from
+      `model.max_offset` (a stable, non-jittering width); `render_row_text` gained
+      a `gutter_width` argument. JSON is unaffected (offsets stay integers), and
+      standalone status/search/diagnostic lines were already correct. Covered by
+      `tests/test_offset_gutter.py` plus a GUI geometry test.
 - [x] **Bound default search memory.** `core.search_files` materialized every
       match, so a frequent needle (an all-`0x00` file searched for `00`) could
       grow an unbounded match list. Frontends now call the new

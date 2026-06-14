@@ -106,18 +106,25 @@ classify_byte(None)   # ByteClass.MISSING
 - `format_ascii_char(byte) -> str` / `format_ascii(row_bytes) -> str` — printable
   char, `.`, or space (for missing).
 - `render_row_text(row, files, *, name_mode="basename", ascii_on=True,
-  markers="single", name_width=None, layout="stacked") -> list[str]` — the
-  shared, un-styled layout for one row. The offset rides the first returned line
-  as a fixed-width left gutter and the row's remaining lines are indented by that
-  width, so the offset shares a line with its bytes (no standalone offset line).
+  markers="single", name_width=None, layout="stacked", gutter_width=None)
+  -> list[str]` — the shared, un-styled layout for one row. The offset rides the
+  first returned line as a left gutter and the row's remaining lines are indented
+  by that gutter width, so the offset shares a line with its bytes (no standalone
+  offset line). `gutter_width` sets that width (default `OFFSET_LABEL_WIDTH`, the
+  8-digit minimum); pass `offset_gutter_width(model.max_offset)` to size it for
+  large offsets.
   `layout` is display-only: `"stacked"` prints one file per line; `"side-by-side"`
   joins the per-file segments horizontally on a single line. `markers` is
   display-only too and controls the marker text only: `"single"` (default) one
   strip per block (a left prefix column in side-by-side), `"repeat"` repeats it
   under each segment in side-by-side (same as `"single"` when stacked), `"none"`
   hides it.
-- `offset_label(offset) -> str` — the fixed-width offset gutter label
-  (`0x` + 8 hex). `OFFSET_LABEL_WIDTH` is its width.
+- `offset_label(offset, digits=8) -> str` — the offset gutter label
+  (`0x` + `digits` zero-padded hex; default 8). `offset_hex_digits(max_offset)`
+  returns the digit count needed for offsets up to `max_offset` (never below 8),
+  and `offset_gutter_width(max_offset)` the matching label width.
+  `OFFSET_LABEL_WIDTH` is the 8-digit minimum. `HexModel.max_offset` gives the
+  largest row offset a model renders, so a frontend sizes its gutter once.
 - `name_column_width(files, mode="basename") -> int`,
   `marker_prefix_width(name_width) -> int` — alignment helpers (measured within
   the block body, i.e. after the offset gutter).

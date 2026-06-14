@@ -66,6 +66,7 @@ from multihex.core import (
     marker_prefix_width,
     name_column_width,
     next_match_index,
+    offset_hex_digits,
     offset_label,
     parse_int,
     prev_match_index,
@@ -144,6 +145,11 @@ if _TEXTUAL_IMPORT_ERROR is None:
         ) -> None:
             super().__init__()
             self.model = model
+            # Size the offset gutter once from the model's largest offset so it
+            # stays stable while scrolling (no per-row jitter) and stays at the
+            # 8-digit minimum for small files.
+            self._offset_digits = offset_hex_digits(model.max_offset)
+            self._gutter_width = 2 + self._offset_digits
             self.ascii_on = ascii_on
             self.only_diff = only_diff
             self.color_on = color_on
@@ -479,8 +485,8 @@ if _TEXTUAL_IMPORT_ERROR is None:
             # The offset rides the first content line as a fixed-width left
             # gutter; the block's remaining lines are indented by the same
             # width so the offset and its bytes share a row.
-            label = offset_label(row.offset)
-            pad = " " * len(label)
+            label = offset_label(row.offset, self._offset_digits)
+            pad = " " * self._gutter_width
             first = True
 
             def gutter() -> None:

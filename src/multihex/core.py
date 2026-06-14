@@ -271,6 +271,17 @@ class HexModel:
     def row_offset(self, index: int) -> int:
         return self.start_offset + index * self.width
 
+    @property
+    def max_offset(self) -> int:
+        """Largest row offset this model will render (``start_offset`` if empty).
+
+        Knowable up front from the window, so frontends size the offset
+        gutter once (a stable, non-jittering width) instead of per row.
+        """
+        if self.row_count == 0:
+            return self.start_offset
+        return self.row_offset(self.row_count - 1)
+
     def _row_width(self, off: int) -> int:
         """Columns in the row at ``off`` (clamped to the bounded window end)."""
         if self.end is not None:
@@ -359,18 +370,39 @@ def marker_prefix_width(name_width: int) -> int:
     return 2 + name_width + 2
 
 
-def offset_label(offset: int) -> str:
+def offset_hex_digits(max_offset: int) -> int:
+    """Hex digits needed to render offsets up to ``max_offset``.
+
+    Never narrower than 8, so small-offset output (and the goldens) is
+    unchanged; widens only once an offset needs 9+ hex digits
+    (>= ``0x100000000``).
+    """
+    return max(8, len(f"{max(int(max_offset), 0):x}"))
+
+
+def offset_label(offset: int, digits: int = 8) -> str:
     """The fixed-width row offset label that prefixes a block's first line.
 
-    Every block now carries its offset as a left gutter: the first content
-    line shows this label, and the block's remaining lines are indented by
-    ``OFFSET_LABEL_WIDTH`` spaces so the offset and its bytes share a line.
+    Every block carries its offset as a left gutter: the first content line
+    shows this label, and the block's remaining lines are indented by the
+    gutter width so the offset and its bytes share a line. ``digits`` sets
+    the zero-padded hex width (default 8, the historical minimum); callers
+    that render large offsets pass a wider value from
+    :func:`offset_hex_digits`.
     """
-    return f"0x{offset:08x}"
+    return f"0x{offset:0{digits}x}"
 
 
-# Width of the offset gutter (``offset_label`` is fixed-width: "0x" + 8 hex).
-OFFSET_LABEL_WIDTH = len(offset_label(0))
+def offset_gutter_width(max_offset: int) -> int:
+    """Character width of the offset gutter for offsets up to ``max_offset``.
+
+    ``"0x"`` prefix plus :func:`offset_hex_digits` digits.
+    """
+    return 2 + offset_hex_digits(max_offset)
+
+
+# Minimum offset-gutter width (``offset_label`` defaults to "0x" + 8 hex).
+OFFSET_LABEL_WIDTH = offset_gutter_width(0)
 
 
 def render_row_text(
@@ -382,11 +414,17 @@ def render_row_text(
     markers: str = "single",
     name_width: Optional[int] = None,
     layout: str = "stacked",
+    gutter_width: Optional[int] = None,
 ) -> List[str]:
     """Render a row as a list of plain-text lines.
 
     This is the shared, un-styled layout used by the batch frontend and as
     the geometry reference for the TUI's styled rendering.
+
+    ``gutter_width`` sets the offset-gutter column width (the offset label and
+    the matching continuation indent). ``None`` keeps the historical minimum
+    (``OFFSET_LABEL_WIDTH``); callers rendering large offsets pass a wider
+    value from :func:`offset_gutter_width` so every line shares one width.
 
     ``layout`` is display-only. ``"stacked"`` (the default) puts each file on
     its own line; ``"side-by-side"`` joins the per-file segments horizontally on
@@ -400,6 +438,8 @@ def render_row_text(
     """
     if name_width is None:
         name_width = name_column_width(files, name_mode)
+    if gutter_width is None:
+        gutter_width = OFFSET_LABEL_WIDTH
     segments: List[str] = []
     for f, row_bytes in zip(files, row.cells):
         name = f.display_name(name_mode).ljust(name_width)
@@ -425,8 +465,8 @@ def render_row_text(
         body.extend(f"  {segment}" for segment in segments)
         if markers != "none":
             body.append(" " * marker_prefix_width(name_width) + strip)
-    label = offset_label(row.offset)
-    pad = " " * OFFSET_LABEL_WIDTH
+    label = offset_label(row.offset, gutter_width - 2)
+    pad = " " * gutter_width
     return [(label if i == 0 else pad) + line for i, line in enumerate(body)]
 
 
