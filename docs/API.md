@@ -107,14 +107,20 @@ classify_byte(None)   # ByteClass.MISSING
   char, `.`, or space (for missing).
 - `render_row_text(row, files, *, name_mode="basename", ascii_on=True,
   markers="single", name_width=None, layout="stacked") -> list[str]` — the
-  shared, un-styled layout for one row. `layout` is display-only: `"stacked"`
-  prints one file per line; `"side-by-side"` joins the per-file segments
-  horizontally on a single line. `markers` is display-only too and controls the
-  marker text only: `"single"` (default) one strip per block (a left prefix column
-  in side-by-side), `"repeat"` repeats it under each segment in side-by-side (same
-  as `"single"` when stacked), `"none"` hides it.
+  shared, un-styled layout for one row. The offset rides the first returned line
+  as a fixed-width left gutter and the row's remaining lines are indented by that
+  width, so the offset shares a line with its bytes (no standalone offset line).
+  `layout` is display-only: `"stacked"` prints one file per line; `"side-by-side"`
+  joins the per-file segments horizontally on a single line. `markers` is
+  display-only too and controls the marker text only: `"single"` (default) one
+  strip per block (a left prefix column in side-by-side), `"repeat"` repeats it
+  under each segment in side-by-side (same as `"single"` when stacked), `"none"`
+  hides it.
+- `offset_label(offset) -> str` — the fixed-width offset gutter label
+  (`0x` + 8 hex). `OFFSET_LABEL_WIDTH` is its width.
 - `name_column_width(files, mode="basename") -> int`,
-  `marker_prefix_width(name_width) -> int` — alignment helpers.
+  `marker_prefix_width(name_width) -> int` — alignment helpers (measured within
+  the block body, i.e. after the offset gutter).
 - `parse_int(text) -> int` — parse like the CLI does (`int(x, 0)`: decimal, `0x`,
   `0o`, `0b`).
 

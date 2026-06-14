@@ -100,7 +100,10 @@ The core also owns rendering primitives so the frontends stay consistent:
 `format_marker()`, and `render_row_text()` — the shared un-styled layout used
 directly by the batch CLI and as the geometry reference for the TUI's styled
 rendering. `name_column_width()` and `marker_prefix_width()` keep the marker row
-aligned under the hex columns.
+aligned under the hex columns. `offset_label()` / `OFFSET_LABEL_WIDTH` define the
+fixed-width offset gutter: every block carries its offset on the first content
+line and indents the block's remaining lines by that width, so the offset and its
+bytes share a row (there is no standalone offset line).
 
 **Display layout** (`--layout stacked|side-by-side`) is a *frontend rendering
 concern*, not a core one: it is a plain string (no enum, no core type) that each

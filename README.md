@@ -97,19 +97,19 @@ multihex a.bin b.bin
 ```
 
 ```text
-0x00000000
-  a.bin  52 49 46 46 00 01 02 03 4d 41 47 49 43 de ad be  |RIFF....MAGIC...|
-  b.bin  52 49 46 46 00 01 02 03 6d 61 67 69 63 de ad 00  |RIFF....magic...|
-         == == == == == == == == != != != != != == == !=
-0x00000010
-  a.bin  ef  |.|
-  b.bin  00  |.|
-         !=
+0x00000000  a.bin  52 49 46 46 00 01 02 03 4d 41 47 49 43 de ad be  |RIFF....MAGIC...|
+            b.bin  52 49 46 46 00 01 02 03 6d 61 67 69 63 de ad 00  |RIFF....magic...|
+                   == == == == == == == == != != != != != == == !=
+0x00000010  a.bin  ef  |.|
+            b.bin  00  |.|
+                   !=
 ```
 
 Each block is one row of the offset grid:
 
-- the **offset line** (`0x00000000`),
+- the **offset** (`0x00000000`) is a left gutter that rides the first file line;
+  the block's remaining lines are indented under it so the offset and its bytes
+  share a row,
 - one **file line** per input: name, the hex bytes at that offset, and an ASCII
   gutter (`|...|`, non-printable bytes shown as `.`),
 - a **marker line** aligned under the hex columns showing how the column compares.
@@ -355,12 +355,10 @@ multihex --search-hex deadbeef --search-context 1 a.bin
 
 ```text
 file=0 path=a.bin offset=0x0000000d len=4 match=de ad be ef ascii="...."
-0x00000000
-  a.bin  52 49 46 46 00 01 02 03 4d 41 47 49 43 de ad be  |RIFF....MAGIC...|
-         == == == == == == == == == == == == == == == ==
-0x00000010
-  a.bin  ef -- -- -- -- -- -- -- -- -- -- -- -- -- -- --  |.               |
-         == -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+0x00000000  a.bin  52 49 46 46 00 01 02 03 4d 41 47 49 43 de ad be  |RIFF....MAGIC...|
+                   == == == == == == == == == == == == == == == ==
+0x00000010  a.bin  ef -- -- -- -- -- -- -- -- -- -- -- -- -- -- --  |.               |
+                   == -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 ```
 
 ## The interactive TUI (`multihex-tui`)

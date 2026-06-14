@@ -221,6 +221,19 @@ Guidelines:
 
 ## Done or superseded
 
+- [x] **Attach the offset to its row's data (no standalone offset line).** Every
+      block previously printed the offset on its own line with the bytes below it;
+      across CLI, TUI, and GUI the offset now rides the first content line as a
+      fixed-width left gutter (`core.offset_label()` / `OFFSET_LABEL_WIDTH`), and
+      the block's remaining lines indent under it. This applies to both `stacked`
+      and `side-by-side` layouts and saves one line per block. Rendering/layout
+      only — no change to comparison, offsets, markers, byte grouping, overlay,
+      search, color, or JSON. No terminal/viewport width detection was added (the
+      offset gutter is a small fixed prefix; existing TUI horizontal scroll, GUI
+      clipping, and terminal soft-wrap handle wide rows as before). The GUI still
+      renders stacked only; its side-by-side renderer remains a separate Phase 2
+      item (see "GUI Phase 2 — usability"). Goldens and TUI SVG snapshots were
+      regenerated and visually verified.
 - [x] **Opt-in performance-test scaffold.** Added `tests_perf/` and
       `scripts/performance/run_all.sh` as a separate performance-measurement lane
       that is not collected by default pytest and is not wired into integration,
