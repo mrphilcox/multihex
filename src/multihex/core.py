@@ -335,8 +335,25 @@ def marker_prefix_width(name_width: int) -> int:
     """Left padding so the marker row aligns under the hex columns.
 
     Layout per file line: 2 (indent) + name_width + 2 (gap) + hex...
+
+    This is measured *within* the block body, i.e. relative to the left edge
+    after the offset gutter (see ``offset_label`` / ``OFFSET_LABEL_WIDTH``).
     """
     return 2 + name_width + 2
+
+
+def offset_label(offset: int) -> str:
+    """The fixed-width row offset label that prefixes a block's first line.
+
+    Every block now carries its offset as a left gutter: the first content
+    line shows this label, and the block's remaining lines are indented by
+    ``OFFSET_LABEL_WIDTH`` spaces so the offset and its bytes share a line.
+    """
+    return f"0x{offset:08x}"
+
+
+# Width of the offset gutter (``offset_label`` is fixed-width: "0x" + 8 hex).
+OFFSET_LABEL_WIDTH = len(offset_label(0))
 
 
 def render_row_text(
@@ -366,7 +383,6 @@ def render_row_text(
     """
     if name_width is None:
         name_width = name_column_width(files, name_mode)
-    lines: List[str] = [f"0x{row.offset:08x}"]
     segments: List[str] = []
     for f, row_bytes in zip(files, row.cells):
         name = f.display_name(name_mode).ljust(name_width)
@@ -376,20 +392,25 @@ def render_row_text(
             segment += f"  |{format_ascii(row_bytes)}|"
         segments.append(segment)
     strip = " ".join(format_marker(m) for m in row.markers)
+    # Build the block body without the offset; the offset is prefixed below as
+    # a fixed-width left gutter so it shares the first content line's row.
+    body: List[str] = []
     if layout == "side-by-side":
         if markers == "single":
-            lines.append("  " + strip + "  " + "   ".join(segments))
+            body.append("  " + strip + "  " + "   ".join(segments))
         else:
-            lines.append("  " + "   ".join(segments))
+            body.append("  " + "   ".join(segments))
             if markers == "repeat":
                 gap = " " * (name_width + 2)
                 marker_segs = [(gap + strip).ljust(len(seg)) for seg in segments]
-                lines.append(("  " + "   ".join(marker_segs)).rstrip())
+                body.append(("  " + "   ".join(marker_segs)).rstrip())
     else:
-        lines.extend(f"  {segment}" for segment in segments)
+        body.extend(f"  {segment}" for segment in segments)
         if markers != "none":
-            lines.append(" " * marker_prefix_width(name_width) + strip)
-    return lines
+            body.append(" " * marker_prefix_width(name_width) + strip)
+    label = offset_label(row.offset)
+    pad = " " * OFFSET_LABEL_WIDTH
+    return [(label if i == 0 else pad) + line for i, line in enumerate(body)]
 
 
 # --------------------------------------------------------------------------- #

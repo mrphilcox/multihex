@@ -133,9 +133,11 @@ def test_side_by_side_single_prefixes_one_strip(fixtures):
                 ["--length", "0x10", "--layout", "side-by-side",
                  "--markers", "single", "eqA", "eqB", "eqC"])
     data = next(ln for ln in proc.stdout.splitlines() if "eqA" in ln)
-    # The marker strip is a left prefix: marker tokens come before "eqA".
-    lead = data.split()[:1]
-    assert lead and lead[0] in ("==", "!=", "--")
+    # The offset now rides this line as a left gutter, followed by the marker
+    # strip as a left prefix column, then the file segments.
+    toks = data.split()
+    assert toks[0].startswith("0x")             # offset gutter leads the line
+    assert toks[1] in ("==", "!=", "--")        # marker strip follows it
     assert data.index("==") < data.index("eqA") or data.index("!=") < data.index("eqA")
 
 

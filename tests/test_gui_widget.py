@@ -85,6 +85,30 @@ def test_load_and_navigate(app, tmp_path):
     w.close()
 
 
+def test_block_geometry_attaches_offset_to_first_row(app, tmp_path):
+    # The offset rides the first file's row as a left gutter, so a block no
+    # longer reserves a standalone offset line. Two files + marker strip =>
+    # 2 + 1 + 1 (blank gap) = 4 lines per block (was 5 with the offset line).
+    a = _write(tmp_path, "a.bin", bytes(48))
+    b = _write(tmp_path, "b.bin", bytes(48))
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    vw = w.view_widget
+
+    assert vw.markers_on is True
+    assert vw._lines_per_block() == 4
+    # Hiding the marker strip drops one more line.
+    vw.set_markers_on(False)
+    assert vw._lines_per_block() == 3
+    # The block paints without error after the geometry change.
+    w.resize(900, 400)
+    w.show()
+    app.processEvents()
+    img = vw.grab().toImage()
+    assert not img.isNull()
+    w.close()
+
+
 def test_menu_toggles_and_reference(app, tmp_path):
     a = _write(tmp_path, "a.bin", bytes([0] * 48))
     bb = bytearray([0] * 48)

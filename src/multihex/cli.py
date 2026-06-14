@@ -24,6 +24,7 @@ import os
 import sys
 
 from multihex.core import (
+    OFFSET_LABEL_WIDTH,
     ByteClass,
     HexModel,
     Marker,
@@ -38,6 +39,7 @@ from multihex.core import (
     make_hex_query,
     make_text_query,
     marker_prefix_width,
+    offset_label,
     parse_int,
     render_row_text,
     search_files,
@@ -285,7 +287,6 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
     when stacked), and ``"none"`` hides the marker text. It never changes marker
     computation, ``--only-diff``, search, or JSON.
     """
-    lines.append(f"0x{row.offset:08x}")
     base_row = row.cells[base] if base < len(row.cells) else None
     segments = [
         _render_file_segment(row, fi, name, name_w, base_row, show_ascii,
@@ -306,14 +307,17 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
             rendered.append(DIM + tok + RESET)
     strip = " ".join(rendered)
 
+    # Build the block body without the offset; the offset is prefixed below as
+    # a fixed-width left gutter so it shares the first content line's row.
+    body = []
     if layout == "side-by-side":
         if markers == "single":
             # The marker strip is its own left prefix column, not attached to
             # the first file. Width matches the hex part, so it reads as a
             # column of column-level results.
-            lines.append("  " + strip + "  " + "   ".join(segments))
+            body.append("  " + strip + "  " + "   ".join(segments))
         else:
-            lines.append("  " + "   ".join(segments))
+            body.append("  " + "   ".join(segments))
             if markers == "repeat":
                 ncols = len(row.cells[0]) if row.cells else 0
                 gap = " " * (name_w + 2)
@@ -321,12 +325,17 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
                 # repeated strips line up under each segment's hex columns.
                 tail = " " * (ncols + 4 if show_ascii else 0)
                 marker_segs = [gap + strip + tail for _ in names]
-                lines.append(("  " + "   ".join(marker_segs)).rstrip())
+                body.append(("  " + "   ".join(marker_segs)).rstrip())
     else:
-        lines.extend("  " + segment for segment in segments)
+        body.extend("  " + segment for segment in segments)
         if markers != "none":
             # align the marker row under the hex columns
-            lines.append(" " * marker_prefix_width(name_w) + strip)
+            body.append(" " * marker_prefix_width(name_w) + strip)
+    # The offset label is left uncolored, matching the prior standalone line.
+    label = offset_label(row.offset)
+    pad = " " * OFFSET_LABEL_WIDTH
+    lines.extend((label if i == 0 else pad) + line
+                 for i, line in enumerate(body))
 
 
 def load_overlay(path, files):

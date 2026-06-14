@@ -50,10 +50,14 @@ def _leading_markers(text):
 
     Captures the run of marker tokens before the first non-marker token, only
     on lines that also carry file data (so it ignores pure stacked marker rows).
+    The offset now rides each data line as a left gutter, so a leading ``0x...``
+    token is skipped before the marker run.
     """
     out = []
     for line in text.splitlines():
         toks = line.split()
+        if toks and toks[0].startswith("0x"):
+            toks = toks[1:]
         lead = []
         for t in toks:
             if t in ("==", "!=", "--"):
@@ -88,6 +92,59 @@ def test_invalid_layout_rejected(fixtures):
     proc = _run(fixture_dir, ["--layout", "sideways", "eqA"])
     assert proc.returncode != 0
     assert "invalid choice" in proc.stderr
+
+
+# -- offset is attached to its row's data (no standalone offset line) ------- #
+def _no_offset_only_line(text):
+    """No output line is just a bare offset label like "0x00000010"."""
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("0x") and len(s.split()) == 1:
+            return False
+    return True
+
+
+@pytest.mark.parametrize("layout", ["stacked", "side-by-side"])
+@pytest.mark.parametrize("ascii_flag", ["--ascii", "--no-ascii"])
+@pytest.mark.parametrize("markers", ["single", "repeat", "none"])
+def test_offset_attached_no_standalone_offset_line(fixtures, layout, ascii_flag,
+                                                   markers):
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir,
+                ["--length", "0x20", "--layout", layout, ascii_flag,
+                 "--markers", markers, "dX", "dY", "dZ"])
+    assert proc.returncode == 0
+    # Every offset shares a line with file data; none sits alone.
+    assert _no_offset_only_line(proc.stdout)
+    # The line carrying the offset also carries the first file's name+bytes.
+    off_line = next(ln for ln in proc.stdout.splitlines()
+                    if ln.startswith("0x00000000"))
+    assert "dX" in off_line
+
+
+def test_offset_attached_with_changed_bytes_and_diff_markers(fixtures):
+    fixture_dir, _ = fixtures
+    # dX/dY/dZ differ in every column -> the offset line carries diffing bytes.
+    proc = _run(fixture_dir,
+                ["--length", "0x10", "--layout", "stacked",
+                 "--markers", "single", "dX", "dY", "dZ"])
+    assert _no_offset_only_line(proc.stdout)
+    off_line = next(ln for ln in proc.stdout.splitlines()
+                    if ln.startswith("0x00000000"))
+    assert "dX" in off_line and "00 00 00" in off_line  # dX bytes on the line
+
+
+def test_offset_attached_with_uneven_lengths(fixtures):
+    fixture_dir, _ = fixtures
+    # Past u_short's end, missing bytes render "--"; the offset still attaches.
+    proc = _run(fixture_dir,
+                ["--offset", "0x10", "--length", "0x10", "--layout", "stacked",
+                 "u_short", "u_mid", "u_long"])
+    assert _no_offset_only_line(proc.stdout)
+    assert "--" in proc.stdout
+    off_line = next(ln for ln in proc.stdout.splitlines()
+                    if ln.startswith("0x00000010"))
+    assert "u_short" in off_line
 
 
 # -- side-by-side rendering ------------------------------------------------- #
@@ -140,7 +197,9 @@ def test_only_diff_filters_same_rows_in_both_layouts(fixtures):
     side = _run(fixture_dir, ["--layout", "side-by-side", *common]).stdout
 
     def offsets(text):
-        return [ln for ln in text.splitlines() if ln.startswith("0x")]
+        # The offset now rides the first data line as a left gutter, so compare
+        # the leading offset tokens (not whole lines, which differ by layout).
+        return [ln.split()[0] for ln in text.splitlines() if ln.startswith("0x")]
 
     assert offsets(side) == offsets(stacked)
 

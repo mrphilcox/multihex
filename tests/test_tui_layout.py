@@ -152,3 +152,50 @@ def test_layout_does_not_change_offsets_or_markers():
                 assert (tok in stacked) == (tok in side)
 
     asyncio.run(go())
+
+
+def _no_offset_only_line(plain):
+    """No rendered line is just the bare offset label (offset rides its data)."""
+    return all(ln.strip() != "0x00000000" for ln in plain.splitlines())
+
+
+def test_offset_attached_in_both_layouts():
+    async def go():
+        app = _make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            stacked = app.view.render().plain
+            app.action_cycle_layout()
+            await pilot.pause()
+            side = app.view.render().plain
+            # Neither layout emits a standalone offset line.
+            assert _no_offset_only_line(stacked)
+            assert _no_offset_only_line(side)
+            # The offset sits at the start of a line that also carries data
+            # (the first file's name appears on the offset's line).
+            for plain in (stacked, side):
+                off_line = next(
+                    ln for ln in plain.splitlines() if "0x00000000" in ln
+                )
+                assert off_line.lstrip().startswith("0x00000000")
+                assert "a.bin" in off_line
+
+    asyncio.run(go())
+
+
+def test_lines_per_block_drops_the_offset_line():
+    async def go():
+        app = _make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            view = app.view
+            # Stacked: one line per file + a marker line + blank gap (no
+            # separate offset line). Two files, markers on -> 2 + 1 + 1 = 4.
+            assert view.layout_mode == "stacked"
+            assert view._lines_per_block() == 4
+            app.action_cycle_layout()
+            await pilot.pause()
+            # Side-by-side single: one combined data line + blank gap = 2.
+            assert view._lines_per_block() == 2
+
+    asyncio.run(go())

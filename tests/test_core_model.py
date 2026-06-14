@@ -150,20 +150,37 @@ def _two_file_row(width=2):
 
 
 def test_render_defaults_name_width_when_omitted():
-    # name_width=None makes the renderer derive the column width itself; the
-    # offset header and both file names must still appear.
+    # name_width=None makes the renderer derive the column width itself. The
+    # offset now rides the first content line as a left gutter (no standalone
+    # offset line), and both file names must still appear.
     row, files = _two_file_row()
     lines = render_row_text(row, files, ascii_on=False)
-    assert lines[0] == "0x00000000"
+    assert lines[0].startswith("0x00000000")
+    # The offset shares the first file's line, so it is not alone on a line.
+    assert lines[0].strip() != "0x00000000"
+    # No line is just the bare offset label.
+    assert all(ln.strip() != "0x00000000" for ln in lines)
+    # Block lines after the first are indented under the offset gutter.
+    assert all(ln.startswith(" " * len("0x00000000")) for ln in lines[1:])
     assert any("a" in ln for ln in lines) and any("b" in ln for ln in lines)
+
+
+def test_render_side_by_side_attaches_offset_to_data_line():
+    # Side-by-side: the offset and both file segments share one visual line.
+    row, files = _two_file_row()
+    lines = render_row_text(row, files, layout="side-by-side", markers="single",
+                            ascii_on=False)
+    assert lines[0].startswith("0x00000000")
+    assert "a  01 02" in lines[0] and "b  01 ff" in lines[0]
 
 
 def test_render_side_by_side_markers_none_has_no_marker_line():
     row, files = _two_file_row()
     lines = render_row_text(row, files, layout="side-by-side", markers="none",
                             ascii_on=False)
-    # One header line plus one combined segment line; no marker strip.
-    assert len(lines) == 2
+    # The offset rides the single combined segment line; no marker strip and no
+    # standalone offset line.
+    assert len(lines) == 1
     joined = "\n".join(lines)
     assert "=" not in joined and "X" not in joined
 
@@ -185,3 +202,30 @@ def test_render_stacked_markers_none_drops_marker_strip():
     without = render_row_text(row, files, layout="stacked", markers="none",
                               ascii_on=False)
     assert len(without) == len(with_strip) - 1
+
+
+def test_render_stacked_attaches_offset_to_first_file():
+    # Stacked: the offset prefixes the first file's line; later file lines and
+    # the marker strip indent under the offset gutter (no offset-only line).
+    row, files = _two_file_row()
+    lines = render_row_text(row, files, layout="stacked", markers="single",
+                            ascii_on=False)
+    gutter = " " * len("0x00000000")
+    assert lines[0].startswith("0x00000000")
+    assert "a  01 02" in lines[0]            # first file shares the offset line
+    assert lines[1].startswith(gutter)       # second file indented under it
+    assert "b  01 ff" in lines[1]
+    assert all(ln.strip() != "0x00000000" for ln in lines)
+
+
+def test_render_uneven_lengths_show_missing_with_offset_attached():
+    # A row past the shorter file's end renders "--" for the missing bytes while
+    # still attaching the offset to the first file line.
+    files = [_file("a", b"\x01\x02\x03\x04"), _file("b", b"\x01\x02")]
+    model = HexModel(files, width=2)
+    row = model.build_row(1)                 # offset 0x02: b has no bytes here
+    lines = render_row_text(row, files, layout="stacked", markers="single",
+                            ascii_on=False)
+    assert lines[0].startswith("0x00000002")
+    assert "--" in lines[1]                  # b's missing bytes
+    assert all(ln.strip() != "0x00000002" for ln in lines)

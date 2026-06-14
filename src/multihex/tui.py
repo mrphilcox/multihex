@@ -66,6 +66,7 @@ from multihex.core import (
     marker_prefix_width,
     name_column_width,
     next_match_index,
+    offset_label,
     parse_int,
     prev_match_index,
     search_files,
@@ -196,14 +197,15 @@ if _TEXTUAL_IMPORT_ERROR is None:
             return len(self.visible_indices())
 
         def _lines_per_block(self) -> int:
-            # offset line + content lines + optional marker line + blank separator
+            # content lines (the offset rides the first one as a left gutter)
+            # + optional marker line + blank separator
             if self.layout_mode == "side-by-side":
                 content = 1
                 marker = 1 if self.markers_mode == "repeat" else 0
             else:
                 content = len(self.model.files)
                 marker = 0 if self.markers_mode == "none" else 1
-            return 1 + content + marker + 1
+            return content + marker + 1
 
         def _max_top(self) -> int:
             return max(0, self.visible_count - self._page_rows)
@@ -473,12 +475,26 @@ if _TEXTUAL_IMPORT_ERROR is None:
             diff = self._style(_DIFF_STYLE)
             mode = self.markers_mode
 
-            text.append(f"0x{row.offset:08x}\n", style=self._style(_OFFSET_STYLE))
+            # The offset rides the first content line as a fixed-width left
+            # gutter; the block's remaining lines are indented by the same
+            # width so the offset and its bytes share a row.
+            label = offset_label(row.offset)
+            pad = " " * len(label)
+            first = True
+
+            def gutter() -> None:
+                nonlocal first
+                if first:
+                    text.append(label, style=self._style(_OFFSET_STYLE))
+                    first = False
+                else:
+                    text.append(pad)
 
             if self.layout_mode == "side-by-side":
                 if mode == "single":
                     # The marker strip is its own left prefix column, not
                     # attached to the first file segment.
+                    gutter()
                     text.append("  ")
                     self._append_marker_strip(text, row, diff)
                     text.append("  ")
@@ -488,6 +504,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
                         self._append_file_segment(text, row, fi, f, row_bytes)
                     text.append("\n")
                 else:
+                    gutter()
                     for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
                         text.append("   " if fi else "  ")
                         self._append_file_segment(text, row, fi, f, row_bytes)
@@ -498,6 +515,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
                         # strips line up under each segment's hex columns.
                         tail = " " * (model.width + 4 if self.ascii_on else 0)
                         nfiles = len(model.files)
+                        gutter()
                         for fi in range(nfiles):
                             text.append("   " if fi else "  ")
                             text.append(gap)
@@ -507,10 +525,12 @@ if _TEXTUAL_IMPORT_ERROR is None:
                         text.append("\n")
             else:
                 for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
+                    gutter()
                     text.append("  ")
                     self._append_file_segment(text, row, fi, f, row_bytes)
                     text.append("\n")
                 if mode != "none":
+                    gutter()
                     text.append(" " * marker_prefix_width(self.name_width))
                     self._append_marker_strip(text, row, diff)
                     text.append("\n")

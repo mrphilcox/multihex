@@ -29,6 +29,7 @@ import sys
 from typing import List, Optional, Sequence, Tuple, Union
 
 from multihex.core import (
+    OFFSET_LABEL_WIDTH,
     ByteClass,
     HexModel,
     Marker,
@@ -46,6 +47,7 @@ from multihex.core import (
     marker_prefix_width,
     name_column_width,
     next_match_index,
+    offset_label,
     parse_int,
     prev_match_index,
     search_files,
@@ -347,12 +349,13 @@ if _PYSIDE6_IMPORT_ERROR is None:
         """Custom-painted, lazily-rendered comparison view.
 
         Renders only the visible blocks in :meth:`paintEvent` (never the whole
-        range into one buffer). Block layout matches the shared text model:
+        range into one buffer). Block layout matches the shared text model: the
+        offset rides the first file's row as a fixed-width left gutter, and the
+        block's other rows are indented under it.
 
-            0x00000000
-              fileA  00 01 02 ...  |....|
-              fileB  00 ff 02 ...  |....|
-                     == != == ...          (omitted when markers are hidden)
+            0x00000000  fileA  00 01 02 ...  |....|
+                        fileB  00 ff 02 ...  |....|
+                               == != == ...          (omitted when markers are hidden)
 
         Cell colouring is the GUI's own scheme, anchored on the core markers:
         a column whose marker is not SAME is reddened, missing bytes are dimmed,
@@ -417,9 +420,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
         # -- geometry ------------------------------------------------------- #
         def _lines_per_block(self) -> int:
-            # offset line + one line per file + optional marker line + blank gap
+            # one line per file (the offset rides the first as a left gutter)
+            # + optional marker line + blank gap
             nfiles = len(self.files) if self.files else 1
-            return 1 + nfiles + (1 if self.markers_on else 0) + 1
+            return nfiles + (1 if self.markers_on else 0) + 1
 
         def _block_px(self) -> int:
             return self._lines_per_block() * self._line_h
@@ -657,7 +661,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             model = view.model
             count = view.visible_count
             block_px = self._block_px()
-            hex_start = marker_prefix_width(self.name_width)
+            hex_start = OFFSET_LABEL_WIDTH + marker_prefix_width(self.name_width)
             # One extra block so a partially-visible bottom block still draws.
             nblocks = self._page_rows() + 1
             for b in range(nblocks):
@@ -685,16 +689,17 @@ if _PYSIDE6_IMPORT_ERROR is None:
                     int(ncols * cw), int(line_h), color,
                 )
 
-            # offset address line
-            draw(0, 0, f"0x{row.offset:08x}",
+            # The offset rides the first file line as a fixed-width left gutter
+            # (col 0); the file/hex columns are shifted right by that width.
+            draw(0, 0, offset_label(row.offset),
                  _COLOR_OFFSET if self.color_on else text_color)
 
             # one line per file
             for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
-                line = 1 + fi
+                line = fi
                 name = f.display_name(self.name_mode).ljust(self.name_width)
                 name_color = _COLOR_REF if (self.color_on and model.ref == fi) else text_color
-                draw(2, line, name, name_color)
+                draw(OFFSET_LABEL_WIDTH + 2, line, name, name_color)
                 for c in range(width):
                     marker = row.markers[c]
                     off = row.offset + c
@@ -718,7 +723,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
             # marker strip
             if self.markers_on:
-                line = 1 + len(model.files)
+                line = len(model.files)
                 for c in range(width):
                     marker = row.markers[c]
                     draw(hex_start + c * 3, line, format_marker(marker),
