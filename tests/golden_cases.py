@@ -17,6 +17,10 @@ CASES = [
     ("equal_json", "equal", ["--json"]),
     ("equal_limit_rows", "equal", ["--limit-rows", "2"]),
     ("equal_around", "equal", ["--around", "0x20:32"]),
+    ("equal_markers_single", "equal", ["--markers", "single"]),
+    ("equal_markers_repeat", "equal", ["--markers", "repeat"]),
+    ("equal_markers_none", "equal", ["--markers", "none"]),
+    ("equal_markers_none_only_diff", "equal", ["--markers", "none", "--only-diff"]),
 
     # unequal-length set (20 / 50 / 100 bytes); lengths chosen to run past EOF
     # and to be non-multiples of width (locks the partial last row).

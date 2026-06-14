@@ -7,6 +7,17 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Marker display modes** (`--markers single|repeat|none`, both frontends; TUI
+  cycle key `m`): controls how the column-marker strip (`==` / `!=` / `--`) is
+  drawn, kept separate from `--layout`. `single` (default) shows one strip per
+  block — in `side-by-side` as its own left prefix column instead of attached to
+  the first file (which misleadingly implied first-file results); `repeat` repeats
+  the strip under each segment in `side-by-side` (identical to `single` when
+  `stacked`); `none` hides the marker text. Display-only: marker computation,
+  `--only-diff`, diff/missing highlighting, search, and `--json` (the `markers`
+  array stays present and unchanged) are all unaffected. The TUI persists it as
+  `[display] markers` in the config (schema stays `config_version = 1`; configs
+  without the key default to `single`).
 - **TUI text-search case-insensitivity**: the `multihex-tui` text-search panel
   (`/`) now has a **Case-insensitive (ASCII)** checkbox, matching the batch CLI's
   `--search-ignore-case`. The choice is remembered for the session (and shown as

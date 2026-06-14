@@ -33,12 +33,17 @@ multihex --search-text RIFF --search-context 2 FILE1
 # Byte-class highlighting (display-only; needs color on; off by default)
 multihex --byte-classes --color always FILE1 FILE2
 
+# Marker text display (display-only; separate from --layout; no effect on --json)
+multihex --markers none FILE1 FILE2                      # hide the marker strip
+multihex --layout side-by-side --markers repeat FILE1 FILE2
+
 # Run the TUI (requires textual + rich)
 multihex-tui FILE1 FILE2
 multihex-tui --byte-classes FILE1 FILE2   # start with byte-class highlighting on
+multihex-tui --markers repeat FILE1 FILE2 # start with the chosen marker display
 # TUI search keys:  /  text search (panel has ASCII case-insensitive checkbox)
 #                   x  hex search (byte values, not ASCII)   n  next   N/p  previous
-# TUI toggles:  c  color   t  byte-class highlighting
+# TUI toggles:  c  color   t  byte-class highlighting   v  layout   m  markers
 
 # Run all tests
 python3 -m pytest
@@ -70,6 +75,8 @@ python3 tests/capture_goldens.py
 
 **Byte classes** (`--byte-classes`; TUI `t`): display-only highlighting. `core.classify_byte()` maps a byte (or `None`) to a `ByteClass` (`ZERO`/`WHITESPACE`/`PRINTABLE_ASCII`/`OTHER`/`MISSING`) — data only, no ANSI/Rich. Frontends color hex cells by class as the **lowest-priority** tier (missing/diff/search styling always wins), only when color is enabled; off by default. It never affects offsets, markers, `--only-diff`, `--ref`, search, or `--json`.
 
+**Marker display** (`--markers single|repeat|none`; TUI `m`): display-only, and a **separate concern from `--layout`** — a plain string each frontend renderer branches on (also a `markers` keyword on `core.render_row_text()`, so CLI search-context rows honor it). `single` (default) draws one strip per block — in side-by-side as its own left prefix column, not attached to the first file; `repeat` repeats the strip under each segment in side-by-side (identical to `single` when stacked); `none` hides the strip text. Stacked `single`/`repeat` output is byte-identical to the pre-feature rendering. Marker **computation** stays in `HexModel._markers()` and is untouched, so this never affects `--only-diff`, diff/missing highlighting, search, or `--json` (the `markers` array is always present). TUI persists it as `[display] markers` (config schema still v1; missing key defaults to `single`).
+
 ## Tests
 
 - `tests/fixtures.py` — builds deterministic binary test fixtures
@@ -84,6 +91,8 @@ python3 tests/capture_goldens.py
 - `tests/test_byte_class.py` — core `classify_byte()` over boundary values
 - `tests/test_cli_byte_classes.py` — CLI `--byte-classes` ANSI styling, color gating, JSON safety
 - `tests/test_tui_byte_classes.py` — headless TUI byte-class state, toggle, status/help, priority
+- `tests/test_cli_markers.py` — CLI `--markers` parsing, both layouts, JSON/only-diff/search invariants
+- `tests/test_tui_markers.py` — headless TUI marker-mode state, `m` cycle, status/help, redraw
 
 When updating `tests/goldens/*.out`, review the diff carefully and note the reason in the commit.
 

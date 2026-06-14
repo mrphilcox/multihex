@@ -42,6 +42,7 @@ SUPPORTED_CONFIG_VERSION = 1
 _LAYOUTS = ("stacked", "side-by-side")
 _COLORS = ("auto", "always", "never")
 _NAMES = ("basename", "path")
+_MARKERS = ("single", "repeat", "none")
 
 
 @dataclass
@@ -57,6 +58,7 @@ class TuiSettings:
     byte_classes: bool = False
     color: str = "auto"
     names: str = "basename"
+    markers: str = "single"
     width: int = 16
     only_diff: bool = False
 
@@ -151,6 +153,7 @@ def load_settings(
         (display, "byte_classes", "byte_classes", _is_bool, None),
         (display, "color", "color", lambda v: v in _COLORS, _COLORS),
         (display, "names", "names", lambda v: v in _NAMES, _NAMES),
+        (display, "markers", "markers", lambda v: v in _MARKERS, _MARKERS),
         (view, "width", "width", _is_pos_int, None),
         (view, "only_diff", "only_diff", _is_bool, None),
     ]
@@ -169,7 +172,7 @@ def load_settings(
 
     # Warn about unknown keys inside the known tables, too.
     for table, valid_keys in (
-        (display, {"layout", "ascii", "byte_classes", "color", "names"}),
+        (display, {"layout", "ascii", "byte_classes", "color", "names", "markers"}),
         (view, {"width", "only_diff"}),
     ):
         for key in table:
@@ -205,6 +208,7 @@ def _dump_toml(settings: TuiSettings) -> str:
         f"byte_classes = {_toml_bool(settings.byte_classes)}\n"
         f"color = {_toml_str(settings.color)}\n"
         f"names = {_toml_str(settings.names)}\n"
+        f"markers = {_toml_str(settings.markers)}\n"
         "\n"
         "[view]\n"
         f"width = {settings.width}\n"

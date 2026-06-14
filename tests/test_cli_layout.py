@@ -42,6 +42,26 @@ def _marker_lines(text):
     return out
 
 
+def _leading_markers(text):
+    """Marker strips that prefix a data line (side-by-side --markers single).
+
+    Captures the run of marker tokens before the first non-marker token, only
+    on lines that also carry file data (so it ignores pure stacked marker rows).
+    """
+    out = []
+    for line in text.splitlines():
+        toks = line.split()
+        lead = []
+        for t in toks:
+            if t in ("==", "!=", "--"):
+                lead.append(t)
+            else:
+                break
+        if lead and len(lead) < len(toks):
+            out.append(" ".join(lead))
+    return out
+
+
 # -- parsing ---------------------------------------------------------------- #
 def test_default_is_stacked(fixtures):
     fixture_dir, _ = fixtures
@@ -95,8 +115,10 @@ def test_side_by_side_markers_match_stacked(fixtures):
     common = ["--offset", "0x10", "--length", "0x20", "u_short", "u_mid", "u_long"]
     stacked = _run(fixture_dir, ["--layout", "stacked", *common]).stdout
     side = _run(fixture_dir, ["--layout", "side-by-side", *common]).stdout
-    assert _marker_lines(side) == _marker_lines(stacked)
-    assert _marker_lines(side)  # sanity: there is at least one marker row
+    # Default --markers single: side-by-side puts the strip as a left prefix
+    # column on the data line; its tokens must match the stacked marker rows.
+    assert _leading_markers(side) == _marker_lines(stacked)
+    assert _leading_markers(side)  # sanity: there is at least one marker strip
 
 
 def test_no_ascii_side_by_side_omits_gutters(fixtures):
@@ -125,7 +147,7 @@ def test_ref_markers_match_in_both_layouts(fixtures):
     common = ["--length", "0x20", "--ref", "0", "u_short", "u_mid", "u_long"]
     stacked = _run(fixture_dir, ["--layout", "stacked", *common]).stdout
     side = _run(fixture_dir, ["--layout", "side-by-side", *common]).stdout
-    assert _marker_lines(side) == _marker_lines(stacked)
+    assert _leading_markers(side) == _marker_lines(stacked)
 
 
 def test_json_unchanged_by_layout(fixtures):

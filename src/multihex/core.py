@@ -325,7 +325,7 @@ def render_row_text(
     *,
     name_mode: str = "basename",
     ascii_on: bool = True,
-    show_markers: bool = True,
+    markers: str = "single",
     name_width: Optional[int] = None,
     layout: str = "stacked",
 ) -> List[str]:
@@ -336,8 +336,13 @@ def render_row_text(
 
     ``layout`` is display-only. ``"stacked"`` (the default) puts each file on
     its own line; ``"side-by-side"`` joins the per-file segments horizontally on
-    a single line. The single column-marker line is unchanged either way. Layout
-    never affects offsets, bytes, or markers.
+    a single line. Layout never affects offsets, bytes, or markers.
+
+    ``markers`` is display-only too and controls only the marker *text*:
+    ``"single"`` shows one strip per block, ``"repeat"`` repeats the strip under
+    each file segment in side-by-side layout (identical to ``"single"`` when
+    stacked), and ``"none"`` hides the marker text. It never affects marker
+    computation, ``--only-diff``, search, or JSON.
     """
     if name_width is None:
         name_width = name_column_width(files, name_mode)
@@ -350,14 +355,20 @@ def render_row_text(
         if ascii_on:
             segment += f"  |{format_ascii(row_bytes)}|"
         segments.append(segment)
+    strip = " ".join(format_marker(m) for m in row.markers)
     if layout == "side-by-side":
-        lines.append("  " + "   ".join(segments))
+        if markers == "single":
+            lines.append("  " + strip + "  " + "   ".join(segments))
+        else:
+            lines.append("  " + "   ".join(segments))
+            if markers == "repeat":
+                gap = " " * (name_width + 2)
+                marker_segs = [(gap + strip).ljust(len(seg)) for seg in segments]
+                lines.append(("  " + "   ".join(marker_segs)).rstrip())
     else:
         lines.extend(f"  {segment}" for segment in segments)
-    if show_markers:
-        prefix = " " * marker_prefix_width(name_width)
-        marks = " ".join(format_marker(m) for m in row.markers)
-        lines.append(prefix + marks)
+        if markers != "none":
+            lines.append(" " * marker_prefix_width(name_width) + strip)
     return lines
 
 

@@ -22,6 +22,7 @@ Keys:
     c             toggle color/highlighting
     t             toggle byte-class highlighting
     v             cycle layout (stacked / side-by-side)
+    m             cycle markers (single / repeat / none)
     left / right  scroll horizontally (side-by-side)
     o             open settings / options pane
     /             text search (panel has an ASCII case-insensitive toggle)
@@ -125,6 +126,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             name_mode: str,
             byte_classes_on: bool = False,
             layout: str = "stacked",
+            markers: str = "single",
         ) -> None:
             super().__init__()
             self.model = model
@@ -137,6 +139,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
             # Stored as ``layout_mode`` (not ``layout``) to avoid clashing with
             # Textual's Widget.layout property.
             self.layout_mode = layout
+            # Marker-text display mode: "single" / "repeat" / "none". Display-only
+            # (see _render_block); never affects markers, only-diff, or search.
+            self.markers_mode = markers
             # Horizontal scroll offset (characters) for side-by-side rows that
             # exceed the viewport width. Always 0 in stacked mode.
             self.h_scroll = 0
@@ -174,8 +179,14 @@ if _TEXTUAL_IMPORT_ERROR is None:
             return len(self.visible_indices())
 
         def _lines_per_block(self) -> int:
-            # offset line + one line per file + marker line + blank separator
-            return 1 + len(self.model.files) + 1 + 1
+            # offset line + content lines + optional marker line + blank separator
+            if self.layout_mode == "side-by-side":
+                content = 1
+                marker = 1 if self.markers_mode == "repeat" else 0
+            else:
+                content = len(self.model.files)
+                marker = 0 if self.markers_mode == "none" else 1
+            return 1 + content + marker + 1
 
         def _max_top(self) -> int:
             return max(0, self.visible_count - self._page_rows)
@@ -247,6 +258,11 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.h_scroll = 0
             self.refresh()
 
+        def cycle_markers(self) -> None:
+            order = ("single", "repeat", "none")
+            self.markers_mode = order[(order.index(self.markers_mode) + 1) % len(order)]
+            self.refresh()
+
         def scroll_h(self, delta: int) -> None:
             """Scroll the side-by-side view horizontally by ``delta`` chars.
 
@@ -279,6 +295,10 @@ if _TEXTUAL_IMPORT_ERROR is None:
         def set_layout(self, value: str) -> None:
             self.layout_mode = value
             self.h_scroll = 0
+            self.refresh()
+
+        def set_markers(self, value: str) -> None:
+            self.markers_mode = value
             self.refresh()
 
         def set_names(self, mode: str) -> None:
@@ -419,31 +439,63 @@ if _TEXTUAL_IMPORT_ERROR is None:
                     text.append(format_ascii_char(row_bytes[ci]), style=cell_style)
                 text.append("|")
 
-        def _render_block(self, text: "Text", row: Row) -> None:
+        def _append_marker_strip(self, text: "Text", row: Row, diff: str) -> None:
+            """Append the colored marker tokens (no leading prefix/newline)."""
             model = self.model
-            diff = self._style(_DIFF_STYLE)
-
-            text.append(f"0x{row.offset:08x}\n", style=self._style(_OFFSET_STYLE))
-
-            if self.layout_mode == "side-by-side":
-                for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
-                    text.append("   " if fi else "  ")
-                    self._append_file_segment(text, row, fi, f, row_bytes)
-                text.append("\n")
-            else:
-                for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
-                    text.append("  ")
-                    self._append_file_segment(text, row, fi, f, row_bytes)
-                    text.append("\n")
-
-            text.append(" " * marker_prefix_width(self.name_width))
             for ci in range(model.width):
                 marker = row.markers[ci]
                 cell_style = diff if marker is not Marker.SAME else ""
                 text.append(format_marker(marker), style=cell_style)
                 if ci != model.width - 1:
                     text.append(" ")
-            text.append("\n\n")
+
+        def _render_block(self, text: "Text", row: Row) -> None:
+            model = self.model
+            diff = self._style(_DIFF_STYLE)
+            mode = self.markers_mode
+
+            text.append(f"0x{row.offset:08x}\n", style=self._style(_OFFSET_STYLE))
+
+            if self.layout_mode == "side-by-side":
+                if mode == "single":
+                    # The marker strip is its own left prefix column, not
+                    # attached to the first file segment.
+                    text.append("  ")
+                    self._append_marker_strip(text, row, diff)
+                    text.append("  ")
+                    for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
+                        if fi:
+                            text.append("   ")
+                        self._append_file_segment(text, row, fi, f, row_bytes)
+                    text.append("\n")
+                else:
+                    for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
+                        text.append("   " if fi else "  ")
+                        self._append_file_segment(text, row, fi, f, row_bytes)
+                    text.append("\n")
+                    if mode == "repeat":
+                        gap = " " * (self.name_width + 2)
+                        # Pad each strip to the segment width so the repeated
+                        # strips line up under each segment's hex columns.
+                        tail = " " * (model.width + 4 if self.ascii_on else 0)
+                        nfiles = len(model.files)
+                        for fi in range(nfiles):
+                            text.append("   " if fi else "  ")
+                            text.append(gap)
+                            self._append_marker_strip(text, row, diff)
+                            if fi != nfiles - 1:
+                                text.append(tail)
+                        text.append("\n")
+            else:
+                for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
+                    text.append("  ")
+                    self._append_file_segment(text, row, fi, f, row_bytes)
+                    text.append("\n")
+                if mode != "none":
+                    text.append(" " * marker_prefix_width(self.name_width))
+                    self._append_marker_strip(text, row, diff)
+                    text.append("\n")
+            text.append("\n")
 
     class _PromptScreen(ModalScreen[Optional[str]]):
         """A small modal asking for one line of input."""
@@ -545,6 +597,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             "  c             toggle color\n"
             "  t             toggle byte-class highlighting\n"
             "  v             cycle layout (stacked / side-by-side)\n"
+            "  m             cycle markers (single / repeat / none)\n"
             "  left / right  scroll horizontally (side-by-side)\n"
             "  o             open settings / options pane\n"
             "  /             text search (case-insensitive toggle)\n"
@@ -586,6 +639,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             ("byte_classes", "byte classes"),
             ("color", "color"),
             ("names", "names"),
+            ("markers", "markers"),
             ("width", "width"),
             ("only_diff", "only-diff"),
         ]
@@ -611,6 +665,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 "byte_classes": "on" if v.byte_classes_on else "off",
                 "color": app.color_mode,
                 "names": v.name_mode,
+                "markers": v.markers_mode,
                 "width": str(app.model.width),
                 "only_diff": "on" if v.only_diff else "off",
             }
@@ -653,6 +708,10 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 app.set_color_mode(modes[idx])
             elif key == "names":
                 v.set_names("path" if v.name_mode == "basename" else "basename")
+            elif key == "markers":
+                modes = ["single", "repeat", "none"]
+                idx = (modes.index(v.markers_mode) + direction) % len(modes)
+                v.set_markers(modes[idx])
             elif key == "width":
                 v.set_width(max(1, app.model.width + direction))
             elif key == "only_diff":
@@ -724,6 +783,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Binding("c", "toggle_color", "Color"),
             Binding("t", "toggle_byte_classes", "Classes"),
             Binding("v", "cycle_layout", "Layout"),
+            Binding("m", "cycle_markers", "Markers"),
             Binding("left", "scroll_left", "Scroll left", show=False),
             Binding("right", "scroll_right", "Scroll right", show=False),
             Binding("o", "open_settings", "Options"),
@@ -746,6 +806,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             name_mode: str,
             byte_classes_on: bool = False,
             layout: str = "stacked",
+            markers: str = "single",
             color_mode: str = "auto",
             config_path: Optional[Path] = None,
             config_warnings: Optional[List[str]] = None,
@@ -760,6 +821,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 name_mode=name_mode,
                 byte_classes_on=byte_classes_on,
                 layout=layout,
+                markers=markers,
             )
             # Search state lives on the app; the view only renders highlights.
             self.search_query = None
@@ -803,6 +865,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 byte_classes=v.byte_classes_on,
                 color=self.color_mode,
                 names=v.name_mode,
+                markers=v.markers_mode,
                 width=self.model.width,
                 only_diff=v.only_diff,
             )
@@ -828,12 +891,13 @@ if _TEXTUAL_IMPORT_ERROR is None:
             ref_label = "all-agree" if m.ref is None else (
                 m.files[m.ref].display_name(v.name_mode)
             )
-            toggles = "ascii:%s diff:%s color:%s classes:%s layout:%s" % (
+            toggles = "ascii:%s diff:%s color:%s classes:%s layout:%s markers:%s" % (
                 "on" if v.ascii_on else "off",
                 "on" if v.only_diff else "off",
                 "on" if v.color_on else "off",
                 "on" if v.byte_classes_on else "off",
                 v.layout_mode,
+                v.markers_mode,
             )
             sizes = "  ".join(
                 f"{f.display_name(v.name_mode)}={f.size}" for f in m.files
@@ -921,6 +985,10 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
         def action_cycle_layout(self) -> None:
             self.view.cycle_layout()
+            self.update_status()
+
+        def action_cycle_markers(self) -> None:
+            self.view.cycle_markers()
             self.update_status()
 
         def action_scroll_left(self) -> None:
@@ -1130,6 +1198,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--layout", choices=["stacked", "side-by-side"], default=None,
                    help="initial layout: stacked (default) or side-by-side "
                         "(cycle with 'v'; scroll horizontally with left/right).")
+    p.add_argument("--markers", choices=["single", "repeat", "none"], default=None,
+                   help="initial marker text display: single (default), repeat "
+                        "(repeat the strip under each segment in side-by-side; "
+                        "same as single when stacked), or none (hidden). Cycle "
+                        "with 'm'. Display-only.")
 
     # -- TUI-only persistent config (the batch CLI never reads any config) ---- #
     cfg = p.add_mutually_exclusive_group()
@@ -1165,6 +1238,8 @@ def build_startup_settings(
     # "not given"; the one-way bool flags only ever *force* their value on.
     if args.layout is not None:
         settings.layout = args.layout
+    if args.markers is not None:
+        settings.markers = args.markers
     if args.width is not None:
         settings.width = args.width
     if args.names is not None:
@@ -1231,6 +1306,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         name_mode=settings.names,
         byte_classes_on=settings.byte_classes,
         layout=settings.layout,
+        markers=settings.markers,
         color_mode=settings.color,
         config_path=config_path,
         config_warnings=config_warnings,

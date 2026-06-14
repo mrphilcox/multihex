@@ -157,6 +157,7 @@ By default it shows the largest range common to all files starting at offset 0,
 | Option                        | Description                                                       |
 | ----------------------------- | ---------------------------------------------------------------- |
 | `--layout stacked` \| `side-by-side` | Human-readable layout (default `stacked`). `side-by-side` lays the files out horizontally (visual-only; no effect on `--json`). |
+| `--markers single` \| `repeat` \| `none` | Marker-text display (default `single`). Separate from `--layout`; visual-only (no effect on `--json`). |
 | `--ascii` / `--no-ascii`      | Show / hide the ASCII gutter (default on).                       |
 | `--names basename` \| `path`  | Label files by basename (default) or full path.                  |
 | `--color auto` \| `always` \| `never` | Colorize output. `auto` = on when stdout is a TTY. Honors `NO_COLOR`. |
@@ -166,11 +167,25 @@ By default it shows the largest range common to all files starting at offset 0,
 **Layout (`--layout`).** `stacked` (the default) keeps the familiar one-file-per-line
 block. `side-by-side` instead places each file's hex (and ASCII gutter, if shown)
 horizontally across the row, which makes it easy to compare the same offset across
-files left-to-right. The single column-marker line is unchanged in either layout.
-Layout is **visual-only**: it never affects offsets, bytes, comparison markers,
-`--ref`, `--only-diff`, search, or `--json`. Side-by-side rows are deliberately
-allowed to be wider than the terminal — let your terminal, pager, or pipe handle
-wrapping. (The TUI adds horizontal scrolling instead; see below.)
+files left-to-right. Layout is **visual-only**: it never affects offsets, bytes,
+comparison markers, `--ref`, `--only-diff`, search, or `--json`. Side-by-side rows
+are deliberately allowed to be wider than the terminal — let your terminal, pager,
+or pipe handle wrapping. (The TUI adds horizontal scrolling instead; see below.)
+
+**Marker display (`--markers`).** Controls how the column-marker strip (`==` / `!=`
+/ `--`) is drawn — a concern kept **separate from `--layout`**:
+
+- `single` (default) shows one marker strip per row/block. In `side-by-side` the
+  strip is its own left prefix column (not attached to the first file, which would
+  misleadingly imply the markers were that file's results).
+- `repeat` repeats the strip under each file segment in `side-by-side` layout. In
+  `stacked` layout it is identical to `single` (one strip already applies to all
+  files, so repeating it would just add noise).
+- `none` hides the marker text entirely.
+
+`--markers` is **display-only**: it hides/positions text only and never changes
+marker computation, `--only-diff` filtering, diff/missing highlighting, search, or
+`--json` output (the JSON `markers` array is always present and unchanged).
 
 In the batch CLI, color **reddens each individual cell that differs** from the
 reference file's byte in that column, dims missing cells, and colors the marker
@@ -301,6 +316,7 @@ multihex-tui --ref 0 file*.bin
 `--names basename|path`, `--only-diff`, `--no-ascii`, `--color auto|always|never`,
 `--byte-classes` (start with byte-class highlighting on; toggle with `t`),
 `--layout stacked|side-by-side` (start in the chosen layout; cycle with `v`),
+`--markers single|repeat|none` (start with the chosen marker display; cycle with `m`),
 `--config PATH` / `--no-config` (see [TUI configuration](#tui-configuration)).
 
 **Keys**
@@ -320,6 +336,7 @@ multihex-tui --ref 0 file*.bin
 | `c`            | toggle color / highlighting           |
 | `t`            | toggle byte-class highlighting        |
 | `v`            | cycle layout (stacked / side-by-side) |
+| `m`            | cycle markers (single / repeat / none)|
 | `o`            | open the settings / options pane      |
 | `/`            | text search (panel has a case-insensitive toggle) |
 | `x`            | hex search (matches byte values, not ASCII text)  |
@@ -393,6 +410,7 @@ ascii = true
 byte_classes = false
 color = "auto"            # auto | always | never
 names = "basename"        # basename | path
+markers = "single"        # single | repeat | none
 
 [view]
 width = 16

@@ -124,6 +124,12 @@ def build_parser():
                    help="human-readable layout: stacked (default, one file per "
                         "line) or side-by-side (files laid out horizontally). "
                         "Visual-only; no effect on --json.")
+    p.add_argument("--markers", choices=["single", "repeat", "none"], default="single",
+                   help="marker text display: single (default, one marker strip "
+                        "per row), repeat (repeat the strip under each file "
+                        "segment in side-by-side layout; same as single when "
+                        "stacked), or none (hide marker text). Display-only; does "
+                        "not affect comparison, --only-diff, search, or --json.")
     p.add_argument("--around", type=parse_around, default=None, metavar="OFF:N",
                    help="show a window of N bytes centered on OFF (overrides --offset/--length)")
     p.add_argument("--json", dest="as_json", action="store_true",
@@ -196,7 +202,7 @@ def _render_file_segment(row, fi, name, name_w, base_row, show_ascii, use_color,
 
 
 def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
-                    byte_classes=False, layout="stacked"):
+                    byte_classes=False, layout="stacked", markers="single"):
     """Render one core Row as text lines (with ANSI color when enabled).
 
     Coloring here is the batch tool's own scheme: each present cell is
@@ -210,8 +216,13 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
     is throughout the batch tool.
 
     ``layout`` is display-only. ``"stacked"`` (default) puts each file on its own
-    line; ``"side-by-side"`` joins the per-file segments horizontally. The single
-    marker line is unchanged either way.
+    line; ``"side-by-side"`` joins the per-file segments horizontally.
+
+    ``markers`` is display-only too and controls only the marker *text*:
+    ``"single"`` (default) shows one strip per row, ``"repeat"`` repeats the
+    strip under each file segment in side-by-side layout (same as ``"single"``
+    when stacked), and ``"none"`` hides the marker text. It never changes marker
+    computation, ``--only-diff``, search, or JSON.
     """
     lines.append(f"0x{row.offset:08x}")
     base_row = row.cells[base] if base < len(row.cells) else None
@@ -220,10 +231,6 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
                              use_color, byte_classes)
         for fi, name in enumerate(names)
     ]
-    if layout == "side-by-side":
-        lines.append("  " + "   ".join(segments))
-    else:
-        lines.extend("  " + segment for segment in segments)
 
     rendered = []
     for m in row.markers:
@@ -236,8 +243,29 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
             rendered.append(RED + tok + RESET)
         else:
             rendered.append(DIM + tok + RESET)
-    # align the marker row under the hex columns
-    lines.append(" " * marker_prefix_width(name_w) + " ".join(rendered))
+    strip = " ".join(rendered)
+
+    if layout == "side-by-side":
+        if markers == "single":
+            # The marker strip is its own left prefix column, not attached to
+            # the first file. Width matches the hex part, so it reads as a
+            # column of column-level results.
+            lines.append("  " + strip + "  " + "   ".join(segments))
+        else:
+            lines.append("  " + "   ".join(segments))
+            if markers == "repeat":
+                ncols = len(row.cells[0]) if row.cells else 0
+                gap = " " * (name_w + 2)
+                # Pad each strip to the (uniform) visible segment width so the
+                # repeated strips line up under each segment's hex columns.
+                tail = " " * (ncols + 4 if show_ascii else 0)
+                marker_segs = [gap + strip + tail for _ in names]
+                lines.append(("  " + "   ".join(marker_segs)).rstrip())
+    else:
+        lines.extend("  " + segment for segment in segments)
+        if markers != "none":
+            # align the marker row under the hex columns
+            lines.append(" " * marker_prefix_width(name_w) + strip)
 
 
 def build_json_row(row, names):
@@ -340,6 +368,7 @@ def run_search(args, files, names, name_w):
                         ascii_on=args.ascii,
                         name_width=name_w,
                         layout=args.layout,
+                        markers=args.markers,
                     )
                 )
             # blank line between context blocks for readability
@@ -425,7 +454,7 @@ def main(argv=None):
         else:
             render_text_row(text_lines, row, names, name_w,
                             base, args.ascii, use_color, args.byte_classes,
-                            args.layout)
+                            args.layout, args.markers)
 
     if args.as_json:
         out = {

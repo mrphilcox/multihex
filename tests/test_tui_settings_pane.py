@@ -46,7 +46,7 @@ def test_o_opens_pane_showing_settings_and_path():
             assert type(app.screen).__name__ == "SettingsScreen"
             body = _body(app)
             for label in ("layout", "ascii", "byte classes", "color", "names",
-                          "width", "only-diff"):
+                          "markers", "width", "only-diff"):
                 assert label in body
             assert cfg in body                 # active config path shown
 
@@ -81,12 +81,14 @@ def test_each_saved_setting_is_changeable_and_persisted(tmp_path):
             await pilot.pause()
             await pilot.press("o")
             await pilot.pause()
-            # Touch every row: layout, ascii, byte_classes, color, names, width, only_diff
+            # Touch every row: layout, ascii, byte_classes, color, names,
+            # markers, width, only_diff
             await pilot.press("right")                       # layout
             await pilot.press("down", "right")               # ascii
             await pilot.press("down", "right")               # byte_classes
             await pilot.press("down", "right")               # color
             await pilot.press("down", "right")               # names
+            await pilot.press("down", "right")               # markers
             await pilot.press("down", "right")               # width +1
             await pilot.press("down", "right")               # only_diff
             await pilot.pause()
@@ -100,6 +102,7 @@ def test_each_saved_setting_is_changeable_and_persisted(tmp_path):
             assert loaded.byte_classes is True
             assert loaded.color == "always"
             assert loaded.names == "path"
+            assert loaded.markers == "repeat"
             assert loaded.width == 17
             assert loaded.only_diff is True
 

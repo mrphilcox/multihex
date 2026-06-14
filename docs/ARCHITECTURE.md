@@ -103,13 +103,24 @@ aligned under the hex columns.
 **Display layout** (`--layout stacked|side-by-side`) is a *frontend rendering
 concern*, not a core one: it is a plain string (no enum, no core type) that each
 renderer branches on. `stacked` (the default) prints one file per line;
-`side-by-side` joins the per-file segments horizontally, with the single
-column-marker line unchanged. `render_row_text()` takes a `layout` keyword (so the
-CLI's search-context rows honor it); the CLI and TUI renderers each apply the same
-join. Layout is purely visual — it never touches offsets, bytes, markers,
-filtering, search, or JSON. The TUI additionally cycles layout live (`v`) and adds
-its own horizontal scroll (`←`/`→`, a character offset cropped off each rendered
-line) because side-by-side rows routinely exceed the viewport width.
+`side-by-side` joins the per-file segments horizontally. `render_row_text()` takes
+a `layout` keyword (so the CLI's search-context rows honor it); the CLI and TUI
+renderers each apply the same join. Layout is purely visual — it never touches
+offsets, bytes, markers, filtering, search, or JSON. The TUI additionally cycles
+layout live (`v`) and adds its own horizontal scroll (`←`/`→`, a character offset
+cropped off each rendered line) because side-by-side rows routinely exceed the
+viewport width.
+
+**Marker display** (`--markers single|repeat|none`) is a *separate* frontend
+rendering concern from layout, and likewise a plain string each renderer branches
+on (`render_row_text()` also takes a `markers` keyword for search-context rows).
+It controls only the marker *text*: `single` (default) draws one strip per block —
+in `side-by-side` as its own left prefix column rather than attached to the first
+file; `repeat` repeats the strip under each segment in `side-by-side` (and is
+identical to `single` when `stacked`); `none` hides the strip. Marker *computation*
+stays the single source of truth in `HexModel._markers()` and is untouched — this
+mode only hides/positions the rendered text, so it never affects `--only-diff`,
+diff/missing highlighting, search, or JSON. The TUI cycles it live (`m`).
 
 The core also owns **byte classification** for the optional `--byte-classes`
 highlighting: `classify_byte(value) -> ByteClass` maps a byte (or `None`) to a

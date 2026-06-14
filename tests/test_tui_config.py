@@ -62,6 +62,32 @@ def test_valid_v1_loads(tmp_path):
     assert warnings == []
 
 
+@pytest.mark.parametrize("mode", ["single", "repeat", "none"])
+def test_markers_valid_values_load(tmp_path, mode):
+    p = tmp_path / "tui.toml"
+    p.write_text(f'config_version = 1\n[display]\nmarkers = "{mode}"\n')
+    settings, warnings = load_settings(p, TuiSettings())
+    assert settings.markers == mode
+    assert warnings == []
+
+
+def test_missing_markers_defaults_to_single(tmp_path):
+    p = tmp_path / "tui.toml"
+    p.write_text('config_version = 1\n[display]\nlayout = "stacked"\n')
+    settings, warnings = load_settings(p, TuiSettings())
+    assert settings.markers == "single"
+    assert warnings == []
+
+
+def test_invalid_markers_falls_back_to_base(tmp_path):
+    p = tmp_path / "tui.toml"
+    p.write_text('config_version = 1\n[display]\nmarkers = "sometimes"\n')
+    base = TuiSettings(markers="repeat")
+    settings, warnings = load_settings(p, base)
+    assert settings.markers == "repeat"       # invalid -> kept base
+    assert warnings and any("markers" in w for w in warnings)
+
+
 def test_missing_config_version_is_ignored_with_warning(tmp_path):
     p = tmp_path / "tui.toml"
     p.write_text('[display]\nlayout = "side-by-side"\n')
@@ -131,7 +157,7 @@ def test_save_is_complete_and_versioned(tmp_path):
     save_settings(TuiSettings(), p)
     text = p.read_text()
     # Every supported key is present, even at default values.
-    for key in ("layout", "ascii", "byte_classes", "color", "names",
+    for key in ("layout", "ascii", "byte_classes", "color", "names", "markers",
                 "width", "only_diff"):
         assert key in text
     assert "config_version = 1" in text
@@ -148,7 +174,7 @@ def test_save_then_load_round_trips(tmp_path):
     p = tmp_path / "tui.toml"
     original = TuiSettings(
         layout="side-by-side", ascii=False, byte_classes=True, color="always",
-        names="path", width=32, only_diff=True,
+        names="path", markers="repeat", width=32, only_diff=True,
     )
     save_settings(original, p)
     loaded, warnings = load_settings(p, TuiSettings())
