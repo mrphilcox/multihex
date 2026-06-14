@@ -32,15 +32,24 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
+      # PySide6's QtGui loads libEGL even under the offscreen platform plugin,
+      # so the GUI tests need this native lib present to run rather than skip.
+      - name: Install system libraries for headless Qt
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install -e '.[dev]'
+          python3 -m pip install -e '.[dev,gui]'
 
       - name: Lint
         run: ruff check .
 
+      # The GUI tests guard with importorskip("PySide6"); installing the [gui]
+      # extra above plus rendering Qt headlessly makes them run, not skip.
       - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: python3 -m pytest
 
       - name: Integration
