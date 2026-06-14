@@ -56,6 +56,26 @@ _BYTE_CLASS_COLOR = {
 }
 
 
+def _silence_stdout_after_broken_pipe():
+    """Prevent Python from reporting a second broken pipe during shutdown."""
+    try:
+        sys.stdout.close()
+    except BrokenPipeError:
+        pass
+    sys.stdout = open(os.devnull, "w")
+
+
+def write_stdout(text):
+    """Write CLI stdout and treat closed downstream pipes as normal termination."""
+    try:
+        sys.stdout.write(text)
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+    except BrokenPipeError:
+        _silence_stdout_after_broken_pipe()
+        raise SystemExit(0)
+
+
 def parse_around(text):
     """Parse OFF:N for --around."""
     if ":" not in text:
@@ -325,7 +345,7 @@ def run_search(args, files, names, name_w):
             # blank line between context blocks for readability
             if mi != len(matches) - 1:
                 out.append("")
-    print("\n".join(out))
+    write_stdout("\n".join(out))
 
 
 def main(argv=None):
@@ -417,11 +437,11 @@ def main(argv=None):
             "paths": list(args.files),
             "rows": json_rows,
         }
-        print(json.dumps(out, indent=2))
+        write_stdout(json.dumps(out, indent=2))
     elif not text_lines:
         print("multihex: nothing to display for this range", file=sys.stderr)
     else:
-        print("\n".join(text_lines))
+        write_stdout("\n".join(text_lines))
 
 
 if __name__ == "__main__":
