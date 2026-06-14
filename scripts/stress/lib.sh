@@ -181,7 +181,9 @@ need_free_bytes() {
 # need_sparse DIR: skip unless DIR's filesystem supports sparse files (a hole-y
 # truncate does not allocate real blocks).
 need_sparse() {
-  local dir="$1" f="$dir/.sparsetest" actual
+  local dir="$1"
+  local f="$dir/.sparsetest"
+  local actual
   if ! truncate -s 64M "$f" 2>/dev/null; then
     rm -f "$f"
     skip "truncate/sparse unsupported in $dir"
