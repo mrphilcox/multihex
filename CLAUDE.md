@@ -4,13 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-`multihex` is a Python tool for side-by-side fixed-offset hex comparison of multiple binary files. It is a `src/`-layout package (`src/multihex/`) with two console-script frontends sharing one core:
+`multihex` is a Python tool for side-by-side fixed-offset hex comparison of multiple binary files. It is the **visualization layer**: it shows bytes, diffs, and read-only layout overlays. Rich parsing/validation of a format belongs in the sibling `bintools` project, not here (see "Relationship to bintools" below). It is a `src/`-layout package (`src/multihex/`) with three console-script frontends sharing one core:
 
 - `src/multihex/core.py` — stdlib-only shared logic: file loading, `HexModel`/`Row` dataclasses, `Marker` enum, cell formatting, exact search, and `classify_byte()`/`ByteClass` (display-only byte classification)
 - `src/multihex/cli.py` — batch CLI frontend (text/JSON output, ANSI color); console script `multihex`
 - `src/multihex/tui.py` — interactive Textual TUI frontend; console script `multihex-tui`
+- `src/multihex/gui.py` — read-only PySide6/Qt desktop frontend; console script `multihex-gui` (the `[gui]` extra)
 
-Install with `pip install -e '.[dev]'` to get both scripts plus the test/lint deps. The commands below use the installed scripts; `python3 -m multihex.cli` / `python3 -m multihex.tui` work too.
+Supporting modules: `src/multihex/overlay.py` (the `OverlayState`/`OverlayRange` seam that loads/queries overlays), `src/multihex/layout_overlay_v1.py` (the overlay schema validator), and `src/multihex/tui_config.py` (TUI-only persisted preferences).
+
+Install with `pip install -e '.[dev]'` to get all three scripts plus the test/lint deps. The commands below use the installed scripts; `python3 -m multihex.cli` / `python3 -m multihex.tui` / `python3 -m multihex.gui` work too.
 
 Human-facing docs: `README.md` (users), `docs/ARCHITECTURE.md` and `docs/API.md` (developers), `CONTRIBUTING.md` (workflow). Keep them in sync with behavior changes.
 
@@ -45,6 +48,14 @@ multihex-tui --markers repeat FILE1 FILE2 # start with the chosen marker display
 #                   x  hex search (byte values, not ASCII)   n  next   N/p  previous
 # TUI toggles:  c  color   t  byte-class highlighting   v  layout   m  markers
 # TUI overlay:  l  load/change layout overlay (blank clears)   L  view current overlay
+
+# Run the read-only desktop GUI (requires PySide6 — the [gui] extra)
+multihex-gui FILE1 FILE2
+multihex-gui --markers none FILE1 FILE2        # GUI markers are single|none (no repeat)
+multihex-gui --overlay path/to/file.overlay.json FILE1 FILE2
+# GUI: vertical scroll / PageUp/Down / Home/End / jump-to-offset; View menu toggles
+#      (ASCII gutter, only-diff, marker strip, basename/path); Compare menu (--ref);
+#      Overlay menu (load/change, clear, view). Read-only — no editing.
 
 # Layout overlay (read-only annotation layer; validated; needs color on; no --json effect)
 multihex --overlay path/to/file.overlay.json --color always FILE1 FILE2
@@ -83,6 +94,22 @@ python3 tests/capture_goldens.py
 
 **Layout overlays** (`--overlay PATH`; TUI `l`/`L`; GUI Overlay menu): display-only consumption of `bintools.layout-overlay` v1 files — a read-only annotation layer, never authored or inferred here. The seam is `src/multihex/overlay.py` (`OverlayState`/`OverlayRange`), separate from `core.py` so the comparison core stays focused. `OverlayState.load(path, files)` reads the JSON and calls `layout_overlay_v1.validate_structural` once plus `validate_file_aware` per loaded file (diagnostics labelled by file). The **validator is the single source of truth** for severities and the `ok`-means-loadable contract — multihex never re-derives them: `OverlayState.applicable` is `True` only when no `error`-severity diagnostic exists anywhere, and frontends highlight only when applicable (errored overlays are reported but not applied; warnings are summarized with detail in "view current overlay"). Frontends never touch raw JSON — they ask the state object: `covers(offset)`, `ranges_at(offset)` (deterministic order; zero-length match nothing, out-of-bounds/overlapping never crash), `all_diagnostics()`, `summary()`, `details_text()`. Highlight priority sits **below missing/diff** and search (CLI blue background, TUI `on blue`, GUI a distinct cell color), needs color on, and has no effect on `--json`. Overlay paths are **never persisted** to config (overlays are file/session-specific).
 
+## Relationship to bintools
+
+`multihex` and the sibling `bintools` project share one contract: the
+`bintools.layout-overlay` v1 JSON format (`docs/layout-overlay-v1.md`).
+
+- **bintools produces** byte-level evidence and layout overlays. Its
+  `layoutcheck --overlay-out FILE.overlay.json` validates a hypothesized layout
+  against a binary and emits an overlay.
+- **multihex consumes** overlays: it loads, validates, displays, and highlights
+  them, and never authors, infers, or edits them.
+
+`src/multihex/layout_overlay_v1.py` and `docs/layout-overlay-v1.md` are a
+**vendored copy** of the shared schema/validator that also lives in bintools;
+the two copies must stay byte-identical. Do not fork the format here — coordinate
+changes with bintools.
+
 ## Tests
 
 - `tests/fixtures.py` — builds deterministic binary test fixtures
@@ -103,6 +130,12 @@ python3 tests/capture_goldens.py
 - `tests/test_cli_overlay.py` — CLI `--overlay` highlight ANSI, diagnostics on stderr, JSON safety, no-op path
 - `tests/test_tui_overlay.py` — headless TUI overlay load/clear/view state, status, cell-style priority
 - `tests/test_gui_overlay.py` — headless GUI overlay menu glue, diagnostics surfaced, cell-color tier, stale-overlay drop on reload
+- `tests/test_gui_viewstate.py` / `tests/test_gui_smoke.py` / `tests/test_gui_widget.py` — Qt-free `ViewState`/`format_status` logic plus offscreen widget smoke (skip cleanly when PySide6 is absent)
+
+The default `python3 -m pytest` run covers all of the above (TUI tests skip without `textual`; GUI tests skip without `PySide6`). Two extra lanes are **not** part of a bare pytest run:
+
+- `scripts/integration/run_all.sh` — end-to-end shell checks driving the real entry points and the `layout_overlay_v1` validator (excluded via `norecursedirs`).
+- `scripts/ui-tests/run_ui_tests.sh` — opt-in visual-regression suite in `tests_ui/` (Textual SVG snapshots + offscreen GUI PNG smoke); needs the `[ui-test]` extra and `QT_QPA_PLATFORM=offscreen`. Regenerate baselines with `scripts/ui-tests/update_snapshots.sh` after an intentional change. See `docs/ui-testing.md`.
 
 When updating `tests/goldens/*.out`, review the diff carefully and note the reason in the commit.
 

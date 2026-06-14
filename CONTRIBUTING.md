@@ -26,9 +26,13 @@ section — or add new follow-ups you discover along the way.
 
 ```
 src/multihex/
-  core.py    # stdlib-only comparison + search engine (the "meaning")
-  cli.py     # batch frontend: text/JSON/color, argument parsing  -> `multihex`
-  tui.py     # interactive Textual frontend                       -> `multihex-tui`
+  core.py              # stdlib-only comparison + search engine (the "meaning")
+  cli.py               # batch frontend: text/JSON/color, parsing      -> `multihex`
+  tui.py               # interactive Textual frontend                  -> `multihex-tui`
+  gui.py               # read-only PySide6/Qt desktop frontend         -> `multihex-gui`
+  overlay.py           # OverlayState/OverlayRange: load + query overlays
+  layout_overlay_v1.py # overlay schema validator (shared with bintools)
+  tui_config.py        # TUI-only persisted preferences (TOML)
   __init__.py
 tests/
   fixtures.py                          # deterministic binary fixtures
@@ -41,7 +45,17 @@ tests/
   test_cli_search.py                   # CLI --search-* output + error handling
   test_tui_search.py                   # headless TUI search state + status line
   test_tui_smoke.py                    # TUI smoke tests
+  test_cli_overlay.py / test_tui_overlay.py / test_gui_overlay.py  # overlay glue
+  test_gui_viewstate.py / test_gui_smoke.py / test_gui_widget.py   # GUI (skip w/o PySide6)
+  ...                                  # markers, byte-classes, layout, config, etc.
+tests_ui/                              # opt-in UI visual-regression (SVG/PNG snapshots)
+scripts/integration/                   # end-to-end CLI/validator shell checks
+scripts/ui-tests/                      # run / update the tests_ui/ suite
 ```
+
+TUI/GUI tests skip cleanly when `textual` / `PySide6` are absent. The `dev` extra
+installs `textual`/`rich`; add the `[gui]` extra for PySide6 and `[ui-test]` for
+the visual-regression suite.
 
 ## Running tests
 
@@ -73,6 +87,27 @@ KEEP_WORK=1 scripts/integration/run_all.sh   # preserve temp dirs for debugging
 Each script prints `PASS`/`FAIL`/`SKIP` lines, cleans up its own `mktemp -d`
 work dir, and skips optional frontends (e.g. the Textual TUI) when their
 dependencies are absent.
+
+## UI tests (opt-in)
+
+The heavier visual-regression suite lives in `tests_ui/` and is **not** part of a
+bare `pytest` run. It needs the `[ui-test]` extra and runs offscreen:
+
+```bash
+pip install -e '.[ui-test]'
+QT_QPA_PLATFORM=offscreen scripts/ui-tests/run_ui_tests.sh
+```
+
+It covers Textual SVG snapshots and an offscreen GUI render smoke test. After an
+**intentional** UI change, regenerate the baselines and review the diff like a
+golden:
+
+```bash
+scripts/ui-tests/update_snapshots.sh            # all
+scripts/ui-tests/update_snapshots.sh -k diff_view  # one
+```
+
+See [`docs/ui-testing.md`](docs/ui-testing.md) for details.
 
 ## Linting
 
@@ -112,6 +147,15 @@ committing it.
 2. Keep navigation/highlight state on the widget/app; pull bytes and markers from
    the core model — never recompute comparison meaning in the TUI.
 3. Add a headless test in `tests/test_tui_search.py` / `tests/test_tui_smoke.py`.
+
+### Add a GUI behavior
+1. Add the widget/menu/action in `src/multihex/gui.py`. Keep Qt-free
+   navigation/filter/status logic in the `ViewState`/`format_status` helpers so it
+   stays unit-testable without a display.
+2. Pull bytes and markers from the core model — never recompute comparison
+   meaning in the GUI. PySide6 stays import-guarded (the GUI is optional).
+3. Add a headless test in `tests/test_gui_*` (offscreen). For a visible rendering
+   change, add/update a `tests_ui/` snapshot (see "UI tests" below).
 
 ### Add a core capability
 1. Implement it in `src/multihex/core.py` (it must stay **stdlib-only**).

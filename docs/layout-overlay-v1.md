@@ -1,5 +1,11 @@
 # bintools.layout-overlay v1
 
+> **Shared contract — keep in sync.** This spec and the validator
+> `src/multihex/layout_overlay_v1.py` are a vendored copy of the same files in
+> the sibling `bintools` repo; the copies must stay byte-identical. bintools is
+> the producer (`layoutcheck --overlay-out`); multihex only consumes overlays.
+> Do not fork the format here — coordinate changes with bintools.
+
 A versioned, human-readable JSON format describing a concrete list of byte
 ranges within **one specific binary file**. It is the shared contract between
 bintools (producer) and multihex (consumer), and is equally usable as a
