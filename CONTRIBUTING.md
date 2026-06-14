@@ -49,8 +49,10 @@ tests/
   test_gui_viewstate.py / test_gui_smoke.py / test_gui_widget.py   # GUI (skip w/o PySide6)
   ...                                  # markers, byte-classes, layout, config, etc.
 tests_ui/                              # opt-in UI visual-regression (SVG/PNG snapshots)
+tests_perf/                            # opt-in performance smoke/measurement tests
 scripts/integration/                   # end-to-end CLI/validator shell checks
 scripts/ui-tests/                      # run / update the tests_ui/ suite
+scripts/performance/                   # run the tests_perf/ suite
 ```
 
 TUI/GUI tests skip cleanly when `textual` / `PySide6` are absent. The `dev` extra
@@ -130,6 +132,25 @@ and `CHAR` (an observed resource ceiling) lines; it exits non-zero only on
 `FAIL`. See [`scripts/stress/README.md`](scripts/stress/README.md) for the
 dimensions, env knobs, and verdict meanings, and `TODO.md` for the findings it
 surfaced.
+
+## Performance tests (opt-in)
+
+Performance tests live in `tests_perf/` and run through
+`scripts/performance/run_all.sh`. They measure timing, throughput, memory,
+scaling, or resource usage and are kept separate from stress tests, which are
+correctness and robustness probes. Performance results are sensitive to the
+machine and runtime environment, so this lane is not part of default pytest,
+integration, UI, stress, or CI runs.
+
+```bash
+scripts/performance/run_all.sh
+python3 -m pytest tests_perf
+```
+
+The initial scaffold is only a smoke test for the harness: it records elapsed
+time and asserts structural validity, with no timing threshold or baseline. See
+[`tests_perf/README.md`](tests_perf/README.md) and
+[`scripts/performance/README.md`](scripts/performance/README.md).
 
 ## Linting
 
