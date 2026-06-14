@@ -21,10 +21,12 @@ import os
 import sys
 
 from multihex.core import (
+    ByteClass,
     HexModel,
     Marker,
     SearchError,
     SearchMatch,
+    classify_byte,
     format_ascii_char,
     format_byte,
     format_marker,
@@ -39,8 +41,19 @@ from multihex.core import (
 
 RED = "\033[31m"
 GREEN = "\033[32m"
+CYAN = "\033[36m"
 DIM = "\033[2m"
 RESET = "\033[0m"
+
+# Byte-class -> ANSI foreground for --byte-classes (display-only). OTHER and
+# MISSING get no byte-class color: OTHER stays normal, and missing cells keep
+# their existing dim styling. Diffs always take priority over these (see
+# render_text_row), so differences never become harder to see.
+_BYTE_CLASS_COLOR = {
+    ByteClass.ZERO: DIM,
+    ByteClass.WHITESPACE: CYAN,
+    ByteClass.PRINTABLE_ASCII: GREEN,
+}
 
 
 def parse_around(text):
@@ -83,6 +96,10 @@ def build_parser():
                         "Also highlights cells that differ from the reference in color.")
     p.add_argument("--only-diff", action="store_true",
                    help="show only rows containing at least one differing or missing byte")
+    p.add_argument("--byte-classes", dest="byte_classes", action="store_true",
+                   help="highlight byte classes in the hex cells (zero, ASCII "
+                        "whitespace, printable ASCII). Visual-only; needs color "
+                        "enabled and has no effect on --json. Default off.")
     p.add_argument("--around", type=parse_around, default=None, metavar="OFF:N",
                    help="show a window of N bytes centered on OFF (overrides --offset/--length)")
     p.add_argument("--json", dest="as_json", action="store_true",
@@ -118,13 +135,19 @@ def resolve_color(mode, as_json):
     return sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
 
 
-def render_text_row(lines, row, names, name_w, base, show_ascii, use_color):
+def render_text_row(lines, row, names, name_w, base, show_ascii, use_color,
+                    byte_classes=False):
     """Render one core Row as text lines (with ANSI color when enabled).
 
     Coloring here is the batch tool's own scheme: each present cell is
     reddened when it differs from the base/reference file's byte in that
     column; missing cells are dimmed. (The TUI colors whole columns by
     marker instead -- the two schemes intentionally differ.)
+
+    When ``byte_classes`` is set (and color is on), present cells that are *not*
+    a diff get a byte-class foreground color. Missing and diff styling always
+    win, so differences stay obvious. The ASCII gutter is left uncolored, as it
+    is throughout the batch tool.
     """
     lines.append(f"0x{row.offset:08x}")
     base_row = row.cells[base] if base < len(row.cells) else None
@@ -142,6 +165,10 @@ def render_text_row(lines, row, names, name_w, base, show_ascii, use_color):
                 ref_b = base_row[c] if base_row is not None else None
                 if use_color and ref_b is not None and b != ref_b:
                     txt = RED + txt + RESET
+                elif use_color and byte_classes:
+                    color = _BYTE_CLASS_COLOR.get(classify_byte(b))
+                    if color:
+                        txt = color + txt + RESET
                 hex_cells.append(txt)
             # missing -> space, printable -> char, else '.' (all via core helper)
             gutter.append(format_ascii_char(b))
@@ -348,7 +375,7 @@ def main(argv=None):
             json_rows.append(build_json_row(row, names))
         else:
             render_text_row(text_lines, row, names, name_w,
-                            base, args.ascii, use_color)
+                            base, args.ascii, use_color, args.byte_classes)
 
     if args.as_json:
         out = {

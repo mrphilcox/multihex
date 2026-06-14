@@ -58,6 +58,46 @@ def format_marker(marker: Marker) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Byte classification (display-only; data, never style)
+# --------------------------------------------------------------------------- #
+# Pure value classification used by both frontends to drive optional
+# byte-class highlighting. This is *display-only*: it never affects loading,
+# row construction, offsets, markers, reference comparison, --only-diff, search,
+# or JSON. The core exposes the classification only -- it emits no ANSI and no
+# Rich/Textual style objects; styling belongs to the frontend renderers.
+class ByteClass(enum.Enum):
+    """Coarse value class of one byte (or a missing byte)."""
+
+    MISSING = "missing"                  # past a file's end (renders as "--")
+    ZERO = "zero"                        # 0x00
+    WHITESPACE = "whitespace"            # tab/newline/vtab/ff/cr/space
+    PRINTABLE_ASCII = "printable_ascii"  # 0x21..0x7e (space is WHITESPACE)
+    OTHER = "other"                      # everything else
+
+
+# ASCII whitespace per spec: tab, LF, vertical tab, form feed, CR, and space.
+# Space (0x20) is intentionally WHITESPACE here, not PRINTABLE_ASCII.
+_WHITESPACE_BYTES = frozenset({0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20})
+
+
+def classify_byte(value: Optional[int]) -> ByteClass:
+    """Classify a byte value (or ``None`` for missing) into a :class:`ByteClass`.
+
+    Printable ASCII intentionally spans ``0x21..0x7e``; ``0x20`` (space) is
+    WHITESPACE, and ``0x7f``/``0x80``/``0xff`` are OTHER.
+    """
+    if value is None:
+        return ByteClass.MISSING
+    if value == 0x00:
+        return ByteClass.ZERO
+    if value in _WHITESPACE_BYTES:
+        return ByteClass.WHITESPACE
+    if 0x21 <= value <= 0x7E:
+        return ByteClass.PRINTABLE_ASCII
+    return ByteClass.OTHER
+
+
+# --------------------------------------------------------------------------- #
 # Files
 # --------------------------------------------------------------------------- #
 @dataclass

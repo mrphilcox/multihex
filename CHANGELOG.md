@@ -7,6 +7,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Byte-class highlighting** (`--byte-classes`): a display-only mode that tints
+  hex cells by value class — zero bytes dim, ASCII whitespace cyan, printable
+  ASCII green — to help spot structure. Available in both frontends (the TUI also
+  toggles it live with `t`); disabled by default. It needs color enabled and has
+  no effect on offsets, comparison markers, `--only-diff`, `--ref`, search, or
+  `--json`. Classification lives in the core as `classify_byte()` / `ByteClass`
+  (data only; frontends own the styling), and existing missing/diff/search
+  styling always takes priority.
 - User and developer documentation: `README.md`, `docs/ARCHITECTURE.md`,
   `docs/API.md`, `CONTRIBUTING.md`, and this changelog.
 

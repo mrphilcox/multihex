@@ -20,6 +20,7 @@ Keys:
     a             toggle ASCII gutter
     d             toggle only-diff rows
     c             toggle color/highlighting
+    t             toggle byte-class highlighting
     /             text search
     x             hex search
     n             next match
@@ -36,11 +37,13 @@ import sys
 from typing import List, Optional, Sequence, Union
 
 from multihex.core import (
+    ByteClass,
     HexModel,
     Marker,
     Row,
     SearchError,
     SearchMatch,
+    classify_byte,
     first_match_index,
     format_ascii_char,
     format_byte,
@@ -80,6 +83,13 @@ _REF_STYLE = "bold yellow"
 # Search highlight: the current match stands out more strongly than the others.
 _SEARCH_STYLE = "black on yellow"
 _SEARCH_CUR_STYLE = "bold black on bright_yellow"
+# Byte-class foreground for --byte-classes / the 't' toggle (display-only, the
+# lowest-priority tier). OTHER/MISSING get no byte-class color.
+_BYTE_CLASS_STYLE = {
+    ByteClass.ZERO: "grey50",
+    ByteClass.WHITESPACE: "cyan",
+    ByteClass.PRINTABLE_ASCII: "green",
+}
 
 
 if _TEXTUAL_IMPORT_ERROR is None:
@@ -103,12 +113,14 @@ if _TEXTUAL_IMPORT_ERROR is None:
             only_diff: bool,
             color_on: bool,
             name_mode: str,
+            byte_classes_on: bool = False,
         ) -> None:
             super().__init__()
             self.model = model
             self.ascii_on = ascii_on
             self.only_diff = only_diff
             self.color_on = color_on
+            self.byte_classes_on = byte_classes_on
             self.name_mode = name_mode
             self.name_width = name_column_width(model.files, name_mode)
             self.top = 0  # position into visible_indices()
@@ -205,6 +217,10 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.color_on = not self.color_on
             self.refresh()
 
+        def toggle_byte_classes(self) -> None:
+            self.byte_classes_on = not self.byte_classes_on
+            self.refresh()
+
         def toggle_only_diff(self) -> None:
             keep = self.current_top_row()
             self.only_diff = not self.only_diff
@@ -236,13 +252,17 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 self.search_current = None
             self.refresh()
 
-        def _cell_style(self, fi: int, abs_off: int, marker: Marker) -> str:
+        def _cell_style(
+            self, fi: int, abs_off: int, marker: Marker, value: Optional[int] = None
+        ) -> str:
             """Style for one file's byte cell.
 
             Display priority (only matters when colour is on): a missing byte is
             never part of a match, so it never reaches a search branch; among
             present bytes the order is current search match > other search match
-            > diff/stability marker.
+            > diff/stability marker > byte class. Byte-class color is the lowest
+            tier: it applies only to present, non-diff cells, so search and diff
+            highlighting stay the most visible.
             """
             if self.color_on:
                 cur = self.search_current
@@ -254,7 +274,11 @@ if _TEXTUAL_IMPORT_ERROR is None:
                     return _SEARCH_CUR_STYLE
                 if (fi, abs_off) in self._search_covered:
                     return _SEARCH_STYLE
-            return self._style(_DIFF_STYLE) if marker is not Marker.SAME else ""
+            if marker is not Marker.SAME:
+                return self._style(_DIFF_STYLE)
+            if self.color_on and self.byte_classes_on and value is not None:
+                return _BYTE_CLASS_STYLE.get(classify_byte(value), "")
+            return ""
 
         # -- rendering ------------------------------------------------------ #
         def render(self) -> "Text":
@@ -290,14 +314,18 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 text.append(name, style=name_style)
                 text.append("  ")
                 for ci in range(model.width):
-                    cell_style = self._cell_style(fi, row.offset + ci, row.markers[ci])
+                    cell_style = self._cell_style(
+                        fi, row.offset + ci, row.markers[ci], row_bytes[ci]
+                    )
                     text.append(format_byte(row_bytes[ci]), style=cell_style)
                     if ci != model.width - 1:
                         text.append(" ")
                 if self.ascii_on:
                     text.append("  |")
                     for ci in range(model.width):
-                        cell_style = self._cell_style(fi, row.offset + ci, row.markers[ci])
+                        cell_style = self._cell_style(
+                            fi, row.offset + ci, row.markers[ci], row_bytes[ci]
+                        )
                         text.append(format_ascii_char(row_bytes[ci]), style=cell_style)
                     text.append("|")
                 text.append("\n")
@@ -366,6 +394,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             "  a             toggle ASCII gutter\n"
             "  d             toggle only-diff rows\n"
             "  c             toggle color\n"
+            "  t             toggle byte-class highlighting\n"
             "  /             text search\n"
             "  x             hex search\n"
             "  n             next match\n"
@@ -411,6 +440,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             Binding("a", "toggle_ascii", "ASCII"),
             Binding("d", "toggle_diff", "Only-diff"),
             Binding("c", "toggle_color", "Color"),
+            Binding("t", "toggle_byte_classes", "Classes"),
             Binding("slash", "search_text", "Search"),
             Binding("x", "search_hex", "Hex search"),
             Binding("n", "next_match", "Next", show=False),
@@ -428,6 +458,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
             only_diff: bool,
             color_on: bool,
             name_mode: str,
+            byte_classes_on: bool = False,
         ) -> None:
             super().__init__()
             self.model = model
@@ -437,6 +468,7 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 only_diff=only_diff,
                 color_on=color_on,
                 name_mode=name_mode,
+                byte_classes_on=byte_classes_on,
             )
             # Search state lives on the app; the view only renders highlights.
             self.search_query = None
@@ -476,10 +508,11 @@ if _TEXTUAL_IMPORT_ERROR is None:
             ref_label = "all-agree" if m.ref is None else (
                 m.files[m.ref].display_name(v.name_mode)
             )
-            toggles = "ascii:%s diff:%s color:%s" % (
+            toggles = "ascii:%s diff:%s color:%s classes:%s" % (
                 "on" if v.ascii_on else "off",
                 "on" if v.only_diff else "off",
                 "on" if v.color_on else "off",
+                "on" if v.byte_classes_on else "off",
             )
             sizes = "  ".join(
                 f"{f.display_name(v.name_mode)}={f.size}" for f in m.files
@@ -557,6 +590,10 @@ if _TEXTUAL_IMPORT_ERROR is None:
 
         def action_toggle_color(self) -> None:
             self.view.toggle_color()
+            self.update_status()
+
+        def action_toggle_byte_classes(self) -> None:
+            self.view.toggle_byte_classes()
             self.update_status()
 
         def action_toggle_diff(self) -> None:
@@ -711,6 +748,9 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
                    help="start with the ASCII gutter hidden")
     p.add_argument("--color", choices=["auto", "always", "never"],
                    default="auto", help="highlighting (default auto)")
+    p.add_argument("--byte-classes", dest="byte_classes", action="store_true",
+                   help="start with byte-class highlighting on (toggle with 't'). "
+                        "Visual-only; needs color on. Default off.")
     return p.parse_args(argv)
 
 
@@ -756,6 +796,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         only_diff=args.only_diff,
         color_on=_resolve_color(args.color),
         name_mode=args.names,
+        byte_classes_on=args.byte_classes,
     )
     app.run()
     return 0

@@ -159,12 +159,22 @@ By default it shows the largest range common to all files starting at offset 0,
 | `--ascii` / `--no-ascii`      | Show / hide the ASCII gutter (default on).                       |
 | `--names basename` \| `path`  | Label files by basename (default) or full path.                  |
 | `--color auto` \| `always` \| `never` | Colorize output. `auto` = on when stdout is a TTY. Honors `NO_COLOR`. |
+| `--byte-classes`              | Highlight byte classes in the hex cells (visual-only; needs color on). |
 | `--json`                      | Emit machine-readable JSON instead of text (implies no color).   |
 
 In the batch CLI, color **reddens each individual cell that differs** from the
 reference file's byte in that column, dims missing cells, and colors the marker
 tokens (`==` green, `!=` red, `--` dim). *(The TUI colors whole columns instead —
 the two schemes differ by design.)*
+
+**Byte classes (`--byte-classes`).** A purely visual aid for spotting structure
+while reverse engineering: when color is enabled it tints the hex byte cells by
+value class — zero bytes (`0x00`) dim, ASCII whitespace (tab/LF/VT/FF/CR/space)
+cyan, and printable ASCII (`0x21`–`0x7e`) green; all other bytes stay normal.
+It is **disabled by default** and does not affect offsets, comparison markers,
+`--only-diff`, `--ref`, search, or `--json` output. Existing missing/diff
+styling always takes priority, so differences never become harder to see. With
+`--color never` (or `--json`) it emits no color.
 
 ### JSON output
 
@@ -270,7 +280,8 @@ multihex-tui --ref 0 file*.bin
 ```
 
 **Startup flags:** `--offset N`, `--width N`, `--ref INDEX`,
-`--names basename|path`, `--only-diff`, `--no-ascii`, `--color auto|always|never`.
+`--names basename|path`, `--only-diff`, `--no-ascii`, `--color auto|always|never`,
+`--byte-classes` (start with byte-class highlighting on; toggle with `t`).
 
 **Keys**
 
@@ -286,6 +297,7 @@ multihex-tui --ref 0 file*.bin
 | `a`            | toggle the ASCII gutter               |
 | `d`            | toggle only-diff rows                 |
 | `c`            | toggle color / highlighting           |
+| `t`            | toggle byte-class highlighting        |
 | `/`            | text search                           |
 | `x`            | hex search                            |
 | `n`            | next match                            |
@@ -298,7 +310,11 @@ match count and current match location.
 
 The TUI colors **whole columns** by their marker state and highlights search
 matches, with this priority: missing byte > current match > other match > diff
-marker. The current match is highlighted more strongly than the rest.
+marker. The current match is highlighted more strongly than the rest. When
+byte-class highlighting is on (`--byte-classes`, or the `t` toggle) it slots in
+as the lowest tier — `… > diff marker > byte class` — so it never hides marker
+or search highlighting. Pressing `c` (color off) hides byte-class colors too;
+the on/off state is remembered independently.
 
 ## Recipes
 

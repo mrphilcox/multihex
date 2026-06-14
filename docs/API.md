@@ -74,6 +74,25 @@ row = model.build_row(0)
 [m.value for m in row.markers[:3]]   # ['==', '==', '!=']
 ```
 
+### `enum ByteClass` / `classify_byte(value) -> ByteClass`
+Display-only classification of a single byte value (or `None` for missing) into
+a coarse class, used by both frontends to drive optional byte-class
+highlighting. This is **data only** — the core never emits ANSI or Rich/Textual
+styles; frontends map a `ByteClass` to their own colors.
+
+- `MISSING` — `value is None` (a byte past a file's end).
+- `ZERO` — `0x00`.
+- `WHITESPACE` — `0x09`, `0x0a`, `0x0b`, `0x0c`, `0x0d`, `0x20` (space included).
+- `PRINTABLE_ASCII` — `0x21`–`0x7e` (space is `WHITESPACE`, not printable).
+- `OTHER` — everything else (e.g. `0x7f`, `0x80`, `0xff`).
+
+```python
+classify_byte(0x00)   # ByteClass.ZERO
+classify_byte(0x20)   # ByteClass.WHITESPACE
+classify_byte(0x41)   # ByteClass.PRINTABLE_ASCII
+classify_byte(None)   # ByteClass.MISSING
+```
+
 ## Formatting helpers
 
 - `format_byte(byte) -> str` — two-char hex, or `--` for `None`.

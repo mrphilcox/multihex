@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `multihex` is a Python tool for side-by-side fixed-offset hex comparison of multiple binary files. It is a `src/`-layout package (`src/multihex/`) with two console-script frontends sharing one core:
 
-- `src/multihex/core.py` — stdlib-only shared logic: file loading, `HexModel`/`Row` dataclasses, `Marker` enum, cell formatting, exact search
+- `src/multihex/core.py` — stdlib-only shared logic: file loading, `HexModel`/`Row` dataclasses, `Marker` enum, cell formatting, exact search, and `classify_byte()`/`ByteClass` (display-only byte classification)
 - `src/multihex/cli.py` — batch CLI frontend (text/JSON output, ANSI color); console script `multihex`
 - `src/multihex/tui.py` — interactive Textual TUI frontend; console script `multihex-tui`
 
@@ -30,9 +30,14 @@ multihex --search-hex "52 49 46 46" FILE1 FILE2
 multihex --search-text content-type --search-ignore-case FILE1
 multihex --search-text RIFF --search-context 2 FILE1
 
+# Byte-class highlighting (display-only; needs color on; off by default)
+multihex --byte-classes --color always FILE1 FILE2
+
 # Run the TUI (requires textual + rich)
 multihex-tui FILE1 FILE2
+multihex-tui --byte-classes FILE1 FILE2   # start with byte-class highlighting on
 # TUI search keys:  /  text search   x  hex search   n  next   N/p  previous
+# TUI toggles:  c  color   t  byte-class highlighting
 
 # Run all tests
 python3 -m pytest
@@ -60,7 +65,9 @@ python3 tests/capture_goldens.py
 
 **`HexFile.data`** is either `mmap.mmap` (lazy, for real files) or `bytes`/`bytearray` (for tests). `byte_at()` and `size` work identically for both.
 
-**Search** is exact (no inference, no alignment, no wildcards) and lives entirely in the core: `parse_hex_pattern()`, `make_text_query()`/`make_hex_query()` → `SearchQuery`, `search_files()` → ordered `SearchMatch` list, plus index-based navigation helpers (`first_match_index`, `next_match_index`, `prev_match_index`, `match_index_after`/`before`). Results are ordered by `(file_index, offset)`; matches are non-overlapping unless `overlap=True`. Case-insensitive text search folds ASCII letters only. Frontends add UI glue only: the CLI prints `file=… offset=… match=… ascii=…` lines (with optional `--search-context` rows), the TUI tracks search state and highlights matches (current match strongest). TUI render priority: missing > current match > other matches > diff marker.
+**Search** is exact (no inference, no alignment, no wildcards) and lives entirely in the core: `parse_hex_pattern()`, `make_text_query()`/`make_hex_query()` → `SearchQuery`, `search_files()` → ordered `SearchMatch` list, plus index-based navigation helpers (`first_match_index`, `next_match_index`, `prev_match_index`, `match_index_after`/`before`). Results are ordered by `(file_index, offset)`; matches are non-overlapping unless `overlap=True`. Case-insensitive text search folds ASCII letters only. Frontends add UI glue only: the CLI prints `file=… offset=… match=… ascii=…` lines (with optional `--search-context` rows), the TUI tracks search state and highlights matches (current match strongest). TUI render priority: missing > current match > other matches > diff marker > byte class.
+
+**Byte classes** (`--byte-classes`; TUI `t`): display-only highlighting. `core.classify_byte()` maps a byte (or `None`) to a `ByteClass` (`ZERO`/`WHITESPACE`/`PRINTABLE_ASCII`/`OTHER`/`MISSING`) — data only, no ANSI/Rich. Frontends color hex cells by class as the **lowest-priority** tier (missing/diff/search styling always wins), only when color is enabled; off by default. It never affects offsets, markers, `--only-diff`, `--ref`, search, or `--json`.
 
 ## Tests
 
@@ -73,6 +80,9 @@ python3 tests/capture_goldens.py
 - `tests/test_search.py` — core search: hex parser, text/hex/multi-file/overlap, navigation
 - `tests/test_cli_search.py` — CLI `--search-*` output and clean error handling
 - `tests/test_tui_search.py` — headless TUI search state, navigation, and status line
+- `tests/test_byte_class.py` — core `classify_byte()` over boundary values
+- `tests/test_cli_byte_classes.py` — CLI `--byte-classes` ANSI styling, color gating, JSON safety
+- `tests/test_tui_byte_classes.py` — headless TUI byte-class state, toggle, status/help, priority
 
 When updating `tests/goldens/*.out`, review the diff carefully and note the reason in the commit.
 

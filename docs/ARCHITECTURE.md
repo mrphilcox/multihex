@@ -99,6 +99,15 @@ directly by the batch CLI and as the geometry reference for the TUI's styled
 rendering. `name_column_width()` and `marker_prefix_width()` keep the marker row
 aligned under the hex columns.
 
+The core also owns **byte classification** for the optional `--byte-classes`
+highlighting: `classify_byte(value) -> ByteClass` maps a byte (or `None`) to a
+coarse class (`ZERO` / `WHITESPACE` / `PRINTABLE_ASCII` / `OTHER` / `MISSING`).
+This is **data only** — like the rest of the core it emits no ANSI and no
+Rich/Textual styles. Each frontend maps a `ByteClass` to its own colors as the
+lowest-priority styling tier, so it never overrides missing/diff/search
+highlighting and is purely visual (no effect on markers, filtering, search, or
+JSON).
+
 ## The search subsystem
 
 Search is **exact**: it reports observed byte matches only, with no wildcards,
@@ -137,7 +146,10 @@ Frontends are allowed to **render, navigate, and filter** — nothing more.
   state (top row, page size, only-diff visible set, toggles) and search highlight
   state, but every byte and marker still comes from the core model. Its color
   scheme highlights **whole columns** by marker, plus search matches with the
-  priority: missing > current match > other match > diff.
+  priority: missing > current match > other match > diff. With `--byte-classes`
+  (or the `t` toggle) byte-class foreground color is appended as the lowest tier
+  (`… > diff > byte class`); the `c` color toggle hides it along with everything
+  else, and its on/off state is independent.
 
 The two color schemes **differ on purpose** — do not unify them. The CLI is for
 spotting exact differing bytes in a scrollback or a pipe; the TUI is for scanning
