@@ -524,14 +524,19 @@ the **Overlay** menu).
 
 The window has a menu bar (**File** ▸ Open/Quit, **View** ▸ ASCII gutter /
 only-diff / markers / colour / byte-classes / file-name mode / options, **Navigate**
-▸ jump-to-offset and start/end, **Compare** ▸ reference file incl. *all-agree*,
-**Overlay** ▸ load/change, clear, and view current layout overlay, **Search** ▸
-find text/hex and next/previous, **Help** ▸ keyboard shortcuts), a custom comparison
-view that paints only the visible rows (so it stays light on large files), and a
-status bar showing the visible offset range, row position, reference mode, toggle
-states, and file sizes. The block layout mirrors the CLI/TUI: an offset line, one
-`name  hex  |ascii|` line per file, then the marker strip; columns that differ (or
-are missing) are highlighted, and missing bytes render as `--`.
+▸ jump-to-offset and start/end, **Search** ▸ find text/hex and next/previous,
+**Compare** ▸ choose reference incl. *all-agree*, **Overlay** ▸ load/change, clear,
+and view current layout overlay, **Help** ▸ keyboard shortcuts; menu items show
+their single-key shortcuts), a custom comparison view that paints only the visible
+rows (so it stays light on large files), and a segmented status bar showing the
+visible offset range, row position, reference mode, toggle states (incl. colour and
+byte classes), overlay state, and file sizes — plus a persistent search segment
+with the query, match position, and file/offset of the current match. The window
+title names the loaded files. Accent colours follow the system light/dark theme.
+The **Options** dialog (also `o`) applies immediately: the display toggles,
+file-name mode, and bytes-per-row. The block layout mirrors the CLI/TUI: an offset
+line, one `name  hex  |ascii|` line per file, then the marker strip; columns that
+differ (or are missing) are highlighted, and missing bytes render as `--`.
 
 The GUI currently has vertical scrolling only. Very wide rows can be clipped on
 the right; use a smaller `--width`, or use the CLI/TUI when you need horizontal
@@ -553,8 +558,10 @@ layout the GUI does not yet implement.
 
 **Layout overlays** work as in the CLI/TUI: the **Overlay** menu loads/changes,
 clears, and views a [layout-overlay-v1](docs/layout-overlay-v1.md) annotation
-layer. Diagnostics surface in the status bar (summary) and a dialog (full detail);
-an overlay with errors is reported but not applied, and overlay paths are not saved
+layer; covered bytes get a distinct background fill. Diagnostics surface in a
+scrollable details dialog, and a persistent status-bar segment keeps the overlay's
+name, range count, and warning/error state visible (tinted when degraded); an
+overlay with errors is reported but not applied, and overlay paths are not saved
 in config. Loading new files drops a previously loaded overlay (its validation was
 file-specific).
 

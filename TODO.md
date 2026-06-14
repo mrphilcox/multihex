@@ -125,13 +125,19 @@ _(nothing in flight — pick the next item from Near-term)_
       change there; decide whether it is a backward-compatible v1 extension or a
       v2 bump.
 - [ ] **GUI Phase 2 — usability (remaining).** Single-key shortcuts and TUI
-      parity now ship (see Done: the shared shortcut registry). Still open:
+      parity now ship (see Done: the shared shortcut registry), and the visual
+      polish pass added system-theme-following light/dark accents, the platform
+      fixed-pitch font, a segmented status bar with persistent search/overlay
+      segments, scrollable report dialogs, menu key hints, and a runtime
+      bytes-per-row control in Options (see Done). Still open:
       horizontal scrolling / wide-row overflow (the view uses `ScrollBarAlwaysOff`,
       so a wide `--width` is silently clipped — see the `TODO(GUI usability)` in
       `src/multihex/gui.py`; this is also why `v`/`←`/`→` stay TUI-only); revisit
       that `MainWindow.load_paths` re-applies the startup `--ref` on every File ▸
       Open rather than the last Compare-menu choice; remember window size/position
-      and recent files; a toolbar; configurable fonts; dark/light themes.
+      and recent files; a toolbar; user-configurable fonts and an explicit theme
+      picker (beyond following the system palette); `--color`/`--byte-classes`
+      startup flags for TUI flag parity.
 
 - [ ] **Performance Testing**
   - Current coverage is intentionally minimal and serves primarily as a harness smoke test.
@@ -196,6 +202,27 @@ Guidelines:
 
 ## Done or superseded
 
+- [x] **GUI visual polish pass (modern native Qt).** Reworked the PySide6 GUI's
+      presentation without touching comparison/search semantics or the core:
+      platform fixed-pitch font sized off the UI font (monospace only for data
+      and text reports); an 8px content margin, 640x400 minimum size, and file
+      names in the window title; light/dark accent tables selected from the
+      widget palette so the view follows the system theme; the layout-overlay
+      highlight is now a background fill (it previously shared its teal
+      foreground with the WHITESPACE byte class) and SAME/MISSING markers render
+      dim so DIFF pops (matching the TUI's emphasis); a segmented status bar
+      (position, ref, toggles incl. color/classes, persistent overlay segment
+      with warning/error tint, sizes) plus a persistent search segment that
+      mirrors the TUI's dedicated search line and survives scrolling; scrollable
+      monospace report dialogs replace the QMessageBox help/overlay-details;
+      a validated hex-search dialog (OK disabled on bad patterns), wider search
+      dialogs with placeholders, and a jump prompt showing the valid range;
+      menus reordered (Search before Compare/Overlay), a Compare ▸ Choose
+      reference item, and registry single-key hints shown in menu items; and an
+      Options bytes-per-row spinner (TUI settings parity, no persistence).
+      Pure helpers (`format_status_parts`, `format_search_status`,
+      `format_overlay_status`) keep the status logic Qt-free-testable. New
+      smoke renders: `gui_dark.png`, `gui_overlay_dialog.png`. No new deps.
 - [x] **Attach the offset to its row's data (no standalone offset line).** Every
       block previously printed the offset on its own line with the bytes below it;
       across CLI, TUI, and GUI the offset now rides the first content line as a

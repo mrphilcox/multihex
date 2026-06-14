@@ -142,9 +142,11 @@ def test_overlay_highlight_smoke(app, tmp_path):
     assert w.view_widget.overlay is st
 
     vw = w.view_widget
-    # A covered, SAME, present byte gets the overlay colour; diff still wins.
-    assert vw._cell_color(0x00, Marker.SAME, 0) == gui._COLOR_OVERLAY
-    assert vw._cell_color(0x00, Marker.DIFF, 0) == gui._COLOR_DIFF
+    # A covered, SAME, present byte gets the overlay background fill; a diff
+    # cell keeps its red glyphs with no fill (diff still wins).
+    assert vw._cell_bg(0, 0x00, Marker.SAME) == vw._accents().overlay_bg
+    assert vw._cell_color(0x00, Marker.DIFF, 0) == vw._accents().diff
+    assert vw._cell_bg(0, 0x00, Marker.DIFF) is None
 
     image = _grab_image(w, "gui_overlay.png")
     assert _is_painted(image)
@@ -224,6 +226,63 @@ def test_search_highlight_render_png(app, tmp_path):
     app.processEvents()
     image = _grab_image(w, "gui_search.png")
     assert _is_painted(image)
+    w.close()
+    del w
+    gc.collect()
+    app.processEvents()
+
+
+def test_dark_palette_render_png(app, tmp_path):
+    """A dark palette flips to the dark accent set and still paints cleanly."""
+    from PySide6.QtGui import QColor, QPalette
+
+    a_data, b_data = fx.diff_pair()
+    a = fx.write(tmp_path, "a.bin", a_data)
+    b = fx.write(tmp_path, "b.bin", b_data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+
+    dark = QPalette()
+    dark.setColor(QPalette.ColorRole.Base, QColor(0x1E, 0x1E, 0x1E))
+    dark.setColor(QPalette.ColorRole.Window, QColor(0x2A, 0x2A, 0x2A))
+    dark.setColor(QPalette.ColorRole.Text, QColor(0xE6, 0xE6, 0xE6))
+    dark.setColor(QPalette.ColorRole.WindowText, QColor(0xE6, 0xE6, 0xE6))
+    w.setPalette(dark)
+    w.view_widget.setPalette(dark)
+
+    vw = w.view_widget
+    assert vw._accents() is gui._ACCENTS_DARK
+    assert vw._cell_color(0x00, Marker.DIFF, 0) == gui._ACCENTS_DARK.diff
+
+    w.resize(900, 420)
+    w.show()
+    app.processEvents()
+    image = _grab_image(w, "gui_dark.png")
+    assert _is_painted(image)
+    w.close()
+    del w
+    gc.collect()
+    app.processEvents()
+
+
+def test_overlay_report_dialog_render_png(app, tmp_path):
+    """'View current overlay' opens the scrollable monospace report dialog."""
+    data = fx.overlay_target()
+    a = fx.write(tmp_path, "a.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a])
+    w.load_overlay(_OVERLAY_JSON)
+    w.show()
+    app.processEvents()
+
+    w._overlay_view()
+    dlg = w._message_boxes[-1]
+    assert isinstance(dlg, gui._TextReportDialog)
+    assert "Ranges under cursor" in dlg.text()
+    app.processEvents()
+    image = _grab_image(dlg, "gui_overlay_dialog.png")
+    assert _is_painted(image)
+    dlg.close()
     w.close()
     del w
     gc.collect()

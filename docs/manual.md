@@ -637,7 +637,7 @@ check detects it is missing, the GUI prints an install hint (for example
 | Option | Value | Default | Notes |
 |--------|-------|---------|-------|
 | `--offset N` | integer | `0` | Start offset. Negative exits 2. |
-| `--width N` | integer | `16` | Bytes per row. `< 1` exits 2. |
+| `--width N` | integer | `16` | Bytes per row. `< 1` exits 2. Changeable at runtime via View > Options. |
 | `--ref INDEX` | index | unset | Pivot file. Out of range is NOT fatal: it is coerced to "no reference" and a warning is printed to stderr. |
 | `--names basename\|path` | choice | `basename` | File-name mode. |
 | `--only-diff` | flag | off | Start with only differing rows. |
@@ -655,10 +655,14 @@ runtime-only (View menu / keys). Color starts on.
 | File | Open (`Ctrl+O`), Quit (`Ctrl+Q`) |
 | View | ASCII gutter, Only differing rows, Show markers, Color highlighting, Byte-class highlighting, Options, File names (Basename / Full path) |
 | Navigate | Jump to offset (`Ctrl+G`), Go to start (`Ctrl+Home`), Go to end (`Ctrl+End`) |
-| Compare | All agree (no reference), then one radio item per file |
-| Overlay | Load/change overlay, Clear overlay, View current overlay |
 | Search | Find text (`Ctrl+F`), Find hex, Next match, Previous match |
+| Compare | Choose reference (dialog), All agree (no reference), then one radio item per file |
+| Overlay | Load/change overlay, Clear overlay, View current overlay |
 | Help | Keyboard shortcuts |
+
+Menu items also display their single-key shortcuts (`a`, `d`, `m`, `c`, `t`, `o`,
+`x`, `n`, `N`, `r`, `l`, `L`, `h`) as hint text; the keys themselves are dispatched
+by the shared registry, not by Qt shortcuts.
 
 ### 8.3 Single-key shortcuts
 
@@ -669,8 +673,9 @@ the side-by-side layout the GUI does not implement. The shared keys behave as in
 
 - `m` toggles the marker strip on or off (there is no `repeat` mode).
 - `l` / `L` manage the overlay via dialogs; `o` opens an apply-immediately options
-  dialog with no persistence (the GUI has no config file).
-- `h` / `?` shows the keyboard-shortcut dialog.
+  dialog (display toggles, file-name mode, and bytes-per-row) with no persistence
+  (the GUI has no config file).
+- `h` / `?` shows the keyboard-shortcut dialog (a scrollable text report).
 
 Named keys (Down, PageUp, Home, End) are dispatched by key code; printable keys by
 character. While a modal dialog (search, jump, reference) holds focus, single-key
@@ -688,16 +693,23 @@ buffer), so it stays light on large files. Block layout mirrors the CLI/TUI: the
 offset gutter on the first file line, one `name  hex  |ascii|` line per file, then
 the optional marker strip.
 
-Color scheme (whole-column, like the TUI): the offset line is blue; a column whose
-marker is not SAME is red; missing cells and the `--` marker are dim; the `==`
-marker is green; the reference file's name is emphasized. Search matches fill a
-background (current match stronger) with dark glyphs. Overlay ranges use a distinct
-teal cell color, and byte classes the lowest tier. Cell priority: missing >
-current match > other match > diff > overlay > byte class > normal.
+Color scheme (whole-column, like the TUI): the offset gutter is blue; a column
+whose marker is not SAME is red; missing cells and the `==`/`--` markers are dim
+(so the red `!=` stands out); the reference file's name is emphasized. Search
+matches fill a background (current match stronger) with dark glyphs. Overlay
+ranges fill a distinct background on covered SAME cells, and byte classes are the
+lowest tier. Cell priority: missing > current match > other match > diff >
+overlay > byte class > normal. Accents come in light and dark sets, chosen from
+the widget palette, so the view follows the system theme. The hex view uses the
+platform's fixed-pitch font; UI chrome stays in the proportional system font.
 
-The status bar mirrors the TUI: visible offset range, row position, reference mode,
-the `ascii diff markers` toggles, and per-file sizes. Search and overlay actions
-temporarily show their own messages there.
+The status bar is segmented: visible offset range and row position, reference
+mode, the `ascii diff markers color classes` toggles, overlay state (name, range
+count, warning/error tint — persistent while an overlay is loaded), and per-file
+sizes. An active search keeps its own persistent segment (query, match position,
+file and offset of the current match, or `no matches` / the error); transient
+notices (overlay summary toasts) appear briefly in the message area. The window
+title shows the loaded file names.
 
 ### 8.6 File reload behavior
 

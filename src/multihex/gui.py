@@ -48,12 +48,18 @@ from multihex.core import (
     name_column_width,
     next_match_index,
     offset_label,
+    parse_hex_pattern,
     parse_int,
     prev_match_index,
     search_files,
 )
 from multihex.overlay import OverlayState
-from multihex.shortcuts import gui_help_text, gui_key_names, gui_text_map
+from multihex.shortcuts import (
+    gui_help_text,
+    gui_key_names,
+    gui_shortcuts,
+    gui_text_map,
+)
 
 # --------------------------------------------------------------------------- #
 # Pure-Python helpers (no Qt). Defined unconditionally so they import and unit-
@@ -169,6 +175,41 @@ class ViewState:
         self.clamp_top(page_rows)
 
 
+def format_status_parts(
+    *,
+    offset_start: int,
+    offset_end: int,
+    row_pos: int,
+    row_count: int,
+    ref_label: str,
+    ascii_on: bool,
+    only_diff: bool,
+    markers_on: bool,
+    color_on: bool = True,
+    byte_classes_on: bool = False,
+    sizes: Sequence[Tuple[str, int]],
+) -> List[str]:
+    """Build the status-bar segments from primitives (pure; testable without Qt).
+
+    Mirrors the TUI status line content: visible offset range, row
+    position/count, reference mode, the display toggles, and per-file sizes.
+    One string per status-bar segment, in display order.
+    """
+    if row_count <= 0:
+        where = "no rows"
+    else:
+        where = f"0x{offset_start:08x}-0x{offset_end:08x} | row {row_pos}/{row_count}"
+    toggles = "ascii:%s diff:%s markers:%s color:%s classes:%s" % (
+        "on" if ascii_on else "off",
+        "on" if only_diff else "off",
+        "on" if markers_on else "off",
+        "on" if color_on else "off",
+        "on" if byte_classes_on else "off",
+    )
+    sizes_s = "sizes: " + "  ".join(f"{name}={size}" for name, size in sizes)
+    return [where, f"ref={ref_label}", toggles, sizes_s]
+
+
 def format_status(
     *,
     offset_start: int,
@@ -179,24 +220,75 @@ def format_status(
     ascii_on: bool,
     only_diff: bool,
     markers_on: bool,
+    color_on: bool = True,
+    byte_classes_on: bool = False,
     sizes: Sequence[Tuple[str, int]],
 ) -> str:
-    """Build the status-bar string from primitives (pure; testable without Qt).
-
-    Mirrors the TUI status line: visible offset range, row position/count,
-    reference mode, the display toggles, and per-file sizes.
-    """
-    if row_count <= 0:
-        where = "no rows"
-    else:
-        where = f"0x{offset_start:08x}-0x{offset_end:08x} | row {row_pos}/{row_count}"
-    toggles = "ascii:%s diff:%s markers:%s" % (
-        "on" if ascii_on else "off",
-        "on" if only_diff else "off",
-        "on" if markers_on else "off",
+    """The status segments joined into one line (see format_status_parts)."""
+    return " | ".join(
+        format_status_parts(
+            offset_start=offset_start,
+            offset_end=offset_end,
+            row_pos=row_pos,
+            row_count=row_count,
+            ref_label=ref_label,
+            ascii_on=ascii_on,
+            only_diff=only_diff,
+            markers_on=markers_on,
+            color_on=color_on,
+            byte_classes_on=byte_classes_on,
+            sizes=sizes,
+        )
     )
-    sizes_s = "  ".join(f"{name}={size}" for name, size in sizes)
-    return f"{where} | ref={ref_label} | {toggles} | sizes: {sizes_s}"
+
+
+def format_search_status(query, matches, index, error) -> Optional[str]:
+    """Persistent search-segment text, or None when no search is active (pure).
+
+    Mirrors the TUI's dedicated search status line: the query (with a "(ci)"
+    mark for case-insensitive text), match position/count with the current
+    match's file and offset, "no matches", or the search error.
+    """
+    if error is not None:
+        return f"Search error: {error}"
+    if query is None:
+        return None
+    label = f'{query.mode} "{query.pattern}"'
+    if query.mode == "text" and not query.case_sensitive:
+        label += " (ci)"
+    if not matches:
+        return f"Search: {label} | no matches"
+    cur = index or 0
+    m = matches[cur]
+    return (
+        f"Search: {label} | match {cur + 1}/{len(matches)} "
+        f"| file {m.file_index} | offset 0x{m.offset:08x}"
+    )
+
+
+def format_overlay_status(
+    *,
+    name: Optional[str],
+    applicable: bool,
+    range_count: int,
+    warning_count: int,
+    error_count: int,
+) -> str:
+    """Short persistent status-bar label for a loaded layout overlay (pure).
+
+    The severities/counts come straight from the validator via OverlayState;
+    this only words them (never re-derives the ok/applicable contract).
+    """
+    label = f" {name!r}" if name else ""
+    if not applicable:
+        noun = "error" if error_count == 1 else "errors"
+        return f"overlay{label}: not applied ({error_count} {noun})"
+    noun = "range" if range_count == 1 else "ranges"
+    text = f"overlay{label}: {range_count} {noun}"
+    if warning_count:
+        noun = "warning" if warning_count == 1 else "warnings"
+        text += f", {warning_count} {noun}"
+    return text
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -296,6 +388,7 @@ try:
         QActionGroup,
         QColor,
         QFont,
+        QFontDatabase,
         QFontMetrics,
         QPainter,
         QPalette,
@@ -314,6 +407,8 @@ try:
         QLineEdit,
         QMainWindow,
         QMessageBox,
+        QPlainTextEdit,
+        QSpinBox,
         QVBoxLayout,
     )
 
@@ -324,26 +419,99 @@ except ImportError as exc:  # pragma: no cover - depends on environment
 
 if _PYSIDE6_IMPORT_ERROR is None:
 
-    # Accent colours used only when colour is on. Base text/background come from
-    # the widget palette so the view stays legible on light or dark themes.
-    _COLOR_OFFSET = QColor(0x1F, 0x6F, 0xEB)   # offset address line
-    _COLOR_DIFF = QColor(0xD7, 0x3A, 0x49)     # differing / DIFF marker
-    _COLOR_SAME = QColor(0x2D, 0xA0, 0x44)     # SAME marker
-    _COLOR_DIM = QColor(0x99, 0x99, 0x99)      # missing ("--") / MISSING marker
-    _COLOR_REF = QColor(0x8A, 0x63, 0xD2)      # reference file's name
-    _COLOR_OVERLAY = QColor(0x12, 0x8E, 0x9E)  # bytes inside a layout-overlay range
+    class _AccentColors:
+        """Accent colours for one background flavour (light or dark base).
+
+        Base text/background always come from the widget palette; these are
+        only the highlight accents, picked per use from the palette's base
+        lightness (see ``_accents_for``) so the view stays legible under both
+        light and dark system themes. Colours apply only when colour is on.
+        """
+
+        def __init__(
+            self, *, offset, diff, dim, ref, warn, overlay_bg,
+            zero, whitespace, printable,
+        ) -> None:
+            self.offset = offset          # offset address gutter
+            self.diff = diff              # differing cells / DIFF marker
+            self.dim = dim                # missing ("--") / SAME+MISSING markers
+            self.ref = ref                # reference file's name
+            self.warn = warn              # warning-state status text
+            self.overlay_bg = overlay_bg  # layout-overlay background fill
+            # Byte-class foreground (the lowest-priority tier; display-only).
+            # OTHER/MISSING get no byte-class colour, mirroring the core/TUI.
+            self.byte_class = {
+                ByteClass.ZERO: zero,
+                ByteClass.WHITESPACE: whitespace,
+                ByteClass.PRINTABLE_ASCII: printable,
+            }
+
+    _ACCENTS_LIGHT = _AccentColors(
+        offset=QColor(0x1F, 0x6F, 0xEB),
+        diff=QColor(0xD7, 0x3A, 0x49),
+        dim=QColor(0x8A, 0x91, 0x99),
+        ref=QColor(0x8A, 0x63, 0xD2),
+        warn=QColor(0x9A, 0x67, 0x00),
+        overlay_bg=QColor(0xD2, 0xE3, 0xFC),
+        zero=QColor(0x9A, 0xA0, 0xA6),
+        whitespace=QColor(0x0F, 0x85, 0x96),
+        printable=QColor(0x1A, 0x7F, 0x37),
+    )
+    _ACCENTS_DARK = _AccentColors(
+        offset=QColor(0x58, 0xA6, 0xFF),
+        diff=QColor(0xF8, 0x51, 0x49),
+        dim=QColor(0x76, 0x7E, 0x87),
+        ref=QColor(0xBC, 0x8C, 0xFF),
+        warn=QColor(0xD2, 0x99, 0x22),
+        overlay_bg=QColor(0x1F, 0x3A, 0x5C),
+        zero=QColor(0x6E, 0x76, 0x81),
+        whitespace=QColor(0x39, 0xC5, 0xCF),
+        printable=QColor(0x3F, 0xB9, 0x50),
+    )
+
+    def _accents_for(palette) -> "_AccentColors":
+        """The accent set matching a palette's base (light or dark) background."""
+        dark = palette.color(QPalette.ColorRole.Base).lightness() < 128
+        return _ACCENTS_DARK if dark else _ACCENTS_LIGHT
+
     # Search-match highlight: a filled background behind the matched cell (the
     # current match stronger than the others), with dark glyphs drawn on top.
+    # Bright enough to read identically on light and dark bases, so it is not
+    # part of the per-theme accent tables.
     _COLOR_SEARCH_BG = QColor(0xF2, 0xCC, 0x3D)      # other matches
     _COLOR_SEARCH_CUR_BG = QColor(0xFF, 0xA5, 0x00)  # current match
     _COLOR_SEARCH_FG = QColor(0x10, 0x10, 0x10)      # glyphs on a match highlight
-    # Byte-class foreground (the lowest-priority tier; display-only, needs colour
-    # on). OTHER/MISSING get no byte-class colour, mirroring the core/TUI.
-    _BYTE_CLASS_COLOR = {
-        ByteClass.ZERO: QColor(0x99, 0x99, 0x99),
-        ByteClass.WHITESPACE: QColor(0x12, 0x8E, 0x9E),
-        ByteClass.PRINTABLE_ASCII: QColor(0x2D, 0xA0, 0x44),
-    }
+
+    def _fixed_font() -> "QFont":
+        """The platform's fixed-pitch font, sized just above the UI font.
+
+        Used for the hex view and the text-report dialogs; UI chrome (labels,
+        menus, buttons, status bar) stays in the proportional system font.
+        """
+        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        font.setStyleHint(QFont.StyleHint.Monospace)
+        app_pt = QApplication.font().pointSize()
+        font.setPointSize(app_pt + 1 if app_pt > 0 else 11)
+        return font
+
+    def _menu_key_hint(action_id: str) -> str:
+        """Shortcut-column hint ("\\tkey") for a registry single-key action.
+
+        Rendered through Qt's tab-in-text convention so the key shows in the
+        menu's shortcut column WITHOUT registering a competing QShortcut --
+        the central MainWindow.keyPressEvent dispatch stays the only handler
+        for the registry keys.
+        """
+        for s in gui_shortcuts():
+            if s.action_id != action_id:
+                continue
+            for key in s.gui_keys:
+                if key.startswith("t:"):
+                    return "\t" + key[2:]
+            for key in s.gui_keys:
+                if key.startswith("k:"):
+                    return "\t" + key[2:]
+        return ""
 
     class HexCompareView(QAbstractScrollArea):
         """Custom-painted, lazily-rendered comparison view.
@@ -365,6 +533,9 @@ if _PYSIDE6_IMPORT_ERROR is None:
         """
 
         viewChanged = Signal()
+
+        # Breathing room between the viewport edge and the painted content.
+        _MARGIN = 8
 
         def __init__(self, parent=None) -> None:
             super().__init__(parent)
@@ -398,9 +569,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self._init_font()
 
         def _init_font(self) -> None:
-            font = QFont("monospace")
-            font.setStyleHint(QFont.StyleHint.Monospace)
-            font.setPointSize(11)
+            font = _fixed_font()
             self.setFont(font)
             fm = QFontMetrics(font)
             self._char_w = max(1, fm.horizontalAdvance("0"))
@@ -430,7 +599,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
         def _page_rows(self) -> int:
             block = self._block_px()
-            height = self.viewport().height()
+            height = max(0, self.viewport().height() - self._MARGIN)
             return max(1, height // block) if block else 1
 
         # -- scrollbar wiring ----------------------------------------------- #
@@ -585,6 +754,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _text_color(self) -> "QColor":
             return self.palette().color(QPalette.ColorRole.Text)
 
+        def _accents(self) -> "_AccentColors":
+            """The accent set matching the current (light or dark) palette."""
+            return _accents_for(self.palette())
+
         def _cell_color(
             self,
             value: Optional[int],
@@ -597,19 +770,22 @@ if _PYSIDE6_IMPORT_ERROR is None:
             # never part of a match, so it short-circuits before any search branch.
             # Search/overlay/byte-class tiers apply only to present cells; overlay
             # and byte class only to non-diff cells, so search and diff stay most
-            # visible. The match *background* is painted separately (_cell_search_bg).
+            # visible. The overlay tier shows as a cell *background* (_cell_bg);
+            # a covered cell keeps the plain foreground so the fill is the one
+            # overlay signal (and never collides with a byte-class colour).
             if not self.color_on:
                 return self._text_color()
+            acc = self._accents()
             if value is None:
-                return _COLOR_DIM
+                return acc.dim
             if fi is not None and offset is not None and self._is_match(fi, offset):
                 return _COLOR_SEARCH_FG
             if marker is not Marker.SAME:
-                return _COLOR_DIFF
+                return acc.diff
             if offset is not None and self.overlay is not None and self.overlay.covers(offset):
-                return _COLOR_OVERLAY
+                return self._text_color()
             if self.byte_classes_on:
-                bc = _BYTE_CLASS_COLOR.get(classify_byte(value))
+                bc = acc.byte_class.get(classify_byte(value))
                 if bc is not None:
                     return bc
             return self._text_color()
@@ -617,8 +793,13 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _is_match(self, fi: int, offset: int) -> bool:
             return (fi, offset) in self._search_covered
 
-        def _cell_search_bg(self, fi: int, offset: int) -> Optional["QColor"]:
-            """Background fill for a matched cell (current match stronger), or None."""
+        def _cell_bg(self, fi: int, offset: int, marker: Marker) -> Optional["QColor"]:
+            """Background fill for one cell, or None.
+
+            Search matches win (current match strongest); below them a layout-
+            overlay range fills covered SAME cells only, so diff/missing
+            emphasis stays untouched -- the same tier order the CLI/TUI use.
+            """
             if not self.color_on:
                 return None
             cur = self.search_current
@@ -630,16 +811,22 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 return _COLOR_SEARCH_CUR_BG
             if (fi, offset) in self._search_covered:
                 return _COLOR_SEARCH_BG
+            if (
+                marker is Marker.SAME
+                and self.overlay is not None
+                and self.overlay.covers(offset)
+            ):
+                return self._accents().overlay_bg
             return None
 
         def _marker_color(self, marker: Marker) -> "QColor":
             if not self.color_on:
                 return self._text_color()
-            if marker is Marker.MISSING:
-                return _COLOR_DIM
             if marker is Marker.DIFF:
-                return _COLOR_DIFF
-            return _COLOR_SAME
+                return self._accents().diff
+            # SAME recedes (the TUI leaves it unstyled); MISSING is dim too --
+            # the "--" glyph itself already tells the two apart.
+            return self._accents().dim
 
         def paintEvent(self, event) -> None:
             painter = QPainter(self.viewport())
@@ -648,7 +835,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
             painter.fillRect(self.viewport().rect(), pal.color(QPalette.ColorRole.Base))
 
             if self.view is None or not self.files:
-                painter.setPen(_COLOR_DIM)
+                # UI text, not data: the proportional system font, in the
+                # palette's muted placeholder colour.
+                painter.setFont(QFont())
+                painter.setPen(pal.color(QPalette.ColorRole.PlaceholderText))
                 painter.drawText(
                     self.viewport().rect(),
                     Qt.AlignmentFlag.AlignCenter,
@@ -657,6 +847,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 painter.end()
                 return
 
+            painter.translate(self._MARGIN, self._MARGIN)
             view = self.view
             model = view.model
             count = view.visible_count
@@ -691,19 +882,20 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
             # The offset rides the first file line as a fixed-width left gutter
             # (col 0); the file/hex columns are shifted right by that width.
+            acc = self._accents()
             draw(0, 0, offset_label(row.offset),
-                 _COLOR_OFFSET if self.color_on else text_color)
+                 acc.offset if self.color_on else text_color)
 
             # one line per file
             for fi, (f, row_bytes) in enumerate(zip(model.files, row.cells)):
                 line = fi
                 name = f.display_name(self.name_mode).ljust(self.name_width)
-                name_color = _COLOR_REF if (self.color_on and model.ref == fi) else text_color
+                name_color = acc.ref if (self.color_on and model.ref == fi) else text_color
                 draw(OFFSET_LABEL_WIDTH + 2, line, name, name_color)
                 for c in range(width):
                     marker = row.markers[c]
                     off = row.offset + c
-                    bg = self._cell_search_bg(fi, off)
+                    bg = self._cell_bg(fi, off, marker)
                     if bg is not None:
                         fill(hex_start + c * 3, line, 2, bg)
                     draw(hex_start + c * 3, line, format_byte(row_bytes[c]),
@@ -714,7 +906,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
                     for c in range(width):
                         marker = row.markers[c]
                         off = row.offset + c
-                        bg = self._cell_search_bg(fi, off)
+                        bg = self._cell_bg(fi, off, marker)
                         if bg is not None:
                             fill(acol + 1 + c, line, 1, bg)
                         draw(acol + 1 + c, line, format_ascii_char(row_bytes[c]),
@@ -745,6 +937,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
         ) -> None:
             super().__init__()
             self.setWindowTitle("multihex-gui")
+            self.setMinimumSize(640, 400)
             self._offset = offset
             self._width = width
             self._start_ref = ref
@@ -773,9 +966,10 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.text_search_ignore_case = False
             self._build_menus()
             self._build_key_dispatch()
-            self.statusBar()
+            self._build_status_bar()
             self.resize(960, 640)
             self._update_status()
+            self._update_search_status()
 
         # -- single-key shortcut dispatch (shared registry) ----------------- #
         def _build_key_dispatch(self) -> None:
@@ -856,33 +1050,44 @@ if _PYSIDE6_IMPORT_ERROR is None:
             filem.addAction(act_quit)
 
             viewm = mb.addMenu("&View")
-            self.act_ascii = QAction("&ASCII gutter", self)
+            self.act_ascii = QAction(
+                "&ASCII gutter" + _menu_key_hint("toggle_ascii"), self
+            )
             self.act_ascii.setCheckable(True)
             self.act_ascii.setChecked(self.view_widget.ascii_on)
             self.act_ascii.toggled.connect(self._on_toggle_ascii)
             viewm.addAction(self.act_ascii)
-            self.act_diff = QAction("Only &differing rows", self)
+            self.act_diff = QAction(
+                "Only &differing rows" + _menu_key_hint("toggle_diff"), self
+            )
             self.act_diff.setCheckable(True)
             self.act_diff.setChecked(self._start_only_diff)
             self.act_diff.toggled.connect(self._on_toggle_diff)
             viewm.addAction(self.act_diff)
-            self.act_markers = QAction("Show &markers", self)
+            self.act_markers = QAction(
+                "Show &markers" + _menu_key_hint("cycle_markers"), self
+            )
             self.act_markers.setCheckable(True)
             self.act_markers.setChecked(self.view_widget.markers_on)
             self.act_markers.toggled.connect(self._on_toggle_markers)
             viewm.addAction(self.act_markers)
-            self.act_color = QAction("&Color highlighting", self)
+            self.act_color = QAction(
+                "&Color highlighting" + _menu_key_hint("toggle_color"), self
+            )
             self.act_color.setCheckable(True)
             self.act_color.setChecked(self.view_widget.color_on)
             self.act_color.toggled.connect(self._on_toggle_color)
             viewm.addAction(self.act_color)
-            self.act_byte_classes = QAction("&Byte-class highlighting", self)
+            self.act_byte_classes = QAction(
+                "&Byte-class highlighting" + _menu_key_hint("toggle_byte_classes"),
+                self,
+            )
             self.act_byte_classes.setCheckable(True)
             self.act_byte_classes.setChecked(self.view_widget.byte_classes_on)
             self.act_byte_classes.toggled.connect(self._on_toggle_byte_classes)
             viewm.addAction(self.act_byte_classes)
             viewm.addSeparator()
-            act_options = QAction("&Options…", self)
+            act_options = QAction("&Options…" + _menu_key_hint("open_settings"), self)
             act_options.triggered.connect(self._open_settings_dialog)
             viewm.addAction(act_options)
             viewm.addSeparator()
@@ -913,6 +1118,22 @@ if _PYSIDE6_IMPORT_ERROR is None:
             act_end.triggered.connect(self._go_end)
             navm.addAction(act_end)
 
+            searchm = mb.addMenu("&Search")
+            act_find = QAction("Find &text…", self)
+            act_find.setShortcut("Ctrl+F")
+            act_find.triggered.connect(self._search_text_dialog)
+            searchm.addAction(act_find)
+            act_find_hex = QAction("Find &hex…" + _menu_key_hint("search_hex"), self)
+            act_find_hex.triggered.connect(self._search_hex_dialog)
+            searchm.addAction(act_find_hex)
+            searchm.addSeparator()
+            act_next = QAction("&Next match" + _menu_key_hint("next_match"), self)
+            act_next.triggered.connect(self.search_next)
+            searchm.addAction(act_next)
+            act_prev = QAction("&Previous match" + _menu_key_hint("prev_match"), self)
+            act_prev.triggered.connect(self.search_prev)
+            searchm.addAction(act_prev)
+
             self.comparem = mb.addMenu("&Compare")
             self.ref_group = QActionGroup(self)
             self.ref_group.setExclusive(True)
@@ -920,35 +1141,25 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self._rebuild_ref_menu()
 
             overlaym = mb.addMenu("&Overlay")
-            act_ov_load = QAction("&Load/change layout overlay…", self)
+            act_ov_load = QAction(
+                "&Load/change layout overlay…" + _menu_key_hint("load_overlay"), self
+            )
             act_ov_load.triggered.connect(self._overlay_load_dialog)
             overlaym.addAction(act_ov_load)
             self.act_overlay_clear = QAction("&Clear overlay", self)
             self.act_overlay_clear.triggered.connect(self._overlay_clear)
             overlaym.addAction(self.act_overlay_clear)
             overlaym.addSeparator()
-            act_ov_view = QAction("&View current overlay…", self)
+            act_ov_view = QAction(
+                "&View current overlay…" + _menu_key_hint("view_overlay"), self
+            )
             act_ov_view.triggered.connect(self._overlay_view)
             overlaym.addAction(act_ov_view)
 
-            searchm = mb.addMenu("&Search")
-            act_find = QAction("Find &text…", self)
-            act_find.setShortcut("Ctrl+F")
-            act_find.triggered.connect(self._search_text_dialog)
-            searchm.addAction(act_find)
-            act_find_hex = QAction("Find &hex…", self)
-            act_find_hex.triggered.connect(self._search_hex_dialog)
-            searchm.addAction(act_find_hex)
-            searchm.addSeparator()
-            act_next = QAction("&Next match", self)
-            act_next.triggered.connect(self.search_next)
-            searchm.addAction(act_next)
-            act_prev = QAction("&Previous match", self)
-            act_prev.triggered.connect(self.search_prev)
-            searchm.addAction(act_prev)
-
             helpm = mb.addMenu("&Help")
-            act_keys = QAction("&Keyboard shortcuts…", self)
+            act_keys = QAction(
+                "&Keyboard shortcuts…" + _menu_key_hint("help"), self
+            )
             act_keys.triggered.connect(self._show_help_dialog)
             helpm.addAction(act_keys)
 
@@ -957,6 +1168,12 @@ if _PYSIDE6_IMPORT_ERROR is None:
             for a in list(self.ref_group.actions()):
                 self.ref_group.removeAction(a)
             self.comparem.clear()
+            act_pick = QAction(
+                "Choose &reference…" + _menu_key_hint("choose_ref"), self.comparem
+            )
+            act_pick.triggered.connect(self._choose_ref_dialog)
+            self.comparem.addAction(act_pick)
+            self.comparem.addSeparator()
             cur_ref = self.model.ref if self.model is not None else None
             # Parent the radio actions to the menu so comparem.clear() reclaims
             # them on every rebuild (parenting to MainWindow would leak them).
@@ -1017,6 +1234,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 model, files, self.name_mode, only_diff=self.act_diff.isChecked()
             )
             self._rebuild_ref_menu()
+            self._update_title()
             self._update_status()
             return True
 
@@ -1075,9 +1293,13 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _jump_dialog(self) -> None:
             if self.model is None:
                 return
-            text, ok = QInputDialog.getText(
-                self, "Jump to offset", "Offset (e.g. 0x400, 1024):"
-            )
+            m = self.model
+            if m.row_count:
+                last = m.row_offset(m.row_count - 1) + m.width - 1
+                prompt = f"Offset (0x{m.start_offset:x} - 0x{last:x}, e.g. 0x400):"
+            else:
+                prompt = "Offset (e.g. 0x400, 1024):"
+            text, ok = QInputDialog.getText(self, "Jump to offset", prompt)
             if not ok or not text.strip():
                 return
             try:
@@ -1118,6 +1340,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.search_index = None
             self.search_error = None
             self.view_widget.set_search([], None)
+            self._update_search_status()
 
         def _search_text_dialog(self) -> None:
             if self.model is None:
@@ -1131,11 +1354,9 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _search_hex_dialog(self) -> None:
             if self.model is None:
                 return
-            text, ok = QInputDialog.getText(
-                self, "Hex search", "Search hex (e.g. DE AD BE EF):"
-            )
-            if ok and text.strip():
-                self.run_search("hex", text)
+            dlg = _HexSearchDialog(self)
+            if dlg.exec():
+                self.run_search("hex", dlg.result_value())
 
         def run_search(
             self, mode: str, value: Optional[str], *, ignore_case: bool = False
@@ -1167,7 +1388,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 self.search_matches = []
                 self.search_index = None
                 self.view_widget.set_search([], None)
-                self.statusBar().showMessage(f"Search error: {exc}")
+                self._update_search_status()
                 return
             self.search_error = None
             self.search_query = query
@@ -1178,8 +1399,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.view_widget.set_search(self.search_matches, self.search_index)
             if self.search_index is not None:
                 self._jump_to_current_match()
-            else:
-                self.statusBar().showMessage(f'No matches for {mode} "{text}"')
+            self._update_search_status()
 
         def search_next(self) -> None:
             self._step_match(next_match_index)
@@ -1193,18 +1413,36 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.search_index = picker(self.search_matches, self.search_index or 0)
             self.view_widget.set_current_match(self.search_index)
             self._jump_to_current_match()
+            self._update_search_status()
 
         def _jump_to_current_match(self) -> None:
             if self.search_index is None:
                 return
             match = self.search_matches[self.search_index]
             self.view_widget.jump_to_offset(match.offset)
-            self.statusBar().showMessage(
-                f"Match {self.search_index + 1}/{len(self.search_matches)} "
-                f"| file {match.file_index} | offset 0x{match.offset:08x}"
-            )
 
         # -- options / help ------------------------------------------------- #
+        def set_row_width(self, width: int) -> None:
+            """Change bytes-per-row live (TUI settings-pane parity).
+
+            Keeps the top row anchored at (roughly) the same offset, exactly
+            like the TUI's ``set_width``: the model's fixed grid is rebuilt
+            from the new width, never realigned or inferred.
+            """
+            if self.model is None or width < 1 or width == self.model.width:
+                return
+            vw = self.view_widget
+            v = vw.view
+            keep = v.offset_at(v.top)
+            self.model.width = width
+            self._width = width  # future File > Open reloads keep this width
+            v.invalidate()
+            v.top = v.position_for_offset(keep)
+            v.clamp_top(vw._page_rows())
+            vw._sync_scrollbar()
+            vw.viewport().update()
+            self._update_status()
+
         def _open_settings_dialog(self) -> None:
             """Open the minimal GUI-native options pane (the 'o' key).
 
@@ -1216,18 +1454,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
         def _show_help_dialog(self):
             """Show the keyboard-shortcut help (generated from the registry)."""
-            box = QMessageBox(self)
-            box.setIcon(QMessageBox.Icon.Information)
-            box.setWindowTitle("multihex-gui - keys")
-            font = QFont("monospace")
-            font.setStyleHint(QFont.StyleHint.Monospace)
-            box.setFont(font)
-            box.setText(gui_help_text())
-            box.setStandardButtons(QMessageBox.StandardButton.Ok)
-            box.setModal(False)
-            box.show()
-            self._message_boxes.append(box)
-            return box
+            return self._show_report("multihex-gui - keys", gui_help_text())
 
         # -- layout overlay (load / change / clear / view) ------------------ #
         def _show_message(self, title: str, text: str, *, warn: bool = False):
@@ -1249,6 +1476,17 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self._message_boxes.append(box)
             return box
 
+        def _show_report(self, title: str, text: str) -> "_TextReportDialog":
+            """Show a long monospace text report in a scrollable, non-modal
+            dialog (help, overlay details/diagnostics). Short one-line notices
+            keep using :meth:`_show_message`. A reference is kept so the dialog
+            is not garbage-collected while shown.
+            """
+            dlg = _TextReportDialog(title, text, self)
+            dlg.show()
+            self._message_boxes.append(dlg)
+            return dlg
+
         def load_overlay(self, path: str) -> "OverlayState":
             """Load + validate an overlay and apply it when loadable.
 
@@ -1261,16 +1499,16 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.overlay = overlay
             self.view_widget.set_overlay(overlay)
             if not overlay.applicable:
-                self._show_message(
+                self._show_report(
                     "Layout overlay",
                     overlay.summary() + "\n\n" + "\n".join(overlay.diagnostic_lines()),
-                    warn=True,
                 )
             elif overlay.warning_count():
-                self._show_message("Layout overlay", overlay.details_text())
-            # Leave the overlay summary on the status bar; it persists until the
-            # next navigation refreshes the standard status line.
-            self.statusBar().showMessage(overlay.summary())
+                self._show_report("Layout overlay", overlay.details_text())
+            # Transient summary toast; the persistent overlay status segment
+            # keeps the state visible afterwards.
+            self.statusBar().showMessage(overlay.summary(), 5000)
+            self._update_overlay_status()
             return overlay
 
         def _overlay_load_dialog(self) -> None:
@@ -1289,7 +1527,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _overlay_clear(self) -> None:
             self.overlay = None
             self.view_widget.set_overlay(None)
-            self.statusBar().showMessage("Cleared layout overlay")
+            self.statusBar().showMessage("Cleared layout overlay", 3000)
             self._update_status()
 
         def _overlay_view(self) -> None:
@@ -1300,11 +1538,37 @@ if _PYSIDE6_IMPORT_ERROR is None:
             v = self.view_widget.view
             if v is not None and v.visible_count:
                 cursor = self.model.row_offset(v.row_index_at(v.top))
-            self._show_message(
+            self._show_report(
                 "Layout overlay", self.overlay.details_text(cursor)
             )
 
         # -- status bar ----------------------------------------------------- #
+        def _build_status_bar(self) -> None:
+            """Segmented status bar instead of one concatenated message string.
+
+            The left (message) area holds the persistent search segment plus
+            any transient one-shot notices (always shown with a timeout, so
+            they never permanently cover the search segment). The permanent
+            segments on the right are position, reference, display toggles,
+            overlay state, and file sizes -- they survive transient messages.
+            """
+            bar = self.statusBar()
+            self.status_search = QLabel(self)
+            self.status_search.setVisible(False)
+            bar.addWidget(self.status_search)
+            self.status_pos = QLabel(self)
+            self.status_ref = QLabel(self)
+            self.status_toggles = QLabel(self)
+            self.status_overlay = QLabel(self)
+            self.status_overlay.setVisible(False)
+            self.status_sizes = QLabel(self)
+            for lbl in (
+                self.status_pos, self.status_ref, self.status_toggles,
+                self.status_overlay, self.status_sizes,
+            ):
+                lbl.setContentsMargins(6, 0, 6, 0)
+                bar.addPermanentWidget(lbl)
+
         def _ref_label(self) -> str:
             if self.model is None or self.model.ref is None:
                 return "all-agree"
@@ -1313,9 +1577,23 @@ if _PYSIDE6_IMPORT_ERROR is None:
         def _sizes(self) -> List[Tuple[str, int]]:
             return [(f.display_name(self.name_mode), f.size) for f in self.files]
 
+        def _update_title(self) -> None:
+            if not self.files:
+                self.setWindowTitle("multihex-gui")
+                return
+            names = [f.display_name("basename") for f in self.files]
+            label = ", ".join(names[:4])
+            if len(names) > 4:
+                label += f" (+{len(names) - 4})"
+            self.setWindowTitle(f"{label} - multihex-gui")
+
         def _update_status(self) -> None:
             if self.model is None or not self.files or self.view_widget.view is None:
-                self.statusBar().showMessage("No files loaded — use File ▸ Open…")
+                self.status_pos.setText("No files loaded — use File ▸ Open…")
+                self.status_ref.setText("")
+                self.status_toggles.setText("")
+                self.status_sizes.setText("")
+                self._update_overlay_status()
                 return
             v = self.view_widget.view
             model = self.model
@@ -1330,19 +1608,66 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 start = model.row_offset(v.row_index_at(top))
                 end = model.row_offset(v.row_index_at(bot)) + model.width - 1
                 row_pos = top + 1
-            self.statusBar().showMessage(
-                format_status(
-                    offset_start=start,
-                    offset_end=end,
-                    row_pos=row_pos,
-                    row_count=count,
-                    ref_label=self._ref_label(),
-                    ascii_on=self.view_widget.ascii_on,
-                    only_diff=v.only_diff,
-                    markers_on=self.view_widget.markers_on,
-                    sizes=self._sizes(),
+            parts = format_status_parts(
+                offset_start=start,
+                offset_end=end,
+                row_pos=row_pos,
+                row_count=count,
+                ref_label=self._ref_label(),
+                ascii_on=self.view_widget.ascii_on,
+                only_diff=v.only_diff,
+                markers_on=self.view_widget.markers_on,
+                color_on=self.view_widget.color_on,
+                byte_classes_on=self.view_widget.byte_classes_on,
+                sizes=self._sizes(),
+            )
+            self.status_pos.setText(parts[0])
+            self.status_ref.setText(parts[1])
+            self.status_toggles.setText(parts[2])
+            self.status_sizes.setText(parts[3])
+            self._update_overlay_status()
+
+        def _update_search_status(self) -> None:
+            """Refresh the persistent search segment (hidden when no search)."""
+            text = format_search_status(
+                self.search_query, self.search_matches,
+                self.search_index, self.search_error,
+            )
+            self.status_search.setText(text or "")
+            self.status_search.setVisible(text is not None)
+
+        def _update_overlay_status(self) -> None:
+            """Refresh the persistent overlay segment (hidden when none loaded).
+
+            Warning and not-applied states are tinted so a degraded overlay is
+            visible at a glance, not only in the load-time dialog.
+            """
+            ov = self.overlay
+            if ov is None:
+                self.status_overlay.setText("")
+                self.status_overlay.setStyleSheet("")
+                self.status_overlay.setVisible(False)
+                return
+            self.status_overlay.setText(
+                format_overlay_status(
+                    name=ov.name,
+                    applicable=ov.applicable,
+                    range_count=ov.range_count,
+                    warning_count=ov.warning_count(),
+                    error_count=ov.error_count(),
                 )
             )
+            acc = self.view_widget._accents()
+            if not ov.applicable:
+                tint = acc.diff
+            elif ov.warning_count():
+                tint = acc.warn
+            else:
+                tint = None
+            self.status_overlay.setStyleSheet(
+                f"color: {tint.name()};" if tint is not None else ""
+            )
+            self.status_overlay.setVisible(True)
 
     class _TextSearchDialog(QDialog):
         """Modal text-search prompt with a case-insensitive (ASCII) checkbox.
@@ -1356,9 +1681,11 @@ if _PYSIDE6_IMPORT_ERROR is None:
             super().__init__(parent)
             self.setWindowTitle("Find text")
             self.setModal(True)
+            self.setMinimumWidth(420)
             layout = QVBoxLayout(self)
             layout.addWidget(QLabel("Search text (UTF-8):"))
             self._edit = QLineEdit(self)
+            self._edit.setPlaceholderText("e.g. RIFF")
             layout.addWidget(self._edit)
             self._ci = QCheckBox("Case-insensitive (ASCII)", self)
             self._ci.setChecked(bool(ignore_case))
@@ -1375,6 +1702,87 @@ if _PYSIDE6_IMPORT_ERROR is None:
 
         def result_value(self) -> tuple:
             return self._edit.text(), self._ci.isChecked()
+
+    class _HexSearchDialog(QDialog):
+        """Modal hex-search prompt with live pattern validation.
+
+        OK stays disabled (with an inline hint) until the pattern parses via
+        ``core.parse_hex_pattern``, so invalid hex is rejected before the
+        search runs rather than after the dialog closes. Hex search is always
+        exact byte matching -- deliberately no case control, mirroring the
+        TUI/CLI.
+        """
+
+        def __init__(self, parent=None) -> None:
+            super().__init__(parent)
+            self.setWindowTitle("Find hex bytes")
+            self.setModal(True)
+            self.setMinimumWidth(420)
+            layout = QVBoxLayout(self)
+            layout.addWidget(QLabel("Hex byte pattern:"))
+            self._edit = QLineEdit(self)
+            self._edit.setPlaceholderText("e.g. DE AD BE EF")
+            layout.addWidget(self._edit)
+            self._hint = QLabel("", self)
+            self._hint.setStyleSheet("color: palette(mid);")
+            layout.addWidget(self._hint)
+            buttons = QDialogButtonBox(
+                QDialogButtonBox.StandardButton.Ok
+                | QDialogButtonBox.StandardButton.Cancel,
+                parent=self,
+            )
+            self._ok = buttons.button(QDialogButtonBox.StandardButton.Ok)
+            buttons.accepted.connect(self.accept)
+            buttons.rejected.connect(self.reject)
+            layout.addWidget(buttons)
+            self._edit.textChanged.connect(self._validate)
+            self._validate()
+            self._edit.setFocus()
+
+        def _validate(self, _text: str = "") -> None:
+            text = self._edit.text().strip()
+            ok = False
+            hint = ""
+            if text:
+                try:
+                    parse_hex_pattern(text)
+                    ok = True
+                except SearchError as exc:
+                    hint = str(exc)
+            self._ok.setEnabled(ok)
+            self._hint.setText(hint)
+
+        def result_value(self) -> str:
+            return self._edit.text()
+
+    class _TextReportDialog(QDialog):
+        """Scrollable read-only text report (help, overlay details).
+
+        The monospace font applies only to the text area; buttons and chrome
+        stay in the proportional UI font. Non-modal so it never blocks the
+        viewer (or hangs unattended tests); callers keep a reference alive.
+        """
+
+        def __init__(self, title: str, text: str, parent=None) -> None:
+            super().__init__(parent)
+            self.setWindowTitle(title)
+            layout = QVBoxLayout(self)
+            self._view = QPlainTextEdit(self)
+            self._view.setReadOnly(True)
+            self._view.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+            self._view.setFont(_fixed_font())
+            self._view.setPlainText(text)
+            layout.addWidget(self._view)
+            buttons = QDialogButtonBox(
+                QDialogButtonBox.StandardButton.Close, parent=self
+            )
+            buttons.rejected.connect(self.reject)
+            layout.addWidget(buttons)
+            self.resize(640, 480)
+
+        def text(self) -> str:
+            """The report body (mirrors QMessageBox.text() for callers/tests)."""
+            return self._view.toPlainText()
 
     class _SettingsDialog(QDialog):
         """Minimal options pane: controls that drive the View-menu QActions.
@@ -1413,6 +1821,15 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self._names.setCurrentIndex(0 if window.name_mode == "basename" else 1)
             self._names.currentIndexChanged.connect(self._on_names)
             form.addRow("File names", self._names)
+
+            self._width_spin = QSpinBox(self)
+            self._width_spin.setRange(1, 256)
+            self._width_spin.setValue(
+                window.model.width if window.model is not None else window._width
+            )
+            self._width_spin.setEnabled(window.model is not None)
+            self._width_spin.valueChanged.connect(window.set_row_width)
+            form.addRow("Bytes per row", self._width_spin)
 
             buttons = QDialogButtonBox(
                 QDialogButtonBox.StandardButton.Close, parent=self

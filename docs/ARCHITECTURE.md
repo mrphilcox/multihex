@@ -27,7 +27,7 @@ contributor workflow see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
 | `src/multihex/core.py`  | The *meaning* of a comparison: loading, the row model, marker computation, cell formatting, and exact search. **Stdlib-only.** |
 | `src/multihex/cli.py`   | Batch rendering: text layout with ANSI color, JSON shaping, search output, argument parsing. |
 | `src/multihex/tui.py`   | Interactive rendering: a Textual app with scrolling, paging, jump, live ref switching, search highlight state, and the settings pane. Requires `textual` + `rich`. |
-| `src/multihex/gui.py`   | Read-only desktop rendering: a PySide6/Qt `QAbstractScrollArea` painting only visible rows, with scroll/page/jump, View/Compare/Overlay menus. Qt-free `ViewState`/`format_status` helpers stay unit-testable. Requires `PySide6` (optional, import-guarded). |
+| `src/multihex/gui.py`   | Read-only desktop rendering: a PySide6/Qt `QAbstractScrollArea` painting only visible rows, with scroll/page/jump, View/Search/Compare/Overlay menus, and a segmented status bar. Qt-free `ViewState`/`format_status_parts` helpers stay unit-testable. Requires `PySide6` (optional, import-guarded). |
 | `src/multihex/overlay.py` | The `OverlayState`/`OverlayRange` seam: load a `bintools.layout-overlay` v1 file, validate it, and answer coverage/range/diagnostic queries for every frontend. Stdlib-only; separate from `core.py`. |
 | `src/multihex/tui_config.py` | **TUI-only** persistent preferences: config-path discovery, TOML load/validate, and atomic save of `TuiSettings`. No core, Textual, or Rich awareness. The batch CLI never imports it. |
 
@@ -188,11 +188,16 @@ scanning column stability at a glance.
 - **`gui.py`** is a read-only PySide6 window. A custom `QAbstractScrollArea`
   (`HexCompareView`) paints only the visible rows, with the same tier order as the
   TUI (missing > current match > other match > diff > overlay > byte class); search
-  matches get a filled background behind the cell. Qt-free `ViewState`/
-  `format_status` hold the navigation/status logic so it is testable without a
-  display. Single-key shortcuts are dispatched centrally from
+  matches and overlay ranges get a filled background behind the cell. Accent
+  colours come in light/dark sets selected from the widget palette, so the view
+  follows the system theme. Qt-free `ViewState`/`format_status_parts` (plus the
+  `format_search_status`/`format_overlay_status` builders) hold the
+  navigation/status logic so it is testable without a display; the status bar is
+  segmented (position, reference, toggles, overlay state, sizes, and a persistent
+  search segment). Single-key shortcuts are dispatched centrally from
   `MainWindow.keyPressEvent` via `trigger_action`, and the child view `ignore()`s
-  keys so they bubble up. Search reuses the core engine (`search_files` +
+  keys so they bubble up; menus display the registry keys as hint text without
+  registering competing QShortcuts. Search reuses the core engine (`search_files` +
   `make_*_query` + `*_match_index`) — the GUI renders and navigates only.
 
 ## Keyboard shortcuts (`shortcuts.py`)

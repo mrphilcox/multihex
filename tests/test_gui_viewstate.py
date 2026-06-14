@@ -7,8 +7,15 @@ These import only ``multihex.gui``'s Qt-free helpers and ``multihex.core``; they
 do not touch PySide6, so they run regardless of whether PySide6 is installed.
 """
 
-from multihex.core import HexFile, HexModel
-from multihex.gui import ViewState, clamp_ref, format_status
+from multihex.core import HexFile, HexModel, SearchMatch, SearchQuery
+from multihex.gui import (
+    ViewState,
+    clamp_ref,
+    format_overlay_status,
+    format_search_status,
+    format_status,
+    format_status_parts,
+)
 
 
 def _model(*datas, width=16, ref=None, only_diff=False):
@@ -218,7 +225,7 @@ def test_invalidate_forces_recompute():
 
 
 # --------------------------------------------------------------------------- #
-# format_status
+# format_status / format_status_parts
 # --------------------------------------------------------------------------- #
 def test_format_status_all_agree():
     s = format_status(
@@ -228,7 +235,7 @@ def test_format_status_all_agree():
     )
     assert s == (
         "0x00000000-0x0000000f | row 1/3 | ref=all-agree | "
-        "ascii:on diff:off markers:on | sizes: a=48  b=48"
+        "ascii:on diff:off markers:on color:on classes:off | sizes: a=48  b=48"
     )
 
 
@@ -236,10 +243,11 @@ def test_format_status_ref_and_toggles_off():
     s = format_status(
         offset_start=0x10, offset_end=0x1F, row_pos=2, row_count=4,
         ref_label="b.bin", ascii_on=False, only_diff=True, markers_on=False,
+        color_on=False, byte_classes_on=True,
         sizes=[("a.bin", 70), ("b.bin", 70)],
     )
     assert s.startswith("0x00000010-0x0000001f | row 2/4 | ref=b.bin | ")
-    assert "ascii:off diff:on markers:off" in s
+    assert "ascii:off diff:on markers:off color:off classes:on" in s
     assert s.endswith("sizes: a.bin=70  b.bin=70")
 
 
@@ -250,3 +258,80 @@ def test_format_status_no_rows():
         sizes=[],
     )
     assert s.startswith("no rows | ref=all-agree | ")
+
+
+def test_format_status_parts_segments():
+    # One string per status-bar segment, in display order; format_status is
+    # exactly the " | " join of these.
+    kwargs = dict(
+        offset_start=0, offset_end=0x0F, row_pos=1, row_count=3,
+        ref_label="all-agree", ascii_on=True, only_diff=False, markers_on=True,
+        sizes=[("a", 48)],
+    )
+    parts = format_status_parts(**kwargs)
+    assert parts == [
+        "0x00000000-0x0000000f | row 1/3",
+        "ref=all-agree",
+        "ascii:on diff:off markers:on color:on classes:off",
+        "sizes: a=48",
+    ]
+    assert format_status(**kwargs) == " | ".join(parts)
+
+
+# --------------------------------------------------------------------------- #
+# format_search_status (the persistent search segment; mirrors the TUI line)
+# --------------------------------------------------------------------------- #
+def _match(file_index=0, offset=4, length=4):
+    return SearchMatch(
+        file_index=file_index, path="a.bin", offset=offset, length=length,
+        matched=b"RIFF",
+    )
+
+
+def test_format_search_status_inactive_is_none():
+    assert format_search_status(None, [], None, None) is None
+
+
+def test_format_search_status_error_wins():
+    assert format_search_status(None, [], None, "bad hex") == "Search error: bad hex"
+
+
+def test_format_search_status_no_matches():
+    q = SearchQuery(mode="text", pattern="RIFF", needle=b"RIFF")
+    assert format_search_status(q, [], None, None) == 'Search: text "RIFF" | no matches'
+
+
+def test_format_search_status_current_match_and_ci_flag():
+    q = SearchQuery(mode="text", pattern="riff", needle=b"riff", case_sensitive=False)
+    matches = [_match(offset=4), _match(file_index=1, offset=0x20)]
+    s = format_search_status(q, matches, 1, None)
+    assert s == (
+        'Search: text "riff" (ci) | match 2/2 | file 1 | offset 0x00000020'
+    )
+    # Hex mode never shows a case flag.
+    qh = SearchQuery(mode="hex", pattern="52 49", needle=b"RI", case_sensitive=False)
+    assert "(ci)" not in format_search_status(qh, matches, 0, None)
+
+
+# --------------------------------------------------------------------------- #
+# format_overlay_status (the persistent overlay segment)
+# --------------------------------------------------------------------------- #
+def test_format_overlay_status_applicable():
+    s = format_overlay_status(
+        name="gzip", applicable=True, range_count=6, warning_count=0, error_count=0,
+    )
+    assert s == "overlay 'gzip': 6 ranges"
+
+
+def test_format_overlay_status_warnings_and_singular():
+    s = format_overlay_status(
+        name=None, applicable=True, range_count=1, warning_count=1, error_count=0,
+    )
+    assert s == "overlay: 1 range, 1 warning"
+
+
+def test_format_overlay_status_not_applied():
+    s = format_overlay_status(
+        name="bad", applicable=False, range_count=3, warning_count=0, error_count=2,
+    )
+    assert s == "overlay 'bad': not applied (2 errors)"

@@ -64,12 +64,20 @@ def test_load_applies_overlay_and_colors_cell(app, tmp_path):
     assert w.overlay is st
     assert w.view_widget.overlay is st
     vw = w.view_widget
-    # Covered, SAME, present byte -> overlay color; uncovered -> normal text.
-    assert vw._cell_color(0x00, Marker.SAME, 0) == gui._COLOR_OVERLAY
+    # The overlay shows as a background fill on covered SAME cells; the
+    # foreground stays the plain text colour (the fill is the one signal).
+    assert vw._cell_bg(0, 0x00, Marker.SAME) == vw._accents().overlay_bg
+    assert vw._cell_color(0x00, Marker.SAME, 0) == vw._text_color()
+    # Uncovered cells get no fill.
+    assert vw._cell_bg(0, 0x05, Marker.SAME) is None
     assert vw._cell_color(0x05, Marker.SAME, 5) == vw._text_color()
-    # Diff still wins over overlay.
-    assert vw._cell_color(0x00, Marker.DIFF, 0) == gui._COLOR_DIFF
+    # Diff still wins over overlay: red glyphs, no overlay fill.
+    assert vw._cell_color(0x00, Marker.DIFF, 0) == vw._accents().diff
+    assert vw._cell_bg(0, 0x00, Marker.DIFF) is None
+    # Transient summary toast plus the persistent overlay status segment.
     assert "Loaded layout overlay 'demo'" in w.statusBar().currentMessage()
+    assert w.status_overlay.isVisibleTo(w)
+    assert w.status_overlay.text() == "overlay 'demo': 1 range"
     w.close()
 
 
@@ -84,6 +92,8 @@ def test_clear_removes_overlay(app, tmp_path):
     assert w.overlay is None
     assert w.view_widget.overlay is None
     assert w.view_widget._cell_color(0x00, Marker.SAME, 0) == w.view_widget._text_color()
+    assert w.view_widget._cell_bg(0, 0x00, Marker.SAME) is None
+    assert not w.status_overlay.isVisibleTo(w)
     w.close()
 
 
@@ -98,11 +108,14 @@ def test_warning_overlay_applies_and_shows_details(app, tmp_path):
     st = w.load_overlay(path)
     assert st.applicable is True
     assert st.warning_count() >= 1
-    # Still highlights the covered byte.
-    assert w.view_widget._cell_color(0x00, Marker.SAME, 0) == gui._COLOR_OVERLAY
+    # Still highlights the covered byte (background fill tier).
+    vw = w.view_widget
+    assert vw._cell_bg(0, 0x00, Marker.SAME) == vw._accents().overlay_bg
     # A details dialog was queued with the warning detail.
     assert w._message_boxes
     assert "unknown-type" in w._message_boxes[-1].text()
+    # The persistent segment reports the warning count.
+    assert "1 warning" in w.status_overlay.text()
     w.close()
 
 
@@ -120,9 +133,12 @@ def test_error_overlay_loaded_not_applied(app, tmp_path):
     # Loaded (so View can show why) but never highlights.
     assert w.overlay is st
     assert w.view_widget._cell_color(0x00, Marker.SAME, 0) == w.view_widget._text_color()
-    # A non-blocking warning dialog was created with the diagnostic detail.
+    assert w.view_widget._cell_bg(0, 0x00, Marker.SAME) is None
+    # A non-blocking diagnostics dialog was created with the detail.
     assert w._message_boxes
     assert "duplicate-path" in w._message_boxes[-1].text()
+    # The persistent segment flags the not-applied state.
+    assert "not applied" in w.status_overlay.text()
     w.close()
 
 

@@ -81,7 +81,7 @@ def test_load_and_navigate(app, tmp_path):
     vw.jump_to_offset(0x200)  # row 32
     assert vw.view.offset_at(vw.view.top) == 0x200
 
-    assert "ref=all-agree" in w.statusBar().currentMessage()
+    assert w.status_ref.text() == "ref=all-agree"
     w.close()
 
 
@@ -138,7 +138,7 @@ def test_menu_toggles_and_reference(app, tmp_path):
     target = next(a for a in w.ref_group.actions() if a.data() == 1)
     target.trigger()
     assert w.model.ref == 1
-    assert "ref=b.bin" in w.statusBar().currentMessage()
+    assert w.status_ref.text() == "ref=b.bin"
     w.close()
 
 
@@ -204,7 +204,7 @@ def test_empty_window_has_no_model(app):
     w = gui.MainWindow()  # no files
     assert w.model is None
     assert w.view_widget.view is None
-    assert "No files loaded" in w.statusBar().currentMessage()
+    assert "No files loaded" in w.status_pos.text()
     w.close()
 
 
@@ -428,10 +428,10 @@ def test_markers_toggle_reflected_in_status(app, tmp_path):
     w.show()
     app.processEvents()
 
-    assert "markers:on" in w.statusBar().currentMessage()
+    assert "markers:on" in w.status_toggles.text()
     w.trigger_action("cycle_markers")
     assert w.view_widget.markers_on is False
-    assert "markers:off" in w.statusBar().currentMessage()
+    assert "markers:off" in w.status_toggles.text()
     w.close()
 
 
@@ -534,6 +534,102 @@ def test_search_cleared_on_file_reload(app, tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# Polish: title, fonts, status segments, menu hints, dialogs
+# --------------------------------------------------------------------------- #
+
+
+def test_window_title_reflects_loaded_files(app, tmp_path):
+    a = _write(tmp_path, "a.bin", bytes(16))
+    b = _write(tmp_path, "b.bin", bytes(16))
+    w = gui.MainWindow()
+    assert w.windowTitle() == "multihex-gui"
+    w.load_paths([a, b])
+    assert w.windowTitle() == "a.bin, b.bin - multihex-gui"
+    w.close()
+
+
+def test_window_title_caps_many_files(app, tmp_path):
+    paths = [_write(tmp_path, f"f{i}.bin", bytes(16)) for i in range(6)]
+    w = gui.MainWindow()
+    w.load_paths(paths)
+    assert w.windowTitle() == "f0.bin, f1.bin, f2.bin, f3.bin (+2) - multihex-gui"
+    w.close()
+
+
+def test_hex_view_uses_fixed_pitch_font_and_min_size(app):
+    w = gui.MainWindow()
+    fm = w.view_widget.fontMetrics()
+    # Fixed pitch: every hex glyph advances by the same width.
+    assert fm.horizontalAdvance("0") == fm.horizontalAdvance("w")
+    assert w.minimumWidth() >= 640 and w.minimumHeight() >= 400
+    w.close()
+
+
+def test_search_status_segment_persists_across_scrolling(app, tmp_path):
+    data = b"....RIFF...." + bytes(1024)
+    a = _write(tmp_path, "a.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a])
+    w.resize(900, 400)
+    w.show()
+    app.processEvents()
+
+    w.run_search("hex", "52 49 46 46")
+    assert w.status_search.isVisibleTo(w)
+    assert w.status_search.text() == (
+        'Search: hex "52 49 46 46" | match 1/1 | file 0 | offset 0x00000004'
+    )
+    # Scrolling refreshes the position segment but never erases the search
+    # segment (the old transient showMessage was stomped by any navigation).
+    w.trigger_action("next_page")
+    w.trigger_action("next_row")
+    assert w.status_search.text().startswith('Search: hex "52 49 46 46" | match 1/1')
+
+    # An invalid pattern surfaces in the same persistent segment.
+    w.run_search("hex", "zz")
+    assert w.status_search.isVisibleTo(w)
+    assert w.status_search.text().startswith("Search error:")
+
+    # No matches is stated explicitly.
+    w.run_search("hex", "de ad be ef")
+    assert w.status_search.text() == 'Search: hex "de ad be ef" | no matches'
+
+    # Reloading files clears the search and hides the segment.
+    w.load_paths([a])
+    assert not w.status_search.isVisibleTo(w)
+    w.close()
+
+
+def test_menu_items_show_registry_key_hints(app):
+    # Hints use Qt's tab-in-text convention so the key shows in the menu's
+    # shortcut column without registering a competing QShortcut.
+    w = gui.MainWindow()
+    assert w.act_ascii.text().endswith("\ta")
+    assert w.act_diff.text().endswith("\td")
+    assert w.act_markers.text().endswith("\tm")
+    assert w.act_color.text().endswith("\tc")
+    assert w.act_byte_classes.text().endswith("\tt")
+    # The Compare menu's picker carries the 'r' hint.
+    pick = w.comparem.actions()[0]
+    assert pick.text().endswith("\tr")
+    w.close()
+
+
+def test_hex_search_dialog_validates_pattern_live(app):
+    dlg = gui._HexSearchDialog()
+    assert dlg._ok.isEnabled() is False          # empty -> disabled
+    dlg._edit.setText("52 49 46 46")
+    assert dlg._ok.isEnabled() is True           # valid hex -> enabled
+    dlg._edit.setText("zz")
+    assert dlg._ok.isEnabled() is False          # invalid -> disabled + hint
+    assert dlg._hint.text() != ""
+    dlg._edit.setText("DEAD")
+    assert dlg._ok.isEnabled() is True
+    assert dlg.result_value() == "DEAD"
+    dlg.reject()
+
+
+# --------------------------------------------------------------------------- #
 # Help / options
 # --------------------------------------------------------------------------- #
 
@@ -542,6 +638,53 @@ def test_help_dialog_text_is_generated_from_registry(app):
     w = gui.MainWindow()
     box = w._show_help_dialog()
     assert box.text() == gui_help_text()
+    # The help is the scrollable report dialog with a fixed-pitch text area
+    # (only the text area -- buttons stay in the proportional UI font).
+    assert isinstance(box, gui._TextReportDialog)
+    fm = box._view.fontMetrics()
+    assert fm.horizontalAdvance("0") == fm.horizontalAdvance("w")
+    w.close()
+
+
+def test_settings_width_spinner_changes_bytes_per_row(app, tmp_path):
+    data = bytes(256)  # 16 rows at width 16
+    a = _write(tmp_path, "a.bin", data)
+    b = _write(tmp_path, "b.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.resize(900, 400)
+    w.show()
+    app.processEvents()
+    assert w.model.width == 16
+    assert w.view_widget.view.visible_count == 16
+
+    dlg = gui._SettingsDialog(w)
+    assert dlg._width_spin.value() == 16
+    dlg._width_spin.setValue(32)  # applies immediately, like the TUI pane
+    assert w.model.width == 32
+    assert w.view_widget.view.visible_count == 8
+    assert "row" in w.status_pos.text()
+    dlg.reject()
+
+    # The chosen width survives a File > Open reload.
+    w.load_paths([a, b])
+    assert w.model.width == 32
+    w.close()
+
+
+def test_set_row_width_keeps_top_offset_anchored(app, tmp_path):
+    data = bytes(1024)
+    a = _write(tmp_path, "a.bin", data)
+    w = gui.MainWindow()
+    w.load_paths([a])
+    w.resize(900, 400)
+    w.show()
+    app.processEvents()
+    w.view_widget.jump_to_offset(0x200)
+    assert w.view_widget.view.offset_at(w.view_widget.view.top) == 0x200
+    w.set_row_width(8)
+    assert w.model.width == 8
+    assert w.view_widget.view.offset_at(w.view_widget.view.top) == 0x200
     w.close()
 
 
