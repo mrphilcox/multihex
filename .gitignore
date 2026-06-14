@@ -19,3 +19,7 @@ snapshot_report.html
 .coverage.*
 htmlcov/
 coverage.xml
+
+# mutmut (mutation testing) result cache. The only artifact a normal
+# `scripts/run_mutation.sh` run writes; delete it to force a full re-run.
+.mutmut-cache

@@ -52,6 +52,58 @@ prints only the terminal summary and total percentage; HTML (`htmlcov/`) and XML
 (`coverage.xml`) are opt-in. The fail-under threshold is a coarse regression
 guard, not a 100% coverage goal.
 
+## Mutation Testing
+
+Mutation testing is a targeted, manual quality audit. It changes (mutates) the
+source one edit at a time and reruns the tests; a mutant that survives means the
+tests did not notice that change, which points at a missing assertion. It is a
+way to ask whether the tests actually constrain behavior or merely execute code.
+
+This lane is deliberately scoped and is **not** part of `python3 -m pytest`,
+**not** a CI gate, and **not** a release blocker. It mutates only the
+deterministic, stdlib-only core and skips the UI stack, which is snapshot and
+offscreen tested and too noisy to mutate usefully.
+
+It uses [`mutmut`](https://mutmut.readthedocs.io/) (pinned to the 2.x series in
+the `dev` extra; its config keys, cache file, and result commands changed
+incompatibly in 3.x). The targets are configured in `[tool.mutmut]` in
+`pyproject.toml`:
+
+- Mutated: `core.py`, `overlay.py`, `layout_overlay_v1.py`, `shortcuts.py`,
+  `tui_config.py`.
+- Excluded: `tui.py` and `gui.py` (UI widgets), `cli.py` (argument glue covered
+  by characterization goldens), and `__init__.py` (version string only).
+
+Workflow:
+
+```sh
+scripts/run_mutation.sh      # runs `mutmut run` against the configured targets
+mutmut results               # list survived/killed mutants
+mutmut show <ID>             # inspect a specific mutant's diff
+mutmut browse                # interactive results browser
+```
+
+The runner warns (but does not abort) on a dirty working tree, passes extra
+arguments through to `mutmut run` (for example
+`scripts/run_mutation.sh --paths-to-mutate src/multihex/shortcuts.py` to scope a
+run), and never applies a mutant to the working tree. `mutmut` caches results in
+`.mutmut-cache` (gitignored); delete it to force a full re-run.
+
+A full run is slow: it reruns the whole pytest suite once per mutant, so scope it
+with `--paths-to-mutate` while iterating. `mutmut` restores each file after
+testing its mutant, but a hard interrupt (Ctrl-C or a `timeout` kill) can leave
+the last mutant applied next to a `<file>.bak`; recover with
+`git checkout -- <file>` and delete the leftover `.bak`.
+
+Handling surviving mutants:
+
+- Inspect the mutant with `mutmut show <ID>` and read the diff.
+- Decide whether it exposes a genuinely missing assertion. Many survivors are
+  equivalent mutants (no observable behavior change) and are not worth chasing.
+- If it is a real gap, add a focused test for that behavior. Do not chase the
+  mutation score with brittle tests written only to kill a mutant.
+- Do not mark a mutant as ignored without a comment explaining why.
+
 ## UI And Visual Tests
 
 The visual-regression suite lives in `tests_ui/` and runs through the UI test

@@ -36,6 +36,14 @@ _(nothing in flight — pick the next item from Near-term)_
       five-version CI matrix. Revisit: run it on a single pinned Python version (not
       the full matrix), or gate baseline checks so version drift warns rather than
       fails.
+- [ ] **Expand mutation-testing coverage as the test suite matures.** The
+      `mutmut` lane (`scripts/run_mutation.sh`; targets in `[tool.mutmut]`) audits
+      the deterministic core today. As tests grow, triage survivors and extend the
+      target set if other modules become deterministic enough to mutate usefully.
+- [ ] **Consider a non-blocking CI job for mutation testing later.** Mutation
+      testing is manual today (not a CI gate, by design). A future CI job could run
+      it informationally (report-only, never failing the build) once the survivor
+      set is stable enough not to create noise.
 
 ## Near-term (cont.)
 

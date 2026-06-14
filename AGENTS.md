@@ -116,6 +116,13 @@ and test functions `test_*`. When updating `tests/goldens/*.out` or
 `tests_ui/__snapshots__/*.svg`, review the diff carefully and include the reason
 in the change description.
 
+Mutation testing (`scripts/run_mutation.sh`, via `mutmut`) is a targeted, manual
+quality audit of the deterministic core only - never the UI stack. It is **not**
+part of `python3 -m pytest`, not a CI gate, and not a release blocker. Treat
+surviving mutants as candidates for a missing assertion, not a score to chase:
+add a focused test only when a survivor reveals a real gap. See the "Mutation
+Testing" section in [`docs/TESTING.md`](docs/TESTING.md).
+
 ## Commit & Pull Request Guidelines
 
 The current history uses short imperative summaries, for example `add tests` and
