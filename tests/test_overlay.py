@@ -10,6 +10,7 @@ per-file labelled diagnostics. Overlay docs are built inline (mirroring
 test_layout_overlay_v1.py); binaries are tiny in-memory HexFiles.
 """
 
+import hashlib
 import json
 import os
 import sys
@@ -257,6 +258,20 @@ def test_details_text_for_error_overlay_no_cursor(tmp_path):
     assert "Ranges under cursor" not in text
 
 
+def test_summary_for_applicable_overlay_counts_warnings(tmp_path):
+    # An applicable overlay with a warning reports both the range and warning
+    # counts in its one-line summary.
+    doc = {
+        "schema": _schema(),
+        "ranges": [{"path": "tail", "offset": 0, "length": 100}],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(4))])
+    summary = st.summary()
+    assert st.applicable is True
+    assert "1 range" in summary
+    assert "1 warning" in summary
+
+
 def test_summary_for_error_overlay_reports_not_applied(tmp_path):
     doc = {
         "schema": _schema(),
@@ -270,6 +285,85 @@ def test_summary_for_error_overlay_reports_not_applied(tmp_path):
     assert "not applied" in summary
     assert "1 error" in summary
     assert "(see details)" in summary
+
+
+# -- _parse_ranges robustness ------------------------------------------------ #
+def test_parse_ranges_skips_malformed_entries(tmp_path):
+    # A non-dict entry and a range with a non-integer offset are skipped during
+    # parsing (the validator flags them as errors, so the overlay is not
+    # applicable), leaving only the one well-formed range in the model.
+    doc = {
+        "schema": _schema(),
+        "ranges": [
+            5,
+            {"offset": "x", "length": 1},
+            {"path": "good", "offset": 0, "length": 2},
+        ],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(8))])
+    assert st.applicable is False          # malformed entries are errors
+    assert st.range_count == 1             # only the well-formed range survives
+    assert [r.path for r in st.ranges] == ["good"]
+
+
+def test_non_list_ranges_parses_to_no_ranges(tmp_path):
+    doc = {"schema": _schema(), "ranges": "oops"}
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc))
+    assert st.applicable is False
+    assert st.range_count == 0
+
+
+# -- diagnostics aggregation ------------------------------------------------- #
+def test_all_diagnostics_flattens_structural_then_per_file(tmp_path):
+    # source_size mismatch is file-aware; all_diagnostics returns the flat
+    # Diagnostic objects (structural first, then each file's), matching the
+    # labelled diagnostic_lines.
+    doc = {"schema": _schema(), "source_size": 4, "ranges": [{"offset": 0, "length": 1}]}
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file("bad.bin", bytes(8))])
+    diags = st.all_diagnostics()
+    assert [d.code for d in diags] == ["source-size-mismatch"]
+
+
+# -- details / summary edge cases -------------------------------------------- #
+def test_details_text_for_failed_load_shows_error(tmp_path):
+    st = OverlayState.load(str(tmp_path / "nope.json"))
+    text = st.details_text()
+    assert "Layout overlay" in text
+    assert "error:" in text
+
+
+def test_details_text_includes_source_metadata(tmp_path):
+    data = bytes(range(4))
+    doc = {
+        "schema": _schema(),
+        "name": "demo",
+        "source_file": "sample.bin",
+        "source_size": len(data),
+        "source_sha256": hashlib.sha256(data).hexdigest(),
+        "ranges": [
+            {"path": "field", "offset": 0, "length": 2, "type": "u16le",
+             "decoded": 513},
+        ],
+    }
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=data)])
+    text = st.details_text()
+    assert st.applicable is True
+    assert "source_file: sample.bin" in text
+    assert f"source_size: {len(data)}" in text
+    assert "source_sha256:" in text
+    # The range line carries the decoded value.
+    assert "decoded=513" in text
+
+
+def test_details_text_cursor_with_no_ranges_says_none(tmp_path):
+    # An applicable overlay with no ranges: the "Ranges:" list is omitted and the
+    # under-cursor section reports "(none)".
+    doc = {"schema": _schema(), "ranges": []}
+    st = OverlayState.load(_write(tmp_path, "ov.json", doc), [_file(data=bytes(8))])
+    text = st.details_text(cursor_offset=0)
+    assert "\nRanges:\n" not in text
+    assert "Ranges under cursor (0x00000000):" in text
+    assert "(none)" in text
 
 
 def test_overlay_range_covers_semantics():
