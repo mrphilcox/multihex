@@ -1,0 +1,150 @@
+{
+  "offset": 0,
+  "length": 32,
+  "width": 16,
+  "ref": null,
+  "files": [
+    "e_empty",
+    "e_data"
+  ],
+  "paths": [
+    "e_empty",
+    "e_data"
+  ],
+  "rows": [
+    {
+      "offset": 0,
+      "markers": [
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--"
+      ],
+      "files": [
+        {
+          "name": "e_empty",
+          "bytes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "ascii": "                "
+        },
+        {
+          "name": "e_data",
+          "bytes": [
+            9,
+            14,
+            19,
+            24,
+            29,
+            34,
+            39,
+            44,
+            49,
+            54,
+            59,
+            64,
+            69,
+            74,
+            79,
+            84
+          ],
+          "ascii": ".....\"',16;@EJOT"
+        }
+      ]
+    },
+    {
+      "offset": 16,
+      "markers": [
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--",
+        "--"
+      ],
+      "files": [
+        {
+          "name": "e_empty",
+          "bytes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "ascii": "                "
+        },
+        {
+          "name": "e_data",
+          "bytes": [
+            89,
+            94,
+            99,
+            104,
+            109,
+            114,
+            119,
+            124,
+            129,
+            134,
+            139,
+            144,
+            149,
+            154,
+            159,
+            164
+          ],
+          "ascii": "Y^chmrw|........"
+        }
+      ]
+    }
+  ]
+}
