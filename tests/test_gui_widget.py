@@ -22,7 +22,12 @@ from PySide6.QtGui import QKeyEvent, QWheelEvent  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 import multihex.gui as gui  # noqa: E402
-from multihex.shortcuts import gui_help_text, gui_shortcuts  # noqa: E402
+from multihex.shortcuts import (  # noqa: E402
+    gui_help_text,
+    gui_key_names,
+    gui_shortcuts,
+    gui_text_map,
+)
 
 
 def _wheel(angle_y):
@@ -272,6 +277,56 @@ def test_real_key_event_dispatches_and_bubbles(app, tmp_path):
         vw, QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_J, Qt.KeyboardModifier.NoModifier, "j")
     )
     assert vw.view.top == 1
+    w.close()
+
+
+def test_every_keymap_entry_dispatches_its_action(app, tmp_path):
+    """Each registry key, delivered as a real QKeyEvent, hits the right action_id.
+
+    A spy replaces ``trigger_action`` so dialog-opening slots never actually run
+    (no modal exec under the offscreen platform); we only assert the key ->
+    action_id resolution, which is the part keyPressEvent owns. Covers the whole
+    keymap, not just the few keys checked above.
+    """
+    a = _write(tmp_path, "a.bin", bytes(64))
+    b = _write(tmp_path, "b.bin", bytes(64))
+    w = gui.MainWindow()
+    w.load_paths([a, b])
+    w.show()
+    app.processEvents()
+
+    recorded = []
+    w.trigger_action = lambda aid: (recorded.append(aid) or True)
+
+    # Printable keys resolve via QKeyEvent.text(); use Key_unknown so the
+    # key-code lookup misses and dispatch falls through to the character map.
+    text_map = gui_text_map()
+    assert text_map
+    for ch, aid in text_map.items():
+        recorded.clear()
+        app.sendEvent(
+            w,
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key.Key_unknown,
+                Qt.KeyboardModifier.NoModifier, ch,
+            ),
+        )
+        assert recorded == [aid], f"text key {ch!r} should dispatch {aid}"
+
+    # Named keys (Down/PageUp/Home/End/...) resolve via the key-code map.
+    name_map = gui_key_names()
+    assert name_map
+    for name, aid in name_map.items():
+        recorded.clear()
+        keycode = getattr(Qt.Key, f"Key_{name}")
+        app.sendEvent(
+            w,
+            QKeyEvent(
+                QEvent.Type.KeyPress, keycode, Qt.KeyboardModifier.NoModifier, "",
+            ),
+        )
+        assert recorded == [aid], f"named key {name} should dispatch {aid}"
+
     w.close()
 
 
