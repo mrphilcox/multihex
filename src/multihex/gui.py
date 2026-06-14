@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import ctypes
+import os
 import sys
 from typing import List, Optional, Sequence, Tuple, Union
 
@@ -217,6 +219,47 @@ def clamp_ref(ref: Optional[int], nfiles: int) -> Optional[int]:
     """
     if ref is not None and 0 <= ref < nfiles:
         return ref
+    return None
+
+
+def _qt_platforms(env: Optional[dict] = None) -> List[str]:
+    """Return requested Qt platform names from QT_QPA_PLATFORM, if any."""
+    value = (env or os.environ).get("QT_QPA_PLATFORM", "")
+    platforms = []
+    for part in value.split(";"):
+        name = part.split(":", 1)[0].strip()
+        if name:
+            platforms.append(name)
+    return platforms
+
+
+def _needs_xcb_cursor_preflight(env: Optional[dict] = None) -> bool:
+    """Whether Qt is likely to initialize through the Linux xcb plugin."""
+    if not sys.platform.startswith("linux"):
+        return False
+    env = env or os.environ
+    platforms = _qt_platforms(env)
+    if platforms:
+        return platforms[0] == "xcb"
+    # With no explicit platform, Qt commonly chooses xcb for X11 sessions.
+    # Wayland users can still run through the wayland plugin without libxcb-cursor.
+    return bool(env.get("DISPLAY")) and not bool(env.get("WAYLAND_DISPLAY"))
+
+
+def _missing_xcb_cursor_message(loader=ctypes.CDLL, env: Optional[dict] = None) -> Optional[str]:
+    """Return a startup diagnostic when Qt's xcb cursor dependency is missing."""
+    if not _needs_xcb_cursor_preflight(env):
+        return None
+    try:
+        loader("libxcb-cursor.so.0")
+    except OSError:
+        return (
+            "multihex-gui: Qt's xcb platform plugin requires libxcb-cursor.so.0.\n"
+            "Install the native dependency, for example on Debian/Ubuntu:\n"
+            "  sudo apt install libxcb-cursor0\n"
+            "If you are running a Wayland session, you can also try:\n"
+            "  QT_QPA_PLATFORM=wayland multihex-gui ...\n"
+        )
     return None
 
 
@@ -822,6 +865,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
     if args.offset < 0:
         sys.stderr.write("multihex-gui: --offset must be >= 0\n")
+        return 2
+
+    missing_xcb = _missing_xcb_cursor_message()
+    if missing_xcb is not None:
+        sys.stderr.write(missing_xcb)
         return 2
 
     app = QApplication.instance() or QApplication(sys.argv[:1])

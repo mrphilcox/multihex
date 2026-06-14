@@ -444,6 +444,14 @@ comparison engine as the CLI and TUI (identical fixed-offset semantics and marke
 no editing, search, or selection yet). It requires the `[gui]` extra (`PySide6`); if
 it isn't installed the command prints a clear message and exits.
 
+On Linux/X11, Qt's `xcb` platform plugin may also require native system libraries.
+If startup reports a missing `xcb` platform dependency such as `libxcb-cursor.so.0`,
+install the OS package, for example on Debian/Ubuntu:
+
+```bash
+sudo apt install libxcb-cursor0
+```
+
 ```bash
 multihex-gui a.bin b.bin c.bin
 multihex-gui --offset 0x10 --width 16 a.bin b.bin

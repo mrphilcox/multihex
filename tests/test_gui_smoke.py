@@ -72,6 +72,35 @@ def test_qt_classes_present_when_pyside6_installed():
     assert hasattr(gui_mod, "HexCompareView")
 
 
+def test_xcb_cursor_preflight_reports_missing_library(monkeypatch):
+    monkeypatch.setattr(gui_mod.sys, "platform", "linux")
+
+    def missing_loader(name):
+        assert name == "libxcb-cursor.so.0"
+        raise OSError("missing")
+
+    msg = gui_mod._missing_xcb_cursor_message(
+        loader=missing_loader,
+        env={"DISPLAY": ":0"},
+    )
+
+    assert msg is not None
+    assert "libxcb-cursor.so.0" in msg
+    assert "sudo apt install libxcb-cursor0" in msg
+
+
+def test_xcb_cursor_preflight_skips_non_xcb_platform(monkeypatch):
+    monkeypatch.setattr(gui_mod.sys, "platform", "linux")
+
+    def failing_loader(_name):
+        raise AssertionError("loader should not be called")
+
+    assert gui_mod._missing_xcb_cursor_message(
+        loader=failing_loader,
+        env={"QT_QPA_PLATFORM": "offscreen", "DISPLAY": ":0"},
+    ) is None
+
+
 def test_runs_without_pyside6_installed(monkeypatch):
     """Simulate PySide6 not being installed: import still succeeds, --help still
     works, and main() degrades cleanly with exit code 2."""
