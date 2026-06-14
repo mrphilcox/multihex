@@ -156,6 +156,21 @@ def test_ref_menu_rebuild_does_not_accumulate_actions(app, tmp_path):
     w.close()
 
 
+def test_out_of_range_start_ref_warns_and_drops(app, tmp_path, capsys):
+    # A typo'd --ref (here 9, with only 2 files) must not be swallowed: the GUI
+    # coerces it to "no reference" so it keeps running, but warns on stderr --
+    # mirroring the CLI's hard error / TUI's exit-2 rather than diverging silently.
+    a = _write(tmp_path, "a.bin", bytes(48))
+    b = _write(tmp_path, "b.bin", bytes(48))
+    w = gui.MainWindow(ref=9)
+    assert w.load_paths([a, b]) is True
+    assert w.model.ref is None  # dropped, not applied
+    err = capsys.readouterr().err
+    assert "--ref 9 out of range" in err
+    assert "have 2 files" in err
+    w.close()
+
+
 def test_empty_window_has_no_model(app):
     w = gui.MainWindow()  # no files
     assert w.model is None

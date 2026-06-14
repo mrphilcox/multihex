@@ -980,6 +980,14 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 QMessageBox.warning(self, "Open files", f"Could not open files:\n{exc}")
                 return False
             ref = clamp_ref(self._start_ref, len(files))
+            # Mirror the CLI/TUI: don't silently swallow a bad --ref. clamp_ref
+            # coerces an out-of-range index to None ("no reference") so the GUI
+            # keeps running; warn so a typo (e.g. --ref 9) isn't lost.
+            if self._start_ref is not None and ref is None:
+                sys.stderr.write(
+                    f"multihex-gui: --ref {self._start_ref} out of range "
+                    f"(have {len(files)} files); ignoring (no reference)\n"
+                )
             try:
                 model = HexModel(
                     files,
