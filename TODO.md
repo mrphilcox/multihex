@@ -36,6 +36,41 @@ _(nothing in flight — pick the next item from Near-term)_
       the full matrix), or gate baseline checks so version drift warns rather than
       fails.
 
+## Near-term (cont.)
+
+- [ ] **Triage the stress-suite findings.** `scripts/stress/` (opt-in; see
+      CONTRIBUTING) surfaced robustness gaps. None are crashes on normal input;
+      each is a hostile/scale edge. Decide per item whether to fix or document as
+      a known limit:
+  - **Uncaught write `OSError` (ENOSPC/EROFS).** `cli.py`'s stdout/stderr write
+    path catches `BrokenPipeError` but not other `OSError`s; a write to a full
+    destination (`> /dev/full`) prints a traceback (rc 120). Consider treating any
+    write `OSError` like the broken-pipe case (clean message, no traceback).
+  - **`KeyboardInterrupt` traceback on Ctrl-C mid-dump.** A SIGINT during a large
+    dump prints a `KeyboardInterrupt` traceback (rc 130/-2). Consider catching it
+    in `main()` for a clean interrupt.
+  - **FIFO/non-regular input hangs.** `core._open_buffer` does `open(path,'rb')`;
+    a FIFO with no writer blocks indefinitely. Consider an `S_ISREG` check (or
+    `O_NONBLOCK` probe) with a clear error for non-regular files.
+  - **truncate-after-mmap → SIGBUS.** A file shrunk beneath a live `ACCESS_READ`
+    mmap crashes the process on access. This is an inherent mmap hazard; likely
+    **document** as a known limitation rather than guard.
+  - **Unbounded search match list.** `core.search_files` materializes every match;
+    an all-`0x00` file searched for `00` grows ~0.5 GB/MiB. `--search-max-results`
+    is the existing valve. Consider a default cap or streaming for the no-`--json`
+    text-dump path.
+  - **Full-file-scan search RSS.** `.find()` faults every scanned page, so an
+    absent-pattern search over an N-GiB file faults ~N GiB into RSS. Consider
+    `madvise(MADV_SEQUENTIAL/DONTNEED)` for large scans, or document the ceiling.
+  - **`RecursionError` from a deeply nested overlay JSON.** `OverlayState.load`
+    catches only `OSError`/`JSONDecodeError`; a pathologically nested document
+    escapes as a traceback. Consider also catching `RecursionError` (or
+    `ValueError`/`Exception`) and reporting it as a load error diagnostic.
+  - **No upper bound on `--width`/`--length`; `--length` ignores file size.** Huge
+    values cost memory/time proportional to the value, not the file (the default
+    render loop builds every row in `range(model.row_count)`). Consider a sanity
+    cap or a streaming render. `--limit-rows` mitigates `--length` today.
+
 ## Medium-term
 
 - [ ] **Layout-overlay follow-ups (v2+).** Overlay *consumption* now ships (see

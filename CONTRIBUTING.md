@@ -109,6 +109,28 @@ scripts/ui-tests/update_snapshots.sh -k diff_view  # one
 
 See [`docs/ui-testing.md`](docs/ui-testing.md) for details.
 
+## Stress tests (opt-in)
+
+A separate suite in `scripts/stress/` probes where multihex breaks under
+**scale, resource pressure, and hostile inputs** (huge sparse files, FD
+exhaustion, the search match-list explosion, overlay scale, `/dev/full`, FIFOs,
+extreme TUI/GUI geometry). It is **not** part of `pytest`, `scripts/integration/`,
+or any automatic CI lane. Every heavy/hostile command runs under
+`scripts/stress/measure.py`, which contains it in a process group with a
+wall-clock timeout and an RSS cap, so it is safe to run on a workstation.
+
+```bash
+scripts/stress/run_all.sh                 # full suite
+STRESS_FAST=1 scripts/stress/run_all.sh   # quick smoke (shrunk scales)
+KEEP_WORK=1 scripts/stress/run_all.sh     # keep temp dirs for inspection
+```
+
+It prints `PASS`/`FAIL`/`SKIP` plus `FINDING` (a confirmed, documented hazard)
+and `CHAR` (an observed resource ceiling) lines; it exits non-zero only on
+`FAIL`. See [`scripts/stress/README.md`](scripts/stress/README.md) for the
+dimensions, env knobs, and verdict meanings, and `TODO.md` for the findings it
+surfaced.
+
 ## Linting
 
 ```bash
