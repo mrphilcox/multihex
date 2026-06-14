@@ -114,6 +114,30 @@ def test_missing_file_reports_oserror(fixtures):
     assert "no_such_file.bin" in proc.stderr
 
 
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="platform has no os.mkfifo")
+def test_fifo_input_rejected_quickly(fixtures):
+    # A FIFO with no writer used to block the open() syscall forever. The loader
+    # now stats it first and rejects it, so the CLI exits non-zero immediately.
+    # The subprocess timeout makes a regression fail fast instead of hanging the
+    # suite.
+    fixture_dir, _ = fixtures
+    fifo = os.path.join(fixture_dir, "input_fifo")
+    if os.path.exists(fifo):
+        os.remove(fifo)
+    os.mkfifo(fifo)
+    try:
+        cmd = [sys.executable, "-m", "multihex.cli", "input_fifo"]
+        proc = subprocess.run(
+            cmd, cwd=fixture_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, timeout=10,
+        )
+    finally:
+        os.remove(fifo)
+    assert proc.returncode != 0
+    assert "multihex:" in proc.stderr
+    assert "input_fifo" in proc.stderr
+
+
 def test_search_context_negative_rejected(fixtures):
     fixture_dir, _ = fixtures
     proc = _run(

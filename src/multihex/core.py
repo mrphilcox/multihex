@@ -28,8 +28,10 @@ Design notes / semantics (per spec):
 from __future__ import annotations
 
 import enum
+import errno
 import mmap
 import os
+import stat
 from dataclasses import dataclass
 from typing import Iterator, List, Optional, Sequence, Tuple, Union
 
@@ -143,7 +145,22 @@ def _open_buffer(path: str) -> Union[mmap.mmap, bytes]:
     large file does not load the whole file. Empty files cannot be mmap'd, so
     they fall back to an empty ``bytes``. On POSIX the mapping stays valid after
     the file descriptor is closed, so no handle is retained.
+
+    The path is stat'd before it is opened so we never enter a blocking
+    ``open()`` on a FIFO that has no writer. ``os.stat`` follows symlinks, so a
+    symlink to a regular file is accepted while a symlink to a FIFO, device, or
+    socket is rejected by its target type; a dangling symlink raises
+    ``FileNotFoundError`` and surfaces through the existing missing-file path.
+    Anything that is not a regular file is rejected as an ``OSError`` (which the
+    frontends already report), at the cost of a small TOCTOU window between the
+    stat and the open that is acceptable for a read-only inspection tool.
     """
+    if not stat.S_ISREG(os.stat(path).st_mode):
+        raise OSError(
+            errno.EINVAL,
+            "unsupported input type (not a regular file)",
+            path,
+        )
     with open(path, "rb") as fh:
         size = os.fstat(fh.fileno()).st_size
         if size == 0:
