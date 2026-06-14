@@ -473,6 +473,31 @@ class SearchMatch:
     column: Optional[int] = None
 
 
+# Project-wide default ceiling on the number of matches a search collects when a
+# frontend does not request an explicit limit. Search materializes one
+# SearchMatch per occurrence, so a one-byte needle over a large, repetitive file
+# (e.g. "00" across a multi-GB image) can otherwise produce hundreds of millions
+# of objects and exhaust memory. 10000 is a few MB of matches -- far more than a
+# human navigates interactively -- while keeping peak memory bounded. Callers who
+# knowingly want more raise the cap, or pass max_results=None for no limit.
+DEFAULT_SEARCH_MAX_RESULTS = 10_000
+
+
+@dataclass(frozen=True)
+class SearchResults:
+    """A capped search outcome plus whether more matches existed past the cap.
+
+    ``matches`` is ordered by ``(file_index, offset)`` like :func:`search_files`.
+    ``truncated`` is True when the search stopped at ``limit`` while more matches
+    remained. ``limit`` is the cap that was applied, or None for an unbounded
+    search.
+    """
+
+    matches: List[SearchMatch]
+    truncated: bool
+    limit: Optional[int]
+
+
 def parse_hex_pattern(text: str) -> bytes:
     """Parse a flexible hex byte pattern into raw bytes.
 
@@ -626,6 +651,41 @@ def search_files(
             if max_results is not None and len(matches) >= max_results:
                 return matches
     return matches
+
+
+def search_files_bounded(
+    files: Sequence[HexFile],
+    query: SearchQuery,
+    *,
+    max_results: Optional[int] = DEFAULT_SEARCH_MAX_RESULTS,
+    overlap: bool = False,
+    model: Optional[HexModel] = None,
+) -> SearchResults:
+    """Run :func:`search_files` with a memory ceiling and report truncation.
+
+    Unlike :func:`search_files` (which returns a bare list), this wraps the
+    result so frontends can tell the user when matches were dropped. The cap is
+    GLOBAL across all searched files and counts matches AFTER ``overlap``
+    filtering -- it counts :class:`SearchMatch` objects, exactly as
+    ``search_files``'s own ``max_results`` does -- so search-context expansion,
+    which a frontend layers on top of these matches, never affects the count.
+
+    ``max_results=None`` means no limit (the documented escape hatch; peak memory
+    is then unbounded). Otherwise the search probes for one match beyond the cap
+    so it can distinguish "exactly ``max_results`` matches exist" from "more
+    exist past the cap", then trims back to ``max_results``. Peak memory stays
+    bounded to ``max_results + 1`` matches.
+    """
+    if max_results is None:
+        matches = search_files(files, query, overlap=overlap, model=model)
+        return SearchResults(matches=matches, truncated=False, limit=None)
+    probe = search_files(
+        files, query, max_results=max_results + 1, overlap=overlap, model=model
+    )
+    truncated = len(probe) > max_results
+    return SearchResults(
+        matches=probe[:max_results], truncated=truncated, limit=max_results
+    )
 
 
 # --------------------------------------------------------------------------- #

@@ -56,10 +56,6 @@ _(nothing in flight — pick the next item from Near-term)_
   - **truncate-after-mmap → SIGBUS.** A file shrunk beneath a live `ACCESS_READ`
     mmap crashes the process on access. This is an inherent mmap hazard; likely
     **document** as a known limitation rather than guard.
-  - **Unbounded search match list.** `core.search_files` materializes every match;
-    an all-`0x00` file searched for `00` grows ~0.5 GB/MiB. `--search-max-results`
-    is the existing valve. Consider a default cap or streaming for the no-`--json`
-    text-dump path.
   - **Full-file-scan search RSS.** `.find()` faults every scanned page, so an
     absent-pattern search over an N-GiB file faults ~N GiB into RSS. Consider
     `madvise(MADV_SEQUENTIAL/DONTNEED)` for large scans, or document the ceiling.
@@ -200,6 +196,16 @@ Guidelines:
 
 ## Done or superseded
 
+- [x] **Bound default search memory.** `core.search_files` materialized every
+      match, so a frequent needle (an all-`0x00` file searched for `00`) could
+      grow an unbounded match list. Frontends now call the new
+      `core.search_files_bounded`, which applies a global default cap
+      (`DEFAULT_SEARCH_MAX_RESULTS` = 10000) via a cap+1 probe and returns a
+      `SearchResults` carrying a `truncated` flag. CLI reports truncation on
+      stderr and adds `--search-unlimited` for an explicit uncapped search;
+      TUI/GUI annotate the search status line. `search_files` itself is unchanged
+      for backward compatibility. Search has no JSON surface, so `--json` is
+      unaffected.
 - [x] **GUI side-by-side layout (+ tri-state markers, horizontal scrolling).**
       Brought the PySide6 GUI to layout parity with the CLI/TUI. The custom
       painter (`HexCompareView._paint_block`) gained a `side-by-side` branch that

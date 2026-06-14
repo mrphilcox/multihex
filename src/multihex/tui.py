@@ -69,7 +69,7 @@ from multihex.core import (
     offset_label,
     parse_int,
     prev_match_index,
-    search_files,
+    search_files_bounded,
 )
 from multihex.overlay import OverlayState
 from multihex.shortcuts import tui_help_text
@@ -889,6 +889,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
             self.search_matches: List[SearchMatch] = []
             self.search_index: Optional[int] = None
             self.search_error: Optional[str] = None
+            # True when the last search hit the default cap and more matches
+            # exist past it; surfaced in the search status line.
+            self.search_truncated: bool = False
             # Session-only text-search preference (seeds the panel checkbox; not
             # persisted to config and never a startup flag).
             self.text_search_ignore_case = False
@@ -1013,8 +1016,9 @@ if _TEXTUAL_IMPORT_ERROR is None:
             else:
                 cur = self.search_index or 0
                 m = self.search_matches[cur]
+                capped = " (capped; more matches exist)" if self.search_truncated else ""
                 widget.update(
-                    f"Search: {label} | match {cur + 1}/{len(self.search_matches)} "
+                    f"Search: {label} | match {cur + 1}/{len(self.search_matches)}{capped} "
                     f"| file {m.file_index} | offset 0x{m.offset:08x}"
                 )
             widget.display = True
@@ -1268,15 +1272,18 @@ if _TEXTUAL_IMPORT_ERROR is None:
                 self.search_query = None
                 self.search_matches = []
                 self.search_index = None
+                self.search_truncated = False
                 self.view.set_search([], None)
                 self.update_search_status()
                 return
 
             self.search_error = None
             self.search_query = query
-            self.search_matches = search_files(
+            result = search_files_bounded(
                 self.model.files, query, model=self.model
             )
+            self.search_matches = result.matches
+            self.search_truncated = result.truncated
             self.search_index = first_match_index(self.search_matches)
             self.view.set_search(self.search_matches, self.search_index)
             if self.search_index is not None:

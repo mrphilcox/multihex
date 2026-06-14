@@ -154,11 +154,20 @@ alignment, or inference. It lives entirely in the core; frontends add UI glue.
   user-facing message on bad input.
 - **Matching.** `search_files()` returns `SearchMatch` objects ordered
   deterministically by `(file_index, offset)`. Matches are non-overlapping by
-  default (`overlap=True` to include overlaps); `max_results` caps the count; an
-  optional `model` fills each match's `row_index`/`column` via `HexModel.locate()`.
-  `_find_in_file()` searches the backing buffer directly (no copy) for
-  case-sensitive and hex queries; case-insensitive text folds a full `bytes` copy
-  of the file via an ASCII-only translation table (the documented cost).
+  default (`overlap=True` to include overlaps); `max_results` caps the count
+  globally across files; an optional `model` fills each match's
+  `row_index`/`column` via `HexModel.locate()`. `_find_in_file()` searches the
+  backing buffer directly (no copy) for case-sensitive and hex queries;
+  case-insensitive text folds a full `bytes` copy of the file via an ASCII-only
+  translation table (the documented cost).
+- **Memory bound.** `_find_in_file()` is a generator and `search_files()`'s
+  `max_results` cut is applied in-loop, so the engine is already lazy. Frontends
+  call `search_files_bounded()`, which layers a global default cap
+  (`DEFAULT_SEARCH_MAX_RESULTS`) on top: it probes for one match past the cap to
+  detect truncation, trims back, and returns a `SearchResults` (matches +
+  `truncated` flag + `limit`). This keeps a frequent needle (e.g. `00` over a
+  large file) from collecting an unbounded match set by default; an explicit
+  `max_results=None` opts back into an unbounded search.
 - **Navigation.** Index-based helpers operate on an already-ordered result list
   and return an index (or `None`), which is exactly what a frontend tracking a
   "current match" needs: `first_match_index()`, `next_match_index()`,

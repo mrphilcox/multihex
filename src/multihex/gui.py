@@ -51,7 +51,7 @@ from multihex.core import (
     parse_hex_pattern,
     parse_int,
     prev_match_index,
-    search_files,
+    search_files_bounded,
 )
 from multihex.overlay import OverlayState
 from multihex.shortcuts import (
@@ -247,12 +247,16 @@ def format_status(
     )
 
 
-def format_search_status(query, matches, index, error) -> Optional[str]:
+def format_search_status(
+    query, matches, index, error, *, truncated: bool = False
+) -> Optional[str]:
     """Persistent search-segment text, or None when no search is active (pure).
 
     Mirrors the TUI's dedicated search status line: the query (with a "(ci)"
     mark for case-insensitive text), match position/count with the current
-    match's file and offset, "no matches", or the search error.
+    match's file and offset, "no matches", or the search error. When
+    ``truncated`` is set, the count is annotated to tell the user that more
+    matches exist past the default cap.
     """
     if error is not None:
         return f"Search error: {error}"
@@ -265,8 +269,9 @@ def format_search_status(query, matches, index, error) -> Optional[str]:
         return f"Search: {label} | no matches"
     cur = index or 0
     m = matches[cur]
+    capped = " (capped; more matches exist)" if truncated else ""
     return (
-        f"Search: {label} | match {cur + 1}/{len(matches)} "
+        f"Search: {label} | match {cur + 1}/{len(matches)}{capped} "
         f"| file {m.file_index} | offset 0x{m.offset:08x}"
     )
 
@@ -1116,6 +1121,9 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.search_matches: List[SearchMatch] = []
             self.search_index: Optional[int] = None
             self.search_error: Optional[str] = None
+            # True when the last search hit the default cap and more matches
+            # exist past it; surfaced in the search status line.
+            self.search_truncated: bool = False
             self.text_search_ignore_case = False
             self._build_menus()
             self._build_key_dispatch()
@@ -1538,6 +1546,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             self.search_matches = []
             self.search_index = None
             self.search_error = None
+            self.search_truncated = False
             self.view_widget.set_search([], None)
             self._update_search_status()
 
@@ -1586,14 +1595,17 @@ if _PYSIDE6_IMPORT_ERROR is None:
                 self.search_query = None
                 self.search_matches = []
                 self.search_index = None
+                self.search_truncated = False
                 self.view_widget.set_search([], None)
                 self._update_search_status()
                 return
             self.search_error = None
             self.search_query = query
-            self.search_matches = search_files(
+            result = search_files_bounded(
                 self.model.files, query, model=self.model
             )
+            self.search_matches = result.matches
+            self.search_truncated = result.truncated
             self.search_index = first_match_index(self.search_matches)
             self.view_widget.set_search(self.search_matches, self.search_index)
             if self.search_index is not None:
@@ -1832,6 +1844,7 @@ if _PYSIDE6_IMPORT_ERROR is None:
             text = format_search_status(
                 self.search_query, self.search_matches,
                 self.search_index, self.search_error,
+                truncated=self.search_truncated,
             )
             self.status_search.setText(text or "")
             self.status_search.setVisible(text is not None)

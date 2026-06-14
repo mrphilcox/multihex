@@ -317,6 +317,15 @@ def test_format_search_status_current_match_and_ci_flag():
     assert "(ci)" not in format_search_status(qh, matches, 0, None)
 
 
+def test_format_search_status_truncated_annotates_count():
+    q = SearchQuery(mode="hex", pattern="00", needle=b"\x00")
+    matches = [_match(offset=0), _match(offset=1)]
+    plain = format_search_status(q, matches, 0, None)
+    assert "capped" not in plain
+    capped = format_search_status(q, matches, 0, None, truncated=True)
+    assert "match 1/2 (capped; more matches exist)" in capped
+
+
 # --------------------------------------------------------------------------- #
 # format_overlay_status (the persistent overlay segment)
 # --------------------------------------------------------------------------- #

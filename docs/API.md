@@ -145,7 +145,30 @@ Frozen dataclass: `mode` (`"text"`/`"hex"`), `pattern`, `needle` (bytes),
 Search and return matches ordered by `(file_index, offset)`. Non-overlapping by
 default; `overlap=True` includes overlapping hits; `max_results` caps the count;
 pass a `model` to fill each match's `row_index`/`column`. Raises `SearchError` if
-`query.file_index` is out of range.
+`query.file_index` is out of range. The cap is global across all searched files,
+and counts matches after `overlap` filtering. With `max_results=None` this
+collects every match, so peak memory is unbounded for a needle that occurs very
+often (e.g. a one-byte pattern over a large file) - prefer `search_files_bounded`
+in frontends.
+
+### `search_files_bounded(files, query, *, max_results=DEFAULT_SEARCH_MAX_RESULTS, overlap=False, model=None) -> SearchResults`
+Memory-bounded wrapper over `search_files`. Applies a global default cap
+(`DEFAULT_SEARCH_MAX_RESULTS`, currently 10000) unless the caller overrides it,
+and reports whether more matches existed past the cap. It probes for one match
+beyond the cap to detect truncation, then trims back, so peak memory stays
+bounded to `max_results + 1` matches. Pass `max_results=None` for an unbounded
+search (the documented escape hatch; memory is then unbounded). This is the call
+all three frontends use.
+
+### `class SearchResults`
+Frozen dataclass returned by `search_files_bounded`: `matches`
+(`list[SearchMatch]`, ordered like `search_files`), `truncated` (True when the
+search stopped at the cap with more matches remaining), and `limit` (the cap
+applied, or `None` when unbounded).
+
+### `DEFAULT_SEARCH_MAX_RESULTS`
+Module constant: the project-wide default match ceiling (10000) used by
+`search_files_bounded` when no explicit limit is given.
 
 ### `class SearchMatch`
 Frozen dataclass: `file_index`, `path`, `offset`, `length`, `matched` (bytes), and

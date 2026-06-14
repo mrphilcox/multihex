@@ -38,6 +38,47 @@ def _status_text(app):
     return str(app.query_one("#search_status").render())
 
 
+def _make_big_zero_app(nbytes):
+    f = HexFile("big.bin", bytes(nbytes))
+    model = HexModel([f], width=16)
+    return tui.MultiHexApp(
+        model, ascii_on=True, only_diff=False, color_on=True, name_mode="basename"
+    )
+
+
+def test_search_truncates_at_default_cap():
+    from multihex.core import DEFAULT_SEARCH_MAX_RESULTS
+
+    async def go():
+        # One byte past the cap so the search reports truncation.
+        app = _make_big_zero_app(DEFAULT_SEARCH_MAX_RESULTS + 1)
+        async with app.run_test() as pilot:
+            app._run_search("hex", "00")
+            await pilot.pause()
+            assert len(app.search_matches) == DEFAULT_SEARCH_MAX_RESULTS
+            assert app.search_truncated is True
+            status = _status_text(app)
+            assert "capped; more matches exist" in status
+            # Navigation still cycles within the capped set.
+            app.action_next_match()
+            await pilot.pause()
+            assert app.search_index == 1
+
+    asyncio.run(go())
+
+
+def test_search_under_cap_is_not_truncated():
+    async def go():
+        app = _make_app()
+        async with app.run_test() as pilot:
+            app._run_search("text", "RIFF")
+            await pilot.pause()
+            assert app.search_truncated is False
+            assert "capped" not in _status_text(app)
+
+    asyncio.run(go())
+
+
 def test_text_search_sets_state_and_status():
     async def go():
         app = _make_app()

@@ -17,11 +17,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from multihex.core import (  # noqa: E402
+    DEFAULT_SEARCH_MAX_RESULTS,
     HexFile,
     HexModel,
     SearchError,
     SearchMatch,
     SearchQuery,
+    SearchResults,
     first_match_index,
     make_hex_query,
     make_text_query,
@@ -31,6 +33,7 @@ from multihex.core import (  # noqa: E402
     parse_hex_pattern,
     prev_match_index,
     search_files,
+    search_files_bounded,
 )
 
 
@@ -258,6 +261,78 @@ def test_max_results_caps_in_order():
     f1 = _file("one", b"aa")
     matches = search_files([f0, f1], make_text_query("a"), max_results=3)
     assert [(m.file_index, m.offset) for m in matches] == [(0, 0), (0, 1), (0, 2)]
+
+
+# --------------------------------------------------------------------------- #
+# Bounded search (search_files_bounded): default cap + truncation reporting
+# --------------------------------------------------------------------------- #
+def test_bounded_returns_all_when_under_cap():
+    f = _file("a", b"aaaa")  # 4 matches, well under any cap
+    result = search_files_bounded([f], make_text_query("a"), max_results=10)
+    assert isinstance(result, SearchResults)
+    assert [m.offset for m in result.matches] == [0, 1, 2, 3]
+    assert result.truncated is False
+    assert result.limit == 10
+
+
+def test_bounded_exactly_at_cap_is_not_truncated():
+    f = _file("a", b"aaaa")  # exactly 4 matches
+    result = search_files_bounded([f], make_text_query("a"), max_results=4)
+    assert len(result.matches) == 4
+    assert result.truncated is False
+
+
+def test_bounded_one_past_cap_truncates_and_trims():
+    f = _file("a", b"aaaaa")  # 5 matches, cap 4 -> drop one
+    result = search_files_bounded([f], make_text_query("a"), max_results=4)
+    assert [m.offset for m in result.matches] == [0, 1, 2, 3]
+    assert result.truncated is True
+    assert result.limit == 4
+
+
+def test_bounded_cap_is_global_across_files():
+    # The cap counts total matches, not per-file: 4 in f0 leaves room for 1 in f1.
+    f0 = _file("zero", b"aaaa")
+    f1 = _file("one", b"aa")
+    result = search_files_bounded([f0, f1], make_text_query("a"), max_results=5)
+    assert [(m.file_index, m.offset) for m in result.matches] == [
+        (0, 0), (0, 1), (0, 2), (0, 3), (1, 0)
+    ]
+    assert result.truncated is True  # (1, 1) exists past the cap
+
+
+def test_bounded_counts_post_overlap_matches():
+    # "aa" in "aaaa": non-overlapping yields 2 (offsets 0, 2); the cap counts
+    # those post-overlap matches, so cap 2 is not truncated.
+    f = _file("a", b"aaaa")
+    result = search_files_bounded([f], make_text_query("aa"), max_results=2)
+    assert [m.offset for m in result.matches] == [0, 2]
+    assert result.truncated is False
+    # With overlap=True the same text yields 3 (offsets 0, 1, 2); cap 2 truncates.
+    overlapped = search_files_bounded(
+        [f], make_text_query("aa"), max_results=2, overlap=True
+    )
+    assert [m.offset for m in overlapped.matches] == [0, 1]
+    assert overlapped.truncated is True
+
+
+def test_bounded_unlimited_collects_everything():
+    f = _file("a", b"aaaa")
+    result = search_files_bounded([f], make_text_query("a"), max_results=None)
+    assert len(result.matches) == 4
+    assert result.truncated is False
+    assert result.limit is None
+
+
+def test_bounded_default_cap_bounds_large_repetitive_input():
+    # The memory-safety regression: a one-byte needle over a large repetitive
+    # buffer must stop at the default cap rather than collecting every byte.
+    data = bytes(DEFAULT_SEARCH_MAX_RESULTS * 5)  # all zero bytes
+    f = _file("big", data)
+    result = search_files_bounded([f], make_hex_query("00"))
+    assert len(result.matches) == DEFAULT_SEARCH_MAX_RESULTS
+    assert result.truncated is True
+    assert result.limit == DEFAULT_SEARCH_MAX_RESULTS
 
 
 # --------------------------------------------------------------------------- #

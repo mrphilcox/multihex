@@ -75,6 +75,47 @@ def test_search_max_results_rejects_nonpositive_values(fixtures, value):
     assert "--search-max-results must be >= 1" in proc.stderr
 
 
+def test_explicit_max_results_truncates_with_stderr_notice(fixtures):
+    # dX is 48 zero bytes; cap the search at 2 and confirm it truncates.
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--search-hex", "00", "--search-max-results", "2", "dX"])
+    assert proc.returncode == 0
+    lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("file=")]
+    assert len(lines) == 2
+    assert "results truncated at 2 matches" in proc.stderr
+    # The truncation notice never pollutes the machine-parseable stdout lines.
+    assert "truncated" not in proc.stdout
+
+
+def test_unlimited_collects_all_without_notice(fixtures):
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--search-hex", "00", "--search-unlimited", "dX"])
+    assert proc.returncode == 0
+    lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("file=")]
+    assert len(lines) == 48
+    assert "truncated" not in proc.stderr
+
+
+def test_default_cap_leaves_small_searches_untouched(fixtures):
+    # The default cap (10000) is far above the 48 matches in dX, so no truncation.
+    fixture_dir, _ = fixtures
+    proc = _run(fixture_dir, ["--search-hex", "00", "dX"])
+    assert proc.returncode == 0
+    lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("file=")]
+    assert len(lines) == 48
+    assert "truncated" not in proc.stderr
+
+
+def test_max_results_and_unlimited_are_mutually_exclusive(fixtures):
+    fixture_dir, _ = fixtures
+    proc = _run(
+        fixture_dir,
+        ["--search-hex", "00", "--search-max-results", "5", "--search-unlimited", "dX"],
+    )
+    assert proc.returncode != 0
+    assert "not allowed with" in proc.stderr
+
+
 @pytest.mark.parametrize("value", ["0", "-1"])
 def test_limit_rows_rejects_nonpositive_values(fixtures, value):
     fixture_dir, _ = fixtures

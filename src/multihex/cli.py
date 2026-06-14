@@ -24,6 +24,7 @@ import os
 import sys
 
 from multihex.core import (
+    DEFAULT_SEARCH_MAX_RESULTS,
     OFFSET_LABEL_WIDTH,
     ByteClass,
     HexModel,
@@ -42,7 +43,7 @@ from multihex.core import (
     offset_label,
     parse_int,
     render_row_text,
-    search_files,
+    search_files_bounded,
 )
 from multihex.overlay import OverlayState
 
@@ -182,8 +183,13 @@ def build_parser():
                         help="restrict the search to one file (0-based index or a name)")
     search.add_argument("--search-context", type=parse_int, default=None, metavar="N",
                         help="render N comparison rows of context around each match")
-    search.add_argument("--search-max-results", type=parse_int, default=None, metavar="N",
-                        help="stop after N matches")
+    # Search is memory-bounded by default (DEFAULT_SEARCH_MAX_RESULTS). These two
+    # controls are mutually exclusive: raise/lower the cap, or remove it entirely.
+    limit = search.add_mutually_exclusive_group()
+    limit.add_argument("--search-max-results", type=parse_int, default=None, metavar="N",
+                       help=f"stop after N matches (default: {DEFAULT_SEARCH_MAX_RESULTS})")
+    limit.add_argument("--search-unlimited", action="store_true",
+                       help="report all matches with no cap (may use large memory)")
     search.add_argument("--search-overlap", action="store_true",
                         help="also report overlapping matches (default: non-overlapping)")
     return p
@@ -418,17 +424,27 @@ def run_search(args, files, names, name_w):
     # any display --offset/--length window.
     model = HexModel(files, start_offset=0, width=args.width, length=None)
 
+    # Resolve the effective cap: an explicit --search-max-results wins, otherwise
+    # the project-wide default bounds memory; --search-unlimited removes the cap.
+    if args.search_unlimited:
+        max_results = None
+    elif args.search_max_results is not None:
+        max_results = args.search_max_results
+    else:
+        max_results = DEFAULT_SEARCH_MAX_RESULTS
+
     try:
-        matches = search_files(
+        result = search_files_bounded(
             files,
             query,
-            max_results=args.search_max_results,
+            max_results=max_results,
             overlap=args.search_overlap,
             model=model,
         )
     except SearchError as exc:
         sys.exit(f"multihex: {exc}")
 
+    matches = result.matches
     if not matches:
         print(f"multihex: no matches for {query.pattern!r}", file=sys.stderr)
         return
@@ -459,6 +475,15 @@ def run_search(args, files, names, name_w):
             if mi != len(matches) - 1:
                 out.append("")
     write_stdout("\n".join(out))
+
+    # Truncation goes to stderr so the stdout match lines stay machine-parseable.
+    if result.truncated:
+        print(
+            f"multihex: results truncated at {result.limit} matches "
+            "(raise --search-max-results, or --search-unlimited for all; "
+            "unlimited may use large memory)",
+            file=sys.stderr,
+        )
 
 
 def main(argv=None):

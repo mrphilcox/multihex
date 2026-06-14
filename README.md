@@ -343,8 +343,14 @@ applies to **text** search only (ASCII letters).
 | `--search-ignore-case`   | Case-insensitive text search (ASCII letters only).                   |
 | `--search-file IDX_OR_NAME` | Restrict the search to one file (0-based index, basename, or path). |
 | `--search-context N`     | Print `N` comparison rows of context above and below each match.     |
-| `--search-max-results N` | Stop after `N` matches.                                              |
+| `--search-max-results N` | Stop after `N` matches. Defaults to 10000; raise it to collect more. |
+| `--search-unlimited`     | Report every match with no cap. May use large memory on a frequent pattern (e.g. `00` over a big file). Mutually exclusive with `--search-max-results`. |
 | `--search-overlap`       | Also report overlapping matches (e.g. `AA AA` at offsets 0 and 1 in `AA AA AA`). Default is non-overlapping. |
+
+Search is memory-bounded by default: it collects at most 10000 matches unless you
+raise `--search-max-results` or pass `--search-unlimited`. When the cap is hit,
+the match lines still print and a truncation note is written to stderr so stdout
+stays machine-parseable.
 
 With `--search-context`, each match is followed by the surrounding comparison
 rows so you can see it in place:
