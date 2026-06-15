@@ -1189,9 +1189,9 @@ only-diff; `c` color; `t` byte-classes; `v` layout; `m` markers; `l`/`L` overlay
 
 ### GUI keys
 
-Same as the TUI minus `v` and `Left`/`Right`. Plus menu accelerators: `Ctrl+O`
-open, `Ctrl+Q` quit, `Ctrl+G` jump, `Ctrl+Home`/`Ctrl+End` start/end, `Ctrl+F`
-find text. See [section 8](#8-multihex-gui-reference).
+Same as the TUI. The GUI also has menu accelerators: `Ctrl+O` open, `Ctrl+Q`
+quit, `Ctrl+G` jump, `Ctrl+Home`/`Ctrl+End` start/end, `Ctrl+F` find text. See
+[section 8](#8-multihex-gui-reference).
 
 ---
 
