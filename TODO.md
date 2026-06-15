@@ -12,7 +12,6 @@ _(nothing in flight — pick the next item from Near-term)_
 
 ## Near-term
 
-- [ ] **Single file viewing should not show markers by default.**
 - [ ] **Persist the TUI text-search case-insensitive preference (optional).** The
       `multihex-tui` text-search panel has a "Case-insensitive (ASCII)" checkbox
       whose state is remembered for the running session only. If desired, promote
@@ -204,6 +203,10 @@ Guidelines:
 
 ## Done or superseded
 
+- [x] **Single file viewing does not show markers by default.** The CLI, TUI, and
+      GUI now resolve an unspecified marker mode to `none` for exactly one input
+      file, while an explicit `--markers` choice still wins. Covered by the
+      existing CLI/TUI/GUI marker startup tests.
 - [x] **Compact TUI/GUI hex blocks (drop the inter-block blank line).** Both
       interactive frontends reserved one unconditional blank line between every
       logical hex block (`_lines_per_block` returned `content + marker + 1`, and
