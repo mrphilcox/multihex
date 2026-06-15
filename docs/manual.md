@@ -410,8 +410,9 @@ has no case toggle (it is always exact byte matching).
 Matches are ordered deterministically by `(file_index, offset)`. By default
 matches are non-overlapping (each scan resumes past the previous match);
 `--search-overlap` reports overlapping occurrences as well (for example `AA AA`
-at offsets 0 and 1 in `AA AA AA`). `--search-max-results N` caps the total
-returned, keeping the deterministic prefix.
+at offsets 0 and 1 in `AA AA AA`). Search is capped at 10000 matches by default,
+keeping the deterministic prefix. `--search-max-results N` changes that cap, and
+`--search-unlimited` removes it.
 
 ### 6.3 Batch CLI search options
 
@@ -423,6 +424,7 @@ returned, keeping the deterministic prefix.
 | `--search-file INDEX_OR_NAME` | index or name | Restrict to one file. Resolves a 0-based index, then a display name, path, or basename. No match is an error (exit 1). |
 | `--search-context N` | integer >= 0 | Print `N` full-file comparison rows above and below each match. `0` prints match lines only (same as omitting). Negative is an error when search mode is active. |
 | `--search-max-results N` | integer >= 1 | Stop after `N` matches. `< 1` is an error. |
+| `--search-unlimited` | flag | Report every match with no cap. Mutually exclusive with `--search-max-results`; may use large memory for frequent patterns. |
 | `--search-overlap` | flag | Also report overlapping matches. |
 
 ### 6.4 Batch CLI search output
@@ -1131,8 +1133,9 @@ Known limitations (tracked in `TODO.md`):
 - A file truncated beneath a live read mapping can raise SIGBUS on access (an
   inherent `mmap` hazard).
 - A FIFO or other non-regular input with no writer can block indefinitely on open.
-- An all-matching search (for example searching `00` in an all-zero file)
-  materializes every match; cap it with `--search-max-results`.
+- An explicit `--search-unlimited` for a frequent pattern (for example `00` in
+  an all-zero file) can materialize every match. The default search cap bounds
+  this unless you remove it.
 - A full-file absent-pattern search can fault every searched page into memory.
 - The batch CLI handles broken downstream pipes cleanly, but other stdout/stderr
   write failures (for example `/dev/full`) are tracked as a known robustness gap.
@@ -1167,6 +1170,7 @@ that frontend.
 | `--search-file IDX_OR_NAME` | yes | | | | restrict search to one file |
 | `--search-context N` | yes | | | | context rows around matches |
 | `--search-max-results N` | yes | | | | cap matches |
+| `--search-unlimited` | yes | | | off | remove match cap |
 | `--search-overlap` | yes | | | off | report overlapping matches |
 | `--config PATH` | | yes | | default path | TUI config (TUI only) |
 | `--no-config` | | yes | | off | ignore TUI config (TUI only) |
