@@ -29,7 +29,7 @@ contributor workflow see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
 | `src/multihex/tui.py`   | Interactive rendering: a Textual app with scrolling, paging, jump, live ref switching, search highlight state, and the settings pane. Requires `textual` + `rich`. |
 | `src/multihex/gui.py`   | Read-only desktop rendering: a PySide6/Qt `QAbstractScrollArea` painting only visible rows, with scroll/page/jump, View/Search/Compare/Overlay menus, and a segmented status bar. Qt-free `ViewState`/`format_status_parts` helpers stay unit-testable. Requires `PySide6` (optional, import-guarded). |
 | `src/multihex/overlay.py` | The `OverlayState`/`OverlayRange` seam: load a `bintools.layout-overlay` v1 file, validate it, and answer coverage/range/diagnostic queries for every frontend. Stdlib-only; separate from `core.py`. |
-| `src/multihex/tui_config.py` | **TUI-only** persistent preferences: config-path discovery, TOML load/validate, and atomic save of `TuiSettings`. No core, Textual, or Rich awareness. The batch CLI never imports it. |
+| `src/multihex/tui_config.py` | **TUI-only** persistent preferences: config-path discovery, TOML load/validate, and atomic save of `TuiSettings`. Uses stdlib `tomllib` on Python 3.11+ and `tomli` from the TUI/dev extras on 3.9/3.10. No core, Textual, or Rich awareness. The batch CLI never imports it. |
 
 The guiding rule: **comparison and search semantics live in the core; frontends
 render and navigate only.** This is what keeps the batch CLI and the TUI in

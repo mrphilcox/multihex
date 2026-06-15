@@ -60,7 +60,7 @@ about the bytes, and exactly what `multihex` reports.
 # Core + batch CLI only (no third-party dependencies):
 pip install .
 
-# With the interactive TUI (adds textual + rich):
+# With the interactive TUI (adds textual + rich; tomli on Python < 3.11):
 pip install '.[tui]'
 
 # With the desktop GUI (adds PySide6):

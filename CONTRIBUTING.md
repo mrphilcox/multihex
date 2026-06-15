@@ -14,7 +14,7 @@ pip install -e '.[dev]'
 ```
 
 The `dev` extra installs `pytest`, `ruff`, and the TUI dependencies
-(`textual`, `rich`).
+(`textual`, `rich`, plus `tomli` on Python 3.9/3.10 for config loading).
 
 ## Tracking work
 
@@ -32,7 +32,7 @@ src/multihex/
   gui.py               # read-only PySide6/Qt desktop frontend         -> `multihex-gui`
   overlay.py           # OverlayState/OverlayRange: load + query overlays
   layout_overlay_v1.py # overlay schema validator (shared with bintools)
-  tui_config.py        # TUI-only persisted preferences (TOML)
+  tui_config.py        # TUI-only persisted preferences (TOML via tomllib/tomli)
   __init__.py
 tests/
   fixtures.py                          # deterministic binary fixtures
@@ -286,8 +286,9 @@ both generated from the registry. The workflow:
   bytes render as `--`. Marker logic stays in `HexModel._markers()`.
 - **Exact search only** — observed byte matches, no wildcards or inference. Search
   semantics stay in the core.
-- **The core stays stdlib-only.** The TUI may use `textual`/`rich`; `core.py` and
-  `cli.py` may not import third-party packages.
+- **The core stays stdlib-only.** The TUI may use `textual`/`rich`, and
+  `tui_config.py` may use `tomli` on Python 3.9/3.10 through the TUI/dev extras;
+  `core.py` and `cli.py` may not import third-party packages.
 - **Frontend color schemes differ by design** — do not unify them.
 
 ## Style

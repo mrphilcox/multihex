@@ -60,17 +60,18 @@ tests did not notice that change, which points at a missing assertion. It is a
 way to ask whether the tests actually constrain behavior or merely execute code.
 
 This lane is deliberately scoped and is **not** part of `python3 -m pytest`,
-**not** a CI gate, and **not** a release blocker. It mutates only the
-deterministic, stdlib-only core and skips the UI stack, which is snapshot and
-offscreen tested and too noisy to mutate usefully.
+**not** a CI gate, and **not** a release blocker. It mutates only deterministic
+non-UI modules and skips the UI stack, which is snapshot and offscreen tested and
+too noisy to mutate usefully.
 
 It uses [`mutmut`](https://mutmut.readthedocs.io/) (pinned to the 2.x series in
 the `dev` extra; its config keys, cache file, and result commands changed
 incompatibly in 3.x). The targets are configured in `[tool.mutmut]` in
 `pyproject.toml`:
 
-- Mutated: `core.py`, `overlay.py`, `layout_overlay_v1.py`, `shortcuts.py`,
-  `tui_config.py`.
+- Mutated: the stdlib-only comparison/overlay/shortcut modules (`core.py`,
+  `overlay.py`, `layout_overlay_v1.py`, `shortcuts.py`) plus the TUI-only config
+  parser (`tui_config.py`, which may import `tomli` on Python 3.9/3.10).
 - Excluded: `tui.py` and `gui.py` (UI widgets), `cli.py` (argument glue covered
   by characterization goldens), and `__init__.py` (version string only).
 
