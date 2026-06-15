@@ -2,7 +2,7 @@
 
 > Side-by-side **fixed-offset** hex comparison of multiple binary files.
 
-![Python](https://img.shields.io/badge/python-%E2%89%A53.9-blue)
+![Python](https://img.shields.io/badge/python-%E2%89%A53.10-blue)
 ![License](https://img.shields.io/badge/license-Apache--2.0-green)
 
 `multihex` lines up several binary files at the **same byte offsets** and shows
@@ -54,7 +54,7 @@ about the bytes, and exactly what `multihex` reports.
 
 ## Install
 
-`multihex` requires **Python ≥ 3.9**. The core and batch CLI are **stdlib-only**.
+`multihex` requires **Python ≥ 3.10**. The core and batch CLI are **stdlib-only**.
 
 ```bash
 # Core + batch CLI only (no third-party dependencies):

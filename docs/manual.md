@@ -112,12 +112,12 @@ frontends.
 
 ## 3. Installation and invocation
 
-Requires Python >= 3.9. The core and batch CLI have no third-party dependencies.
+Requires Python >= 3.10. The core and batch CLI have no third-party dependencies.
 
 | Install command | Provides |
 |-----------------|----------|
 | `pip install .` | core + `multihex` |
-| `pip install '.[tui]'` | adds `textual` + `rich` (and `tomli` on 3.9/3.10) for `multihex-tui` |
+| `pip install '.[tui]'` | adds `textual` + `rich` (and `tomli` on 3.10) for `multihex-tui` |
 | `pip install '.[gui]'` | adds `PySide6` for `multihex-gui` |
 | `pip install -e '.[dev]'` | tests, linter, and the TUI |
 | `pip install -e '.[dev,gui]'` | the above plus the GUI |

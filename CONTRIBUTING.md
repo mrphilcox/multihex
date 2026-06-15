@@ -14,7 +14,7 @@ pip install -e '.[dev]'
 ```
 
 The `dev` extra installs `pytest`, `ruff`, and the TUI dependencies
-(`textual`, `rich`, plus `tomli` on Python 3.9/3.10 for config loading).
+(`textual`, `rich`, plus `tomli` on Python 3.10 for config loading).
 
 ## Tracking work
 
@@ -287,7 +287,7 @@ both generated from the registry. The workflow:
 - **Exact search only** — observed byte matches, no wildcards or inference. Search
   semantics stay in the core.
 - **The core stays stdlib-only.** The TUI may use `textual`/`rich`, and
-  `tui_config.py` may use `tomli` on Python 3.9/3.10 through the TUI/dev extras;
+  `tui_config.py` may use `tomli` on Python 3.10 through the TUI/dev extras;
   `core.py` and `cli.py` may not import third-party packages.
 - **Frontend color schemes differ by design** — do not unify them.
 

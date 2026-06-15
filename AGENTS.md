@@ -84,7 +84,7 @@ comparison semantics in `src/multihex/core.py`; frontends should render and navi
 not reimplement marker rules. The core (`src/multihex/core.py`) and batch CLI
 must stay stdlib-only; `overlay.py`, `layout_overlay_v1.py`, and `shortcuts.py`
 also stay stdlib-only. The TUI may depend on `textual`/`rich`, and
-`tui_config.py` may use `tomli` on Python 3.9/3.10 through the TUI/dev extras.
+`tui_config.py` may use `tomli` on Python 3.10 through the TUI/dev extras.
 Only the GUI may depend on `PySide6`.
 
 ### Keyboard shortcuts — single source of truth

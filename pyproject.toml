@@ -10,7 +10,7 @@ name = "multihex"
 version = "0.1.0"
 description = "Side-by-side fixed-offset hex comparison of multiple binary files"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 dependencies = []
 classifiers = [
@@ -20,7 +20,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

@@ -6,6 +6,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Removed
+- Drop Python 3.9 support; Python 3.10 is now the minimum required version.
+
 ### Added
 - **Marker display modes** (`--markers single|repeat|none` in the CLI/TUI; GUI
   marker strip show/hide; TUI cycle key `m`): controls how the column-marker
@@ -46,7 +49,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   state (reference, offset, scroll, search, file list). The **batch CLI is
   unchanged and config-free** (no `--config`, reads no config file, identical
   text/JSON output). Config logic lives in the new TUI-only `multihex.tui_config`
-  module (reads via stdlib `tomllib` on 3.11+, `tomli` on 3.9–3.10; writes via a
+  module (reads via stdlib `tomllib` on 3.11+, `tomli` on 3.10; writes via a
   tiny local serializer); the package now exposes `__version__ = "0.1.0"`.
 - **Side-by-side layout** (`--layout stacked|side-by-side`): a second
   human-readable display that lays each file's hex (and ASCII gutter) out

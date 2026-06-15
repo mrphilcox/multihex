@@ -71,7 +71,7 @@ incompatibly in 3.x). The targets are configured in `[tool.mutmut]` in
 
 - Mutated: the stdlib-only comparison/overlay/shortcut modules (`core.py`,
   `overlay.py`, `layout_overlay_v1.py`, `shortcuts.py`) plus the TUI-only config
-  parser (`tui_config.py`, which may import `tomli` on Python 3.9/3.10).
+  parser (`tui_config.py`, which may import `tomli` on Python 3.10).
 - Excluded: `tui.py` and `gui.py` (UI widgets), `cli.py` (argument glue covered
   by characterization goldens), and `__init__.py` (version string only).
 

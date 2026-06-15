@@ -15,7 +15,7 @@ Precedence is applied by the frontend, not here:
     built-in defaults -> config file -> CLI args -> interactive changes
 
 Reading uses the stdlib ``tomllib`` on Python 3.11+, falling back to the
-third-party ``tomli`` on 3.9/3.10 (declared only in the TUI/dev extras). Writing
+third-party ``tomli`` on 3.10 (declared only in the TUI/dev extras). Writing
 uses a tiny local serializer for this fixed two-table shape, so no TOML *writer*
 dependency is needed. This module imports nothing from ``multihex.core`` and uses
 no Textual/Rich types.
@@ -33,7 +33,7 @@ from multihex import __version__ as MULTIHEX_VERSION
 
 try:  # Python 3.11+
     import tomllib as _toml
-except ModuleNotFoundError:  # pragma: no cover - exercised on 3.9/3.10 only
+except ModuleNotFoundError:  # pragma: no cover - exercised on 3.10 only
     import tomli as _toml  # type: ignore[no-redef]
 
 
