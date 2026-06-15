@@ -630,8 +630,8 @@ multihex-gui [OPTIONS] [FILE ...]
 ```
 
 Read-only PySide6/Qt desktop viewer. Requires the `[gui]` extra. If `PySide6` is
-not installed, it prints an install hint and exits 2. Vertical scrolling only;
-wide rows can be clipped on the right (use a smaller `--width`, or the CLI/TUI).
+not installed, it prints an install hint and exits 2. The view scrolls vertically
+and horizontally; wide rows get a horizontal scrollbar instead of clipping.
 
 On Linux/X11 the Qt `xcb` plugin may need `libxcb-cursor.so.0`. When a preflight
 check detects it is missing, the GUI prints an install hint (for example
